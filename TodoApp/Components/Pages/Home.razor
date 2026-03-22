@@ -2,9 +2,11 @@
 @rendermode InteractiveServer
 @using TodoApp.Features.Todos.AddTodo
 @using TodoApp.Features.Todos.CompleteTodo
+@using TodoApp.Features.Todos.DeleteTodo
 @using TodoApp.Features.Todos.GetTodos
 @inject AddTodoHandler AddTodoHandler
 @inject CompleteTodoHandler CompleteTodoHandler
+@inject DeleteTodoHandler DeleteTodoHandler
 @inject GetTodosHandler GetTodosHandler
 
 <PageTitle>My Todo List</PageTitle>
@@ -57,12 +59,12 @@ else
             @foreach (var todo in _todos)
             {
                 <MudListItem>
-                    <div class="d-flex align-center gap-3">
+                    <div class="d-flex align-center gap-3 flex-grow-1">
                         <MudCheckBox
                             Value="@todo.IsCompleted"
                             ValueChanged="@(async (bool _) => await HandleToggleComplete(todo.Id))"
                             Color="Color.Primary" />
-                        <div>
+                        <div class="flex-grow-1">
                             <MudText Typo="Typo.body1"
                                 Style="@(todo.IsCompleted ? "text-decoration: line-through; opacity: 0.5;" : "")">
                                 @todo.Title
@@ -71,6 +73,11 @@ else
                                 Added @todo.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
                             </MudText>
                         </div>
+                        <MudIconButton
+                            Icon="@Icons.Material.Filled.Delete"
+                            Color="Color.Error"
+                            Size="Size.Small"
+                            OnClick="@(async () => await HandleDeleteTodo(todo.Id))" />
                     </div>
                 </MudListItem>
                 <MudDivider />
@@ -131,6 +138,12 @@ else
     private async Task HandleToggleComplete(int id)
     {
         await CompleteTodoHandler.HandleAsync(id);
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleDeleteTodo(int id)
+    {
+        await DeleteTodoHandler.HandleAsync(id);
         await LoadTodosAsync();
     }
 }
