@@ -1,6 +1,7 @@
 using MudBlazor.Services;
 using TodoApp.Components;
 using TodoApp.Features.Todos.AddTodo;
+using TodoApp.Features.Todos.CompleteTodo;
 using TodoApp.Features.Todos.GetTodos;
 using TodoApp.Infrastructure;
 
@@ -22,6 +23,7 @@ await database.InitializeAsync();
 builder.Services.AddSingleton(database);
 
 builder.Services.AddScoped<AddTodoHandler>();
+builder.Services.AddScoped<CompleteTodoHandler>();
 builder.Services.AddScoped<GetTodosHandler>();
 
 var app = builder.Build();

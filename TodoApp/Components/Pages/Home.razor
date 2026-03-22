@@ -1,8 +1,10 @@
 @page "/"
 @rendermode InteractiveServer
 @using TodoApp.Features.Todos.AddTodo
+@using TodoApp.Features.Todos.CompleteTodo
 @using TodoApp.Features.Todos.GetTodos
 @inject AddTodoHandler AddTodoHandler
+@inject CompleteTodoHandler CompleteTodoHandler
 @inject GetTodosHandler GetTodosHandler
 
 <PageTitle>My Todo List</PageTitle>
@@ -55,11 +57,20 @@ else
             @foreach (var todo in _todos)
             {
                 <MudListItem>
-                    <div>
-                        <MudText Typo="Typo.body1">@todo.Title</MudText>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">
-                            Added @todo.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
-                        </MudText>
+                    <div class="d-flex align-center gap-3">
+                        <MudCheckBox
+                            Value="@todo.IsCompleted"
+                            ValueChanged="@(async (bool _) => await HandleToggleComplete(todo.Id))"
+                            Color="Color.Primary" />
+                        <div>
+                            <MudText Typo="Typo.body1"
+                                Style="@(todo.IsCompleted ? "text-decoration: line-through; opacity: 0.5;" : "")">
+                                @todo.Title
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Added @todo.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
+                            </MudText>
+                        </div>
                     </div>
                 </MudListItem>
                 <MudDivider />
@@ -115,5 +126,11 @@ else
     {
         if (e.Key == "Enter")
             await HandleAddTodo();
+    }
+
+    private async Task HandleToggleComplete(int id)
+    {
+        await CompleteTodoHandler.HandleAsync(id);
+        await LoadTodosAsync();
     }
 }
