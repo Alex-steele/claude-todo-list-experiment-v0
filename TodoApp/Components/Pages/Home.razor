@@ -1,0 +1,119 @@
+@page "/"
+@rendermode InteractiveServer
+@using TodoApp.Features.Todos.AddTodo
+@using TodoApp.Features.Todos.GetTodos
+@inject AddTodoHandler AddTodoHandler
+@inject GetTodosHandler GetTodosHandler
+
+<PageTitle>My Todo List</PageTitle>
+
+<MudCard Elevation="2" Class="mb-6">
+    <MudCardContent>
+        <MudText Typo="Typo.h6" Class="mb-4">Add a New Todo</MudText>
+        <MudTextField
+            @bind-Value="_newTitle"
+            Label="What needs to be done?"
+            Variant="Variant.Outlined"
+            FullWidth="true"
+            Class="mb-3"
+            OnKeyUp="HandleEnterKey"
+            Disabled="_isSubmitting" />
+        <MudButton
+            Variant="Variant.Filled"
+            Color="Color.Primary"
+            OnClick="HandleAddTodo"
+            Disabled="_isSubmitting"
+            FullWidth="true"
+            Size="Size.Large">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Add Todo
+        </MudButton>
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">@_errorMessage</MudAlert>
+        }
+    </MudCardContent>
+</MudCard>
+
+@if (_todos is null)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_todos.Count == 0)
+{
+    <MudPaper Elevation="1" Class="pa-8 d-flex justify-center align-center">
+        <MudText Typo="Typo.body1" Color="Color.Secondary">No todos yet — add one above!</MudText>
+    </MudPaper>
+}
+else
+{
+    <MudPaper Elevation="2">
+        <MudList T="TodoSummary" Dense="false">
+            @foreach (var todo in _todos)
+            {
+                <MudListItem>
+                    <div>
+                        <MudText Typo="Typo.body1">@todo.Title</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Added @todo.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
+                        </MudText>
+                    </div>
+                </MudListItem>
+                <MudDivider />
+            }
+        </MudList>
+    </MudPaper>
+}
+
+@code {
+    private string _newTitle = string.Empty;
+    private IReadOnlyList<TodoSummary>? _todos;
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTodosAsync();
+    }
+
+    private async Task LoadTodosAsync()
+    {
+        _todos = await GetTodosHandler.HandleAsync();
+    }
+
+    private async Task HandleAddTodo()
+    {
+        if (string.IsNullOrWhiteSpace(_newTitle))
+        {
+            _errorMessage = "Please enter a title.";
+            return;
+        }
+
+        _errorMessage = null;
+        _isSubmitting = true;
+
+        try
+        {
+            await AddTodoHandler.HandleAsync(_newTitle);
+            _newTitle = string.Empty;
+            await LoadTodosAsync();
+        }
+        catch (ArgumentException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task HandleEnterKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await HandleAddTodo();
+    }
+}
