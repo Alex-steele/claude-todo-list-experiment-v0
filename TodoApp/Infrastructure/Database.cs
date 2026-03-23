@@ -15,7 +15,8 @@ public class Database(string connectionString)
                 Id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 Title       TEXT    NOT NULL,
                 IsCompleted INTEGER NOT NULL DEFAULT 0,
-                CreatedAt   TEXT    NOT NULL
+                CreatedAt   TEXT    NOT NULL,
+                Priority    INTEGER NOT NULL DEFAULT 0
             )
             """);
 
@@ -23,6 +24,16 @@ public class Database(string connectionString)
         try
         {
             await conn.ExecuteAsync("ALTER TABLE Todos ADD COLUMN IsCompleted INTEGER NOT NULL DEFAULT 0");
+        }
+        catch (SqliteException)
+        {
+            // Column already exists — ignore
+        }
+
+        // Migration: add Priority column for existing databases
+        try
+        {
+            await conn.ExecuteAsync("ALTER TABLE Todos ADD COLUMN Priority INTEGER NOT NULL DEFAULT 0");
         }
         catch (SqliteException)
         {

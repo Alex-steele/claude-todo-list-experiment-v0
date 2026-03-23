@@ -1,3 +1,3 @@
 namespace TodoApp.Features.Todos;
 
-public record Todo(int Id, string Title, bool IsCompleted, DateTime CreatedAt);
+public record Todo(int Id, string Title, bool IsCompleted, DateTime CreatedAt, TodoPriority Priority);
