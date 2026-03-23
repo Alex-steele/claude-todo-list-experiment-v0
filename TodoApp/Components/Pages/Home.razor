@@ -1,5 +1,6 @@
 @page "/"
 @rendermode InteractiveServer
+@using TodoApp.Features.Todos
 @using TodoApp.Features.Todos.AddTodo
 @using TodoApp.Features.Todos.CompleteTodo
 @using TodoApp.Features.Todos.DeleteTodo
@@ -22,6 +23,18 @@
             Class="mb-3"
             OnKeyUp="HandleEnterKey"
             Disabled="_isSubmitting" />
+        <MudSelect
+            T="TodoPriority"
+            @bind-Value="_newPriority"
+            Label="Priority"
+            Variant="Variant.Outlined"
+            Class="mb-3"
+            Disabled="_isSubmitting">
+            <MudSelectItem Value="TodoPriority.None">None</MudSelectItem>
+            <MudSelectItem Value="TodoPriority.Low">Low</MudSelectItem>
+            <MudSelectItem Value="TodoPriority.Medium">Medium</MudSelectItem>
+            <MudSelectItem Value="TodoPriority.High">High</MudSelectItem>
+        </MudSelect>
         <MudButton
             Variant="Variant.Filled"
             Color="Color.Primary"
@@ -65,10 +78,18 @@ else
                             ValueChanged="@(async (bool _) => await HandleToggleComplete(todo.Id))"
                             Color="Color.Primary" />
                         <div class="flex-grow-1">
-                            <MudText Typo="Typo.body1"
-                                Style="@(todo.IsCompleted ? "text-decoration: line-through; opacity: 0.5;" : "")">
-                                @todo.Title
-                            </MudText>
+                            <div class="d-flex align-center gap-2 mb-1">
+                                <MudText Typo="Typo.body1"
+                                    Style="@(todo.IsCompleted ? "text-decoration: line-through; opacity: 0.5;" : "")">
+                                    @todo.Title
+                                </MudText>
+                                @if (todo.Priority != TodoPriority.None)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(todo.Priority)" Variant="Variant.Filled">
+                                        @todo.Priority.ToString()
+                                    </MudChip>
+                                }
+                            </div>
                             <MudText Typo="Typo.caption" Color="Color.Secondary">
                                 Added @todo.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
                             </MudText>
@@ -88,6 +109,7 @@ else
 
 @code {
     private string _newTitle = string.Empty;
+    private TodoPriority _newPriority = TodoPriority.None;
     private IReadOnlyList<TodoSummary>? _todos;
     private bool _isSubmitting;
     private string? _errorMessage;
@@ -115,8 +137,9 @@ else
 
         try
         {
-            await AddTodoHandler.HandleAsync(_newTitle);
+            await AddTodoHandler.HandleAsync(_newTitle, _newPriority);
             _newTitle = string.Empty;
+            _newPriority = TodoPriority.None;
             await LoadTodosAsync();
         }
         catch (ArgumentException ex)
@@ -146,4 +169,12 @@ else
         await DeleteTodoHandler.HandleAsync(id);
         await LoadTodosAsync();
     }
+
+    private static Color GetPriorityColor(TodoPriority priority) => priority switch
+    {
+        TodoPriority.High   => Color.Error,
+        TodoPriority.Medium => Color.Warning,
+        TodoPriority.Low    => Color.Info,
+        _                   => Color.Default
+    };
 }
