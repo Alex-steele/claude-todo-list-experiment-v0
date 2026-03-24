@@ -1,5 +1,22 @@
 # Change Log
 
+## Day 3 — [2026-03-24] — Fix: MudPopoverProvider circuit isolation
+
+**Description:** The priority dropdown (and the entire interactive page) was broken because `MudPopoverProvider` lives in `MainLayout.razor` which is rendered statically, while `Home.razor` ran as `@rendermode InteractiveServer`. They ended up on different DI scopes with different `PopoverService` instances, so when `MudSelect` tried to open its dropdown it threw `Missing <MudPopoverProvider />`, terminating the Blazor Server circuit and making all interactivity (including the Add button) stop responding. Fixed by moving `@rendermode InteractiveServer` to `Routes.razor` so the entire tree — layout and pages — shares one circuit and one `PopoverService`.
+
+Also corrected `MudSelectItem Value` attributes to use `@` prefix so Blazor evaluates them as C# enum expressions rather than string literals.
+
+**Reason for change:** Bug introduced in Day 3 feature; rendered the app completely non-functional.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 3
+- Lines deleted: 2
+- Tests added: 0
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 3 — [2026-03-23] — Feature: Priority Levels
 
 **Description:** Users can now assign a priority level (None, Low, Medium, High) to each todo when creating it. Priorities are displayed as color-coded chips next to the todo title — blue for Low, orange for Medium, red for High — making it easy to see at a glance which tasks matter most.
