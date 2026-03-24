@@ -34,6 +34,13 @@
             <MudSelectItem Value="@TodoPriority.Medium">Medium</MudSelectItem>
             <MudSelectItem Value="@TodoPriority.High">High</MudSelectItem>
         </MudSelect>
+        <MudDatePicker
+            @bind-Date="_newDueDate"
+            Label="Due date (optional)"
+            Variant="Variant.Outlined"
+            Class="mb-3"
+            Disabled="_isSubmitting"
+            Clearable="true" />
         <MudButton
             Variant="Variant.Filled"
             Color="Color.Primary"
@@ -92,6 +99,32 @@ else
                             <MudText Typo="Typo.caption" Color="Color.Secondary">
                                 Added @todo.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
                             </MudText>
+                            @if (todo.DueDate.HasValue)
+                            {
+                                var dueDateStatus = GetDueDateStatus(todo);
+                                <div class="d-flex align-center gap-1 mt-1">
+                                    @if (dueDateStatus == DueDateStatus.Overdue)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Color="Color.Error" />
+                                        <MudText Typo="Typo.caption" Color="Color.Error">
+                                            Due @todo.DueDate.Value.ToString("MMM d, yyyy")
+                                        </MudText>
+                                    }
+                                    else if (dueDateStatus == DueDateStatus.DueToday)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Color="Color.Warning" />
+                                        <MudText Typo="Typo.caption" Color="Color.Warning">
+                                            Due @todo.DueDate.Value.ToString("MMM d, yyyy")
+                                        </MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            Due @todo.DueDate.Value.ToString("MMM d, yyyy")
+                                        </MudText>
+                                    }
+                                </div>
+                            }
                         </div>
                         <MudIconButton
                             Icon="@Icons.Material.Filled.Delete"
@@ -109,9 +142,12 @@ else
 @code {
     private string _newTitle = string.Empty;
     private TodoPriority _newPriority = TodoPriority.None;
+    private DateTime? _newDueDate;
     private IReadOnlyList<TodoSummary>? _todos;
     private bool _isSubmitting;
     private string? _errorMessage;
+
+    private enum DueDateStatus { Future, DueToday, Overdue }
 
     protected override async Task OnInitializedAsync()
     {
@@ -136,9 +172,10 @@ else
 
         try
         {
-            await AddTodoHandler.HandleAsync(_newTitle, _newPriority);
+            await AddTodoHandler.HandleAsync(_newTitle, _newPriority, _newDueDate);
             _newTitle = string.Empty;
             _newPriority = TodoPriority.None;
+            _newDueDate = null;
             await LoadTodosAsync();
         }
         catch (ArgumentException ex)
@@ -176,4 +213,19 @@ else
         TodoPriority.Low    => Color.Info,
         _                   => Color.Default
     };
+
+    private static DueDateStatus GetDueDateStatus(TodoSummary todo)
+    {
+        if (!todo.DueDate.HasValue || todo.IsCompleted)
+            return DueDateStatus.Future;
+
+        var today = DateTime.Today;
+        var dueDate = todo.DueDate.Value.Date;
+
+        if (dueDate < today)
+            return DueDateStatus.Overdue;
+        if (dueDate == today)
+            return DueDateStatus.DueToday;
+        return DueDateStatus.Future;
+    }
 }
