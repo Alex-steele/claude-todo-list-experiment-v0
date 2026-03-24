@@ -39,5 +39,15 @@ public class Database(string connectionString)
         {
             // Column already exists — ignore
         }
+
+        // Migration: add DueDate column for existing databases
+        try
+        {
+            await conn.ExecuteAsync("ALTER TABLE Todos ADD COLUMN DueDate TEXT NULL");
+        }
+        catch (SqliteException)
+        {
+            // Column already exists — ignore
+        }
     }
 }
