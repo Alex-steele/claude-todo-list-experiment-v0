@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 5 — [2026-03-25] — Feature: Filter, Sort, and Search
+
+**Description:** Users can now filter their todo list by status (All / Active / Completed), sort by four orderings (Newest first, Oldest first, Due date, Priority), and search todos by title. These controls appear in a card above the list whenever at least one todo exists. When a combination of filters produces no results, a friendly "No todos match your filters" message is shown instead of an empty screen.
+
+**Reason for change:** With priorities and due dates in place the list can grow long and become hard to navigate. Filter, sort, and search make the list genuinely useful at scale — a user can instantly isolate what still needs doing, jump to overdue items, or find a specific task by name.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 253
+- Lines deleted: 59
+- Tests added: 6
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 4 — [2026-03-24] — Feature: Due Dates
 
 **Description:** Users can now optionally set a due date when creating a todo. The due date is displayed on each todo item formatted as "MMM d, yyyy". Todos that are past their due date and not yet completed are highlighted in red with a warning icon. Todos due today (and not completed) are shown in orange. Future due dates appear in a muted secondary color. The add-todo form includes a clearable date picker labeled "Due date (optional)".

@@ -7,6 +7,7 @@ using TodoApp.Components.Pages;
 using TodoApp.Features.Todos.AddTodo;
 using TodoApp.Features.Todos.CompleteTodo;
 using TodoApp.Features.Todos.DeleteTodo;
+using TodoApp.Features.Todos.FilterSortTodos;
 using TodoApp.Features.Todos.GetTodos;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
@@ -25,6 +26,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<CompleteTodoHandler>();
         ctx.Services.AddScoped<DeleteTodoHandler>();
         ctx.Services.AddScoped<GetTodosHandler>();
+        ctx.Services.AddScoped<FilterSortTodosHandler>();
         return ctx;
     }
 
@@ -95,5 +97,119 @@ public class HomeTests : BunitContext
         Assert.Contains(pastDueDate.ToString("MMM d, yyyy"), markup);
         // MudBlazor renders Color.Error text with mud-error-text CSS class
         Assert.Contains("mud-error-text", markup);
+    }
+
+    [Fact]
+    public async Task FilterControls_AreRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Search field and filter buttons should be visible
+        Assert.Contains("Search todos", cut.Markup);
+        Assert.Contains("Active", cut.Markup);
+        Assert.Contains("Completed", cut.Markup);
+    }
+
+    [Fact]
+    public async Task FilterControls_AreNotRendered_WhenNoTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("Search todos", cut.Markup);
+        Assert.Contains("No todos yet", cut.Markup);
+    }
+
+    [Fact]
+    public async Task FilterByActive_ShowsOnlyActiveTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+
+        var activeId = await addHandler.HandleAsync("Active task");
+        var completedId = await addHandler.HandleAsync("Completed task");
+        await completeHandler.HandleAsync(completedId);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Both todos should appear initially
+        Assert.Contains("Active task", cut.Markup);
+        Assert.Contains("Completed task", cut.Markup);
+
+        // Click the "Active" filter button
+        var activeButton = cut.FindAll("button").First(b => b.TextContent.Trim() == "Active");
+        activeButton.Click();
+
+        Assert.Contains("Active task", cut.Markup);
+        Assert.DoesNotContain("Completed task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task FilterByCompleted_ShowsOnlyCompletedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+
+        await addHandler.HandleAsync("Active task");
+        var completedId = await addHandler.HandleAsync("Completed task");
+        await completeHandler.HandleAsync(completedId);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Click the "Completed" filter button
+        var completedButton = cut.FindAll("button").First(b => b.TextContent.Trim() == "Completed");
+        completedButton.Click();
+
+        Assert.DoesNotContain("Active task", cut.Markup);
+        Assert.Contains("Completed task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Search_FiltersTodosByTitle()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Buy groceries");
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Both should be visible initially
+        Assert.Contains("Buy groceries", cut.Markup);
+        Assert.Contains("Walk the dog", cut.Markup);
+
+        // Type in the search box (identified by the todo-search-field CSS class)
+        var searchInput = cut.Find(".todo-search-field input");
+        searchInput.Input("groceries");
+
+        Assert.Contains("Buy groceries", cut.Markup);
+        Assert.DoesNotContain("Walk the dog", cut.Markup);
+    }
+
+    [Fact]
+    public async Task FilterWithNoMatches_ShowsNoMatchMessage()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Buy groceries");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var searchInput = cut.Find(".todo-search-field input");
+        searchInput.Input("zzznomatch");
+
+        Assert.Contains("No todos match your filters", cut.Markup);
     }
 }

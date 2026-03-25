@@ -3,11 +3,13 @@
 @using TodoApp.Features.Todos.AddTodo
 @using TodoApp.Features.Todos.CompleteTodo
 @using TodoApp.Features.Todos.DeleteTodo
+@using TodoApp.Features.Todos.FilterSortTodos
 @using TodoApp.Features.Todos.GetTodos
 @inject AddTodoHandler AddTodoHandler
 @inject CompleteTodoHandler CompleteTodoHandler
 @inject DeleteTodoHandler DeleteTodoHandler
 @inject GetTodosHandler GetTodosHandler
+@inject FilterSortTodosHandler FilterSortTodosHandler
 
 <PageTitle>My Todo List</PageTitle>
 
@@ -73,70 +75,121 @@ else if (_todos.Count == 0)
 }
 else
 {
-    <MudPaper Elevation="2">
-        <MudList T="TodoSummary" Dense="false">
-            @foreach (var todo in _todos)
-            {
-                <MudListItem>
-                    <div class="d-flex align-center gap-3 flex-grow-1">
-                        <MudCheckBox
-                            Value="@todo.IsCompleted"
-                            ValueChanged="@(async (bool _) => await HandleToggleComplete(todo.Id))"
-                            Color="Color.Primary" />
-                        <div class="flex-grow-1">
-                            <div class="d-flex align-center gap-2 mb-1">
-                                <MudText Typo="Typo.body1"
-                                    Style="@(todo.IsCompleted ? "text-decoration: line-through; opacity: 0.5;" : "")">
-                                    @todo.Title
-                                </MudText>
-                                @if (todo.Priority != TodoPriority.None)
-                                {
-                                    <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(todo.Priority)" Variant="Variant.Filled">
-                                        @todo.Priority.ToString()
-                                    </MudChip>
-                                }
-                            </div>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                Added @todo.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
-                            </MudText>
-                            @if (todo.DueDate.HasValue)
-                            {
-                                var dueDateStatus = GetDueDateStatus(todo);
-                                <div class="d-flex align-center gap-1 mt-1">
-                                    @if (dueDateStatus == DueDateStatus.Overdue)
+    <MudCard Elevation="1" Class="mb-4">
+        <MudCardContent Class="pb-3">
+            <MudTextField
+                @bind-Value="_searchQuery"
+                Label="Search todos..."
+                Variant="Variant.Outlined"
+                Adornment="Adornment.Start"
+                AdornmentIcon="@Icons.Material.Filled.Search"
+                Clearable="true"
+                Immediate="true"
+                Class="mb-3 todo-search-field" />
+            <div class="d-flex align-center gap-2 flex-wrap justify-space-between">
+                <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                    <MudButton
+                        Color="Color.Primary"
+                        Variant="@(_statusFilter == TodoStatusFilter.All ? Variant.Filled : Variant.Outlined)"
+                        OnClick="@(() => _statusFilter = TodoStatusFilter.All)">All</MudButton>
+                    <MudButton
+                        Color="Color.Primary"
+                        Variant="@(_statusFilter == TodoStatusFilter.Active ? Variant.Filled : Variant.Outlined)"
+                        OnClick="@(() => _statusFilter = TodoStatusFilter.Active)">Active</MudButton>
+                    <MudButton
+                        Color="Color.Primary"
+                        Variant="@(_statusFilter == TodoStatusFilter.Completed ? Variant.Filled : Variant.Outlined)"
+                        OnClick="@(() => _statusFilter = TodoStatusFilter.Completed)">Completed</MudButton>
+                </MudButtonGroup>
+                <MudSelect
+                    T="TodoSortOrder"
+                    @bind-Value="_sortOrder"
+                    Label="Sort"
+                    Variant="Variant.Outlined"
+                    Dense="true"
+                    Style="min-width: 150px;">
+                    <MudSelectItem Value="@TodoSortOrder.Newest">Newest first</MudSelectItem>
+                    <MudSelectItem Value="@TodoSortOrder.Oldest">Oldest first</MudSelectItem>
+                    <MudSelectItem Value="@TodoSortOrder.DueDateAsc">Due date</MudSelectItem>
+                    <MudSelectItem Value="@TodoSortOrder.PriorityDesc">Priority</MudSelectItem>
+                </MudSelect>
+            </div>
+        </MudCardContent>
+    </MudCard>
+
+    @if (DisplayedTodos.Count == 0)
+    {
+        <MudPaper Elevation="1" Class="pa-8 d-flex justify-center align-center">
+            <MudText Typo="Typo.body1" Color="Color.Secondary">No todos match your filters.</MudText>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Elevation="2">
+            <MudList T="TodoSummary" Dense="false">
+                @foreach (var todo in DisplayedTodos)
+                {
+                    <MudListItem>
+                        <div class="d-flex align-center gap-3 flex-grow-1">
+                            <MudCheckBox
+                                Value="@todo.IsCompleted"
+                                ValueChanged="@(async (bool _) => await HandleToggleComplete(todo.Id))"
+                                Color="Color.Primary" />
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-center gap-2 mb-1">
+                                    <MudText Typo="Typo.body1"
+                                        Style="@(todo.IsCompleted ? "text-decoration: line-through; opacity: 0.5;" : "")">
+                                        @todo.Title
+                                    </MudText>
+                                    @if (todo.Priority != TodoPriority.None)
                                     {
-                                        <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Color="Color.Error" />
-                                        <MudText Typo="Typo.caption" Color="Color.Error">
-                                            Due @todo.DueDate.Value.ToString("MMM d, yyyy")
-                                        </MudText>
-                                    }
-                                    else if (dueDateStatus == DueDateStatus.DueToday)
-                                    {
-                                        <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Color="Color.Warning" />
-                                        <MudText Typo="Typo.caption" Color="Color.Warning">
-                                            Due @todo.DueDate.Value.ToString("MMM d, yyyy")
-                                        </MudText>
-                                    }
-                                    else
-                                    {
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                            Due @todo.DueDate.Value.ToString("MMM d, yyyy")
-                                        </MudText>
+                                        <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(todo.Priority)" Variant="Variant.Filled">
+                                            @todo.Priority.ToString()
+                                        </MudChip>
                                     }
                                 </div>
-                            }
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    Added @todo.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
+                                </MudText>
+                                @if (todo.DueDate.HasValue)
+                                {
+                                    var dueDateStatus = GetDueDateStatus(todo);
+                                    <div class="d-flex align-center gap-1 mt-1">
+                                        @if (dueDateStatus == DueDateStatus.Overdue)
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Color="Color.Error" />
+                                            <MudText Typo="Typo.caption" Color="Color.Error">
+                                                Due @todo.DueDate.Value.ToString("MMM d, yyyy")
+                                            </MudText>
+                                        }
+                                        else if (dueDateStatus == DueDateStatus.DueToday)
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Color="Color.Warning" />
+                                            <MudText Typo="Typo.caption" Color="Color.Warning">
+                                                Due @todo.DueDate.Value.ToString("MMM d, yyyy")
+                                            </MudText>
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                Due @todo.DueDate.Value.ToString("MMM d, yyyy")
+                                            </MudText>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <MudIconButton
+                                Icon="@Icons.Material.Filled.Delete"
+                                Color="Color.Error"
+                                Size="Size.Small"
+                                OnClick="@(async () => await HandleDeleteTodo(todo.Id))" />
                         </div>
-                        <MudIconButton
-                            Icon="@Icons.Material.Filled.Delete"
-                            Color="Color.Error"
-                            Size="Size.Small"
-                            OnClick="@(async () => await HandleDeleteTodo(todo.Id))" />
-                    </div>
-                </MudListItem>
-                <MudDivider />
-            }
-        </MudList>
-    </MudPaper>
+                    </MudListItem>
+                    <MudDivider />
+                }
+            </MudList>
+        </MudPaper>
+    }
 }
 
 @code {
@@ -146,6 +199,13 @@ else
     private IReadOnlyList<TodoSummary>? _todos;
     private bool _isSubmitting;
     private string? _errorMessage;
+
+    private TodoStatusFilter _statusFilter = TodoStatusFilter.All;
+    private TodoSortOrder _sortOrder = TodoSortOrder.Newest;
+    private string _searchQuery = string.Empty;
+
+    private IReadOnlyList<TodoSummary> DisplayedTodos =>
+        _todos is null ? [] : FilterSortTodosHandler.Handle(_todos, _statusFilter, _sortOrder, _searchQuery);
 
     private enum DueDateStatus { Future, DueToday, Overdue }
 
