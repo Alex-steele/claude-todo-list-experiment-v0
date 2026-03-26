@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 6 — [2026-03-26] — Feature: Inline Todo Editing
+
+**Description:** Users can now edit a todo's title directly in the list. Each todo shows a pencil icon button; clicking it switches the title to an editable text field with Save (checkmark) and Cancel (X) buttons. Pressing Enter saves the change, pressing Escape cancels. The updated title is persisted immediately.
+
+**Reason for change:** The app has CRUD for create, complete, and delete but was missing the "update" half of the equation. Users inevitably make typos or change their minds — inline editing is a fundamental feature for any real-world todo list.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 152
+- Lines deleted: 12
+- Tests added: 10
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 5 — [2026-03-25] — Feature: Filter, Sort, and Search
 
 **Description:** Users can now filter their todo list by status (All / Active / Completed), sort by four orderings (Newest first, Oldest first, Due date, Priority), and search todos by title. These controls appear in a card above the list whenever at least one todo exists. When a combination of filters produces no results, a friendly "No todos match your filters" message is shown instead of an empty screen.

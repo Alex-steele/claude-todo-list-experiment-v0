@@ -3,11 +3,13 @@
 @using TodoApp.Features.Todos.AddTodo
 @using TodoApp.Features.Todos.CompleteTodo
 @using TodoApp.Features.Todos.DeleteTodo
+@using TodoApp.Features.Todos.EditTodo
 @using TodoApp.Features.Todos.FilterSortTodos
 @using TodoApp.Features.Todos.GetTodos
 @inject AddTodoHandler AddTodoHandler
 @inject CompleteTodoHandler CompleteTodoHandler
 @inject DeleteTodoHandler DeleteTodoHandler
+@inject EditTodoHandler EditTodoHandler
 @inject GetTodosHandler GetTodosHandler
 @inject FilterSortTodosHandler FilterSortTodosHandler
 
@@ -136,18 +138,51 @@ else
                                 ValueChanged="@(async (bool _) => await HandleToggleComplete(todo.Id))"
                                 Color="Color.Primary" />
                             <div class="flex-grow-1">
-                                <div class="d-flex align-center gap-2 mb-1">
-                                    <MudText Typo="Typo.body1"
-                                        Style="@(todo.IsCompleted ? "text-decoration: line-through; opacity: 0.5;" : "")">
-                                        @todo.Title
-                                    </MudText>
-                                    @if (todo.Priority != TodoPriority.None)
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(todo.Priority)" Variant="Variant.Filled">
-                                            @todo.Priority.ToString()
-                                        </MudChip>
-                                    }
-                                </div>
+                                @if (_editingTodoId == todo.Id)
+                                {
+                                    <div class="d-flex align-center gap-2">
+                                        <MudTextField
+                                            @bind-Value="_editValue"
+                                            Variant="Variant.Outlined"
+                                            FullWidth="true"
+                                            OnKeyUp="HandleEditKeyUp"
+                                            Class="todo-edit-field" />
+                                        <MudIconButton
+                                            Icon="@Icons.Material.Filled.Check"
+                                            Color="Color.Success"
+                                            Size="Size.Small"
+                                            OnClick="HandleSaveEdit"
+                                            title="Save" />
+                                        <MudIconButton
+                                            Icon="@Icons.Material.Filled.Close"
+                                            Color="Color.Default"
+                                            Size="Size.Small"
+                                            OnClick="HandleCancelEdit"
+                                            title="Cancel" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="d-flex align-center gap-2 mb-1">
+                                        <MudText Typo="Typo.body1"
+                                            Style="@(todo.IsCompleted ? "text-decoration: line-through; opacity: 0.5;" : "")">
+                                            @todo.Title
+                                        </MudText>
+                                        @if (todo.Priority != TodoPriority.None)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(todo.Priority)" Variant="Variant.Filled">
+                                                @todo.Priority.ToString()
+                                            </MudChip>
+                                        }
+                                        <MudIconButton
+                                            Icon="@Icons.Material.Filled.Edit"
+                                            Color="Color.Default"
+                                            Size="Size.Small"
+                                            OnClick="@(() => HandleStartEdit(todo.Id, todo.Title))"
+                                            title="Edit"
+                                            Class="todo-edit-btn" />
+                                    </div>
+                                }
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">
                                     Added @todo.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
                                 </MudText>
@@ -203,6 +238,9 @@ else
     private TodoStatusFilter _statusFilter = TodoStatusFilter.All;
     private TodoSortOrder _sortOrder = TodoSortOrder.Newest;
     private string _searchQuery = string.Empty;
+
+    private int? _editingTodoId;
+    private string _editValue = string.Empty;
 
     private IReadOnlyList<TodoSummary> DisplayedTodos =>
         _todos is null ? [] : FilterSortTodosHandler.Handle(_todos, _statusFilter, _sortOrder, _searchQuery);
@@ -264,6 +302,41 @@ else
     {
         await DeleteTodoHandler.HandleAsync(id);
         await LoadTodosAsync();
+    }
+
+    private void HandleStartEdit(int id, string currentTitle)
+    {
+        _editingTodoId = id;
+        _editValue = currentTitle;
+    }
+
+    private async Task HandleSaveEdit()
+    {
+        if (_editingTodoId is null) return;
+
+        try
+        {
+            await EditTodoHandler.HandleAsync(_editingTodoId.Value, _editValue);
+            _editingTodoId = null;
+            await LoadTodosAsync();
+        }
+        catch (ArgumentException)
+        {
+            // keep editing state so user can fix the value
+        }
+    }
+
+    private void HandleCancelEdit()
+    {
+        _editingTodoId = null;
+    }
+
+    private async Task HandleEditKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await HandleSaveEdit();
+        else if (e.Key == "Escape")
+            HandleCancelEdit();
     }
 
     private static Color GetPriorityColor(TodoPriority priority) => priority switch
