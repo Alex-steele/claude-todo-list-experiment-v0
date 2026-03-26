@@ -7,6 +7,7 @@ using TodoApp.Components.Pages;
 using TodoApp.Features.Todos.AddTodo;
 using TodoApp.Features.Todos.CompleteTodo;
 using TodoApp.Features.Todos.DeleteTodo;
+using TodoApp.Features.Todos.EditTodo;
 using TodoApp.Features.Todos.FilterSortTodos;
 using TodoApp.Features.Todos.GetTodos;
 using TodoApp.Tests.Infrastructure;
@@ -25,6 +26,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<AddTodoHandler>();
         ctx.Services.AddScoped<CompleteTodoHandler>();
         ctx.Services.AddScoped<DeleteTodoHandler>();
+        ctx.Services.AddScoped<EditTodoHandler>();
         ctx.Services.AddScoped<GetTodosHandler>();
         ctx.Services.AddScoped<FilterSortTodosHandler>();
         return ctx;
@@ -211,5 +213,80 @@ public class HomeTests : BunitContext
         searchInput.Input("zzznomatch");
 
         Assert.Contains("No todos match your filters", cut.Markup);
+    }
+
+    [Fact]
+    public async Task EditButton_IsRendered_ForEachTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("todo-edit-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingEditButton_ShowsEditField()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var editBtn = cut.Find(".todo-edit-btn");
+        editBtn.Click();
+
+        Assert.Contains("todo-edit-field", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingCancelEdit_HidesEditField()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Start editing
+        cut.Find(".todo-edit-btn").Click();
+        Assert.Contains("todo-edit-field", cut.Markup);
+
+        // Cancel editing — the Close icon button (second of the two icon buttons in edit mode)
+        var closeButtons = cut.FindAll("button[title='Cancel']");
+        closeButtons.First().Click();
+
+        Assert.DoesNotContain("todo-edit-field", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SaveEdit_UpdatesTodoTitle()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Old title");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Start editing
+        cut.Find(".todo-edit-btn").Click();
+
+        // Change value in edit field
+        var editInput = cut.Find(".todo-edit-field input");
+        editInput.Change("New title");
+
+        // Click save
+        cut.Find("button[title='Save']").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("New title", cut.Markup));
+        Assert.DoesNotContain("Old title", cut.Markup);
     }
 }
