@@ -11,6 +11,7 @@ using TodoApp.Features.Todos.DeleteTodo;
 using TodoApp.Features.Todos.EditTodo;
 using TodoApp.Features.Todos.FilterSortTodos;
 using TodoApp.Features.Todos.GetTodos;
+using TodoApp.Features.Todos.UndoRedo;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -31,6 +32,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<GetTodosHandler>();
         ctx.Services.AddScoped<FilterSortTodosHandler>();
         ctx.Services.AddScoped<BulkOperationsHandler>();
+        ctx.Services.AddScoped<RestoreTodosHandler>();
         return ctx;
     }
 
@@ -401,5 +403,91 @@ public class HomeTests : BunitContext
 
         Assert.DoesNotContain("todo-select-checkbox", cut.Markup);
         Assert.DoesNotContain("bulk-action-bar", cut.Markup);
+    }
+
+    [Fact]
+    public async Task DeleteTodo_ShowsUndoSnackbar()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task to delete");
+
+        var ctx = CreateBunitContext(db);
+        var snackbarProvider = ctx.Render<MudSnackbarProvider>();
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-delete-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Undo", snackbarProvider.Markup));
+        Assert.Contains("deleted", snackbarProvider.Markup);
+    }
+
+    [Fact]
+    public async Task DeleteTodo_UndoRestoresTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Restore me");
+
+        var ctx = CreateBunitContext(db);
+        var snackbarProvider = ctx.Render<MudSnackbarProvider>();
+        var cut = RenderHome(ctx);
+
+        // Delete the todo
+        cut.Find(".todo-delete-btn").Click();
+        await cut.WaitForAssertionAsync(() =>
+            Assert.DoesNotContain("Restore me", cut.Markup));
+
+        // Click Undo in the snackbar
+        var undoButton = snackbarProvider.Find(".mud-snackbar-action-button");
+        undoButton.Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Restore me", cut.Markup));
+    }
+
+    [Fact]
+    public async Task BulkDelete_ShowsUndoSnackbarWithCount()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Todo A");
+        await addHandler.HandleAsync("Todo B");
+
+        var ctx = CreateBunitContext(db);
+        var snackbarProvider = ctx.Render<MudSnackbarProvider>();
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+        // Select all checkboxes
+        foreach (var checkbox in cut.FindAll(".todo-select-checkbox input"))
+            checkbox.Change(true);
+
+        cut.Find(".bulk-delete-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("deleted", snackbarProvider.Markup));
+        Assert.Contains("Undo", snackbarProvider.Markup);
+    }
+
+    [Fact]
+    public async Task BulkComplete_ShowsUndoSnackbar()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task to complete");
+
+        var ctx = CreateBunitContext(db);
+        var snackbarProvider = ctx.Render<MudSnackbarProvider>();
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+        cut.Find(".todo-select-checkbox input").Change(true);
+        cut.Find(".bulk-complete-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("marked complete", snackbarProvider.Markup));
+        Assert.Contains("Undo", snackbarProvider.Markup);
     }
 }

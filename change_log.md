@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 8 — [2026-03-29] — Feature: Undo Delete and Bulk Complete
+
+**Description:** After deleting a todo (single or bulk) or bulk-completing todos, a snackbar notification appears at the bottom of the screen with an "Undo" button. Clicking Undo reverses the action — deleted todos are fully restored with their original title, priority, due date, and completion state; bulk-completed todos are toggled back to active.
+
+**Reason for change:** With bulk operations in place, a single misclick can now wipe out multiple todos at once. Undo is the natural safety net: it converts destructive actions into reversible ones and gives users confidence to act quickly without fear of accidents. It is one of the most universally expected features in any task management tool.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 322
+- Lines deleted: 1
+- Tests added: 9
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 7 — [2026-03-29] — Feature: Bulk Operations
 
 **Description:** Users can now select multiple todos and act on them all at once. A "Select" button in the filter toolbar enters selection mode, revealing a checkbox beside each todo. As soon as at least one todo is selected, a bulk action bar appears with "Mark Complete" and "Delete" buttons alongside the count of selected items. Clicking "Cancel" exits selection mode and clears the selection.
