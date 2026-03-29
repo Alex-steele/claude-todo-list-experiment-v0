@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 9 — [2026-03-29] — Feature: Dark Mode Toggle
+
+**Description:** A sun/moon icon button now appears in the top-right corner of the app bar. Clicking it switches the application between light and dark themes. The button's icon and tooltip update to reflect the current mode — a moon icon when in light mode, a sun icon when in dark mode.
+
+**Reason for change:** After eight days of feature work the app is fully functional but visually one-dimensional. Dark mode is one of the most universally requested UI preferences: it reduces eye strain in low-light environments and gives the app a polished, modern feel. MudBlazor's built-in theme provider makes it a natural next step before diving into more complex features.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 86
+- Lines deleted: 2
+- Tests added: 4
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 8 — [2026-03-29] — Feature: Undo Delete and Bulk Complete
 
 **Description:** After deleting a todo (single or bulk) or bulk-completing todos, a snackbar notification appears at the bottom of the screen with an "Undo" button. Clicking Undo reverses the action — deleted todos are fully restored with their original title, priority, due date, and completion state; bulk-completed todos are toggled back to active.
