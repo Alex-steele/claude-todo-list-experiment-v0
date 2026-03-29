@@ -1,6 +1,7 @@
 using MudBlazor.Services;
 using TodoApp.Components;
 using TodoApp.Features.Todos.AddTodo;
+using TodoApp.Features.Todos.BulkOperations;
 using TodoApp.Features.Todos.CompleteTodo;
 using TodoApp.Features.Todos.DeleteTodo;
 using TodoApp.Features.Todos.EditTodo;
@@ -31,6 +32,7 @@ builder.Services.AddScoped<DeleteTodoHandler>();
 builder.Services.AddScoped<EditTodoHandler>();
 builder.Services.AddScoped<GetTodosHandler>();
 builder.Services.AddScoped<FilterSortTodosHandler>();
+builder.Services.AddScoped<BulkOperationsHandler>();
 
 var app = builder.Build();
 

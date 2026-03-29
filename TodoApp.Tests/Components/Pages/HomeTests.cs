@@ -5,6 +5,7 @@ using MudBlazor;
 using MudBlazor.Services;
 using TodoApp.Components.Pages;
 using TodoApp.Features.Todos.AddTodo;
+using TodoApp.Features.Todos.BulkOperations;
 using TodoApp.Features.Todos.CompleteTodo;
 using TodoApp.Features.Todos.DeleteTodo;
 using TodoApp.Features.Todos.EditTodo;
@@ -29,6 +30,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<EditTodoHandler>();
         ctx.Services.AddScoped<GetTodosHandler>();
         ctx.Services.AddScoped<FilterSortTodosHandler>();
+        ctx.Services.AddScoped<BulkOperationsHandler>();
         return ctx;
     }
 
@@ -288,5 +290,116 @@ public class HomeTests : BunitContext
         await cut.WaitForAssertionAsync(() =>
             Assert.Contains("New title", cut.Markup));
         Assert.DoesNotContain("Old title", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SelectModeButton_IsRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Test todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("select-mode-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingSelectModeButton_ShowsSelectionCheckboxes()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Test todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+
+        Assert.Contains("todo-select-checkbox", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SelectingTodo_ShowsBulkActionBar()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Test todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+
+        var selectCheckbox = cut.Find(".todo-select-checkbox input");
+        selectCheckbox.Change(true);
+
+        Assert.Contains("bulk-action-bar", cut.Markup);
+    }
+
+    [Fact]
+    public async Task BulkDelete_RemovesSelectedTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Todo A");
+        await addHandler.HandleAsync("Todo B");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Enter select mode
+        cut.Find(".select-mode-btn").Click();
+
+        // Select the first visible todo (newest = "Todo B", since ORDER BY Id DESC)
+        cut.Find(".todo-select-checkbox input").Change(true);
+
+        // Click delete
+        cut.Find(".bulk-delete-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.DoesNotContain("Todo B", cut.Markup));
+        Assert.Contains("Todo A", cut.Markup);
+    }
+
+    [Fact]
+    public async Task BulkComplete_MarksSelectedTodoComplete()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Todo to complete");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+        cut.Find(".todo-select-checkbox input").Change(true);
+        cut.Find(".bulk-complete-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("line-through", cut.Markup));
+    }
+
+    [Fact]
+    public async Task CancelSelectMode_HidesCheckboxesAndClearsSelection()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Test todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Enter select mode and select a todo
+        cut.Find(".select-mode-btn").Click();
+        cut.Find(".todo-select-checkbox input").Change(true);
+        Assert.Contains("bulk-action-bar", cut.Markup);
+
+        // Cancel select mode
+        cut.Find(".select-mode-btn").Click();
+
+        Assert.DoesNotContain("todo-select-checkbox", cut.Markup);
+        Assert.DoesNotContain("bulk-action-bar", cut.Markup);
     }
 }
