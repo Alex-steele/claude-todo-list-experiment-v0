@@ -3,10 +3,12 @@
 @using TodoApp.Features.Todos.AddTodo
 @using TodoApp.Features.Todos.CompleteTodo
 @using TodoApp.Features.Todos.DeleteTodo
+@using TodoApp.Features.Todos.BulkOperations
 @using TodoApp.Features.Todos.EditTodo
 @using TodoApp.Features.Todos.FilterSortTodos
 @using TodoApp.Features.Todos.GetTodos
 @inject AddTodoHandler AddTodoHandler
+@inject BulkOperationsHandler BulkOperationsHandler
 @inject CompleteTodoHandler CompleteTodoHandler
 @inject DeleteTodoHandler DeleteTodoHandler
 @inject EditTodoHandler EditTodoHandler
@@ -89,20 +91,30 @@ else
                 Immediate="true"
                 Class="mb-3 todo-search-field" />
             <div class="d-flex align-center gap-2 flex-wrap justify-space-between">
-                <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                <div class="d-flex align-center gap-2 flex-wrap">
+                    <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+                        <MudButton
+                            Color="Color.Primary"
+                            Variant="@(_statusFilter == TodoStatusFilter.All ? Variant.Filled : Variant.Outlined)"
+                            OnClick="@(() => _statusFilter = TodoStatusFilter.All)">All</MudButton>
+                        <MudButton
+                            Color="Color.Primary"
+                            Variant="@(_statusFilter == TodoStatusFilter.Active ? Variant.Filled : Variant.Outlined)"
+                            OnClick="@(() => _statusFilter = TodoStatusFilter.Active)">Active</MudButton>
+                        <MudButton
+                            Color="Color.Primary"
+                            Variant="@(_statusFilter == TodoStatusFilter.Completed ? Variant.Filled : Variant.Outlined)"
+                            OnClick="@(() => _statusFilter = TodoStatusFilter.Completed)">Completed</MudButton>
+                    </MudButtonGroup>
                     <MudButton
-                        Color="Color.Primary"
-                        Variant="@(_statusFilter == TodoStatusFilter.All ? Variant.Filled : Variant.Outlined)"
-                        OnClick="@(() => _statusFilter = TodoStatusFilter.All)">All</MudButton>
-                    <MudButton
-                        Color="Color.Primary"
-                        Variant="@(_statusFilter == TodoStatusFilter.Active ? Variant.Filled : Variant.Outlined)"
-                        OnClick="@(() => _statusFilter = TodoStatusFilter.Active)">Active</MudButton>
-                    <MudButton
-                        Color="Color.Primary"
-                        Variant="@(_statusFilter == TodoStatusFilter.Completed ? Variant.Filled : Variant.Outlined)"
-                        OnClick="@(() => _statusFilter = TodoStatusFilter.Completed)">Completed</MudButton>
-                </MudButtonGroup>
+                        Variant="@(_isSelectMode ? Variant.Filled : Variant.Outlined)"
+                        Color="@(_isSelectMode ? Color.Warning : Color.Default)"
+                        Size="Size.Small"
+                        OnClick="HandleToggleSelectMode"
+                        Class="select-mode-btn">
+                        @(_isSelectMode ? "Cancel" : "Select")
+                    </MudButton>
+                </div>
                 <MudSelect
                     T="TodoSortOrder"
                     @bind-Value="_sortOrder"
@@ -119,6 +131,30 @@ else
         </MudCardContent>
     </MudCard>
 
+    @if (_isSelectMode && _selectedIds.Count > 0)
+    {
+        <MudPaper Elevation="1" Class="pa-3 mb-3 d-flex align-center gap-3 bulk-action-bar">
+            <MudText Typo="Typo.body2">@_selectedIds.Count selected</MudText>
+            <MudSpacer />
+            <MudButton
+                Variant="Variant.Filled"
+                Color="Color.Primary"
+                Size="Size.Small"
+                OnClick="HandleBulkComplete"
+                Class="bulk-complete-btn">
+                Mark Complete
+            </MudButton>
+            <MudButton
+                Variant="Variant.Filled"
+                Color="Color.Error"
+                Size="Size.Small"
+                OnClick="HandleBulkDelete"
+                Class="bulk-delete-btn">
+                Delete
+            </MudButton>
+        </MudPaper>
+    }
+
     @if (DisplayedTodos.Count == 0)
     {
         <MudPaper Elevation="1" Class="pa-8 d-flex justify-center align-center">
@@ -133,6 +169,14 @@ else
                 {
                     <MudListItem>
                         <div class="d-flex align-center gap-3 flex-grow-1">
+                            @if (_isSelectMode)
+                            {
+                                <MudCheckBox
+                                    Value="@_selectedIds.Contains(todo.Id)"
+                                    ValueChanged="@((bool selected) => HandleToggleTodoSelection(todo.Id, selected))"
+                                    Color="Color.Secondary"
+                                    Class="todo-select-checkbox" />
+                            }
                             <MudCheckBox
                                 Value="@todo.IsCompleted"
                                 ValueChanged="@(async (bool _) => await HandleToggleComplete(todo.Id))"
@@ -242,6 +286,9 @@ else
     private int? _editingTodoId;
     private string _editValue = string.Empty;
 
+    private bool _isSelectMode;
+    private HashSet<int> _selectedIds = new();
+
     private IReadOnlyList<TodoSummary> DisplayedTodos =>
         _todos is null ? [] : FilterSortTodosHandler.Handle(_todos, _statusFilter, _sortOrder, _searchQuery);
 
@@ -337,6 +384,35 @@ else
             await HandleSaveEdit();
         else if (e.Key == "Escape")
             HandleCancelEdit();
+    }
+
+    private void HandleToggleSelectMode()
+    {
+        _isSelectMode = !_isSelectMode;
+        if (!_isSelectMode)
+            _selectedIds.Clear();
+    }
+
+    private void HandleToggleTodoSelection(int id, bool selected)
+    {
+        if (selected)
+            _selectedIds.Add(id);
+        else
+            _selectedIds.Remove(id);
+    }
+
+    private async Task HandleBulkComplete()
+    {
+        await BulkOperationsHandler.CompleteAsync(_selectedIds.ToList());
+        _selectedIds.Clear();
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleBulkDelete()
+    {
+        await BulkOperationsHandler.DeleteAsync(_selectedIds.ToList());
+        _selectedIds.Clear();
+        await LoadTodosAsync();
     }
 
     private static Color GetPriorityColor(TodoPriority priority) => priority switch

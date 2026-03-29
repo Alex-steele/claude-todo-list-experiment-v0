@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 7 — [2026-03-29] — Feature: Bulk Operations
+
+**Description:** Users can now select multiple todos and act on them all at once. A "Select" button in the filter toolbar enters selection mode, revealing a checkbox beside each todo. As soon as at least one todo is selected, a bulk action bar appears with "Mark Complete" and "Delete" buttons alongside the count of selected items. Clicking "Cancel" exits selection mode and clears the selection.
+
+**Reason for change:** With filter, sort, search, and inline editing in place, the app is well-suited for managing growing lists. The next friction point is performing repetitive operations — a user who wants to clear all completed todos, or mark a whole set of items done, has to click one at a time. Bulk operations eliminate that friction and make the app meaningfully more useful for anyone with more than a handful of todos.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 322
+- Lines deleted: 13
+- Tests added: 12
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 6 — [2026-03-26] — Feature: Inline Todo Editing
 
 **Description:** Users can now edit a todo's title directly in the list. Each todo shows a pencil icon button; clicking it switches the title to an editable text field with Save (checkmark) and Cancel (X) buttons. Pressing Enter saves the change, pressing Escape cancels. The updated title is persisted immediately.
