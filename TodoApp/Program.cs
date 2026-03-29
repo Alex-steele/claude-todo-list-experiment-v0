@@ -7,6 +7,7 @@ using TodoApp.Features.Todos.DeleteTodo;
 using TodoApp.Features.Todos.EditTodo;
 using TodoApp.Features.Todos.FilterSortTodos;
 using TodoApp.Features.Todos.GetTodos;
+using TodoApp.Features.Todos.UndoRedo;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,6 +34,7 @@ builder.Services.AddScoped<EditTodoHandler>();
 builder.Services.AddScoped<GetTodosHandler>();
 builder.Services.AddScoped<FilterSortTodosHandler>();
 builder.Services.AddScoped<BulkOperationsHandler>();
+builder.Services.AddScoped<RestoreTodosHandler>();
 
 var app = builder.Build();
 

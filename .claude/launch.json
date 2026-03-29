@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "TodoApp (HTTP)",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "TodoApp", "--launch-profile", "http"],
+      "port": 5152
+    },
+    {
+      "name": "TodoApp (HTTPS)",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "TodoApp", "--launch-profile", "http"],
+      "port": 5152
+    }
+  ]
+}

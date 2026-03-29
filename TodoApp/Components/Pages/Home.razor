@@ -7,6 +7,7 @@
 @using TodoApp.Features.Todos.EditTodo
 @using TodoApp.Features.Todos.FilterSortTodos
 @using TodoApp.Features.Todos.GetTodos
+@using TodoApp.Features.Todos.UndoRedo
 @inject AddTodoHandler AddTodoHandler
 @inject BulkOperationsHandler BulkOperationsHandler
 @inject CompleteTodoHandler CompleteTodoHandler
@@ -14,6 +15,8 @@
 @inject EditTodoHandler EditTodoHandler
 @inject GetTodosHandler GetTodosHandler
 @inject FilterSortTodosHandler FilterSortTodosHandler
+@inject RestoreTodosHandler RestoreTodosHandler
+@inject ISnackbar Snackbar
 
 <PageTitle>My Todo List</PageTitle>
 
@@ -261,7 +264,8 @@ else
                                 Icon="@Icons.Material.Filled.Delete"
                                 Color="Color.Error"
                                 Size="Size.Small"
-                                OnClick="@(async () => await HandleDeleteTodo(todo.Id))" />
+                                OnClick="@(async () => await HandleDeleteTodo(todo.Id))"
+                                Class="todo-delete-btn" />
                         </div>
                     </MudListItem>
                     <MudDivider />
@@ -347,8 +351,25 @@ else
 
     private async Task HandleDeleteTodo(int id)
     {
+        var deleted = _todos?.FirstOrDefault(t => t.Id == id);
         await DeleteTodoHandler.HandleAsync(id);
         await LoadTodosAsync();
+
+        if (deleted is not null)
+        {
+            var snapshot = deleted;
+            Snackbar.Add("1 todo deleted", Severity.Normal, config =>
+            {
+                config.Action = "Undo";
+                config.ActionColor = Color.Primary;
+                config.Onclick = async _ =>
+                {
+                    await RestoreTodosHandler.HandleAsync([snapshot]);
+                    await LoadTodosAsync();
+                    StateHasChanged();
+                };
+            });
+        }
     }
 
     private void HandleStartEdit(int id, string currentTitle)
@@ -403,16 +424,59 @@ else
 
     private async Task HandleBulkComplete()
     {
+        // Only capture todos that were NOT already completed — those are the ones we'll undo
+        var toUndo = DisplayedTodos
+            .Where(t => _selectedIds.Contains(t.Id) && !t.IsCompleted)
+            .ToList();
+
         await BulkOperationsHandler.CompleteAsync(_selectedIds.ToList());
         _selectedIds.Clear();
         await LoadTodosAsync();
+
+        if (toUndo.Count > 0)
+        {
+            var count = toUndo.Count;
+            var ids = toUndo.Select(t => t.Id).ToList();
+            Snackbar.Add($"{count} todo{(count == 1 ? "" : "s")} marked complete", Severity.Normal, config =>
+            {
+                config.Action = "Undo";
+                config.ActionColor = Color.Primary;
+                config.Onclick = async _ =>
+                {
+                    await BulkOperationsHandler.CompleteAsync(ids);
+                    await LoadTodosAsync();
+                    StateHasChanged();
+                };
+            });
+        }
     }
 
     private async Task HandleBulkDelete()
     {
+        var deleted = DisplayedTodos
+            .Where(t => _selectedIds.Contains(t.Id))
+            .ToList();
+
         await BulkOperationsHandler.DeleteAsync(_selectedIds.ToList());
         _selectedIds.Clear();
         await LoadTodosAsync();
+
+        if (deleted.Count > 0)
+        {
+            var snapshot = deleted.AsReadOnly();
+            var count = snapshot.Count;
+            Snackbar.Add($"{count} todo{(count == 1 ? "" : "s")} deleted", Severity.Normal, config =>
+            {
+                config.Action = "Undo";
+                config.ActionColor = Color.Primary;
+                config.Onclick = async _ =>
+                {
+                    await RestoreTodosHandler.HandleAsync(snapshot);
+                    await LoadTodosAsync();
+                    StateHasChanged();
+                };
+            });
+        }
     }
 
     private static Color GetPriorityColor(TodoPriority priority) => priority switch
