@@ -11,6 +11,7 @@ using TodoApp.Features.Todos.DeleteTodo;
 using TodoApp.Features.Todos.EditTodo;
 using TodoApp.Features.Todos.FilterSortTodos;
 using TodoApp.Features.Todos.GetTodos;
+using TodoApp.Features.Todos.GetTodosStats;
 using TodoApp.Features.Todos.UndoRedo;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
@@ -33,6 +34,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<FilterSortTodosHandler>();
         ctx.Services.AddScoped<BulkOperationsHandler>();
         ctx.Services.AddScoped<RestoreTodosHandler>();
+        ctx.Services.AddScoped<GetTodosStatsHandler>();
         return ctx;
     }
 
@@ -489,5 +491,93 @@ public class HomeTests : BunitContext
         await cut.WaitForAssertionAsync(() =>
             Assert.Contains("marked complete", snackbarProvider.Markup));
         Assert.Contains("Undo", snackbarProvider.Markup);
+    }
+
+    // Stats panel tests
+
+    [Fact]
+    public async Task StatsPanel_IsRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("stats-panel", cut.Markup);
+    }
+
+    [Fact]
+    public async Task StatsPanel_IsNotRendered_WhenNoTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("stats-panel", cut.Markup);
+    }
+
+    [Fact]
+    public async Task StatsPanel_ShowsCorrectTotalAndActiveCounts()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+
+        await addHandler.HandleAsync("Task 1");
+        await addHandler.HandleAsync("Task 2");
+        var id3 = await addHandler.HandleAsync("Task 3");
+        await completeHandler.HandleAsync(id3);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("stats-total", cut.Markup);
+        Assert.Contains("Total: 3", cut.Markup);
+        Assert.Contains("Active: 2", cut.Markup);
+        Assert.Contains("Completed: 1", cut.Markup);
+    }
+
+    [Fact]
+    public async Task StatsPanel_ShowsOverdueChip_WhenOverdueTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-2));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("stats-overdue", cut.Markup);
+        Assert.Contains("Overdue: 1", cut.Markup);
+    }
+
+    [Fact]
+    public async Task StatsPanel_NoOverdueChip_WhenNoOverdueTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Future task", dueDate: DateTime.Today.AddDays(5));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("stats-panel", cut.Markup);
+        Assert.DoesNotContain("stats-overdue", cut.Markup);
+    }
+
+    [Fact]
+    public async Task StatsPanel_ShowsProgressBar()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("stats-progress", cut.Markup);
+        Assert.Contains("stats-percentage", cut.Markup);
     }
 }

@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 10 — [2026-04-08] — Feature: Stats/Progress Summary Panel
+
+**Description:** A summary panel now appears below the "Add Todo" card whenever at least one todo exists. It shows four chips — Total, Active, Completed, and Overdue (only shown when there are overdue items) — along with a progress bar and percentage reflecting how many todos have been completed. The panel updates instantly as todos are added, completed, or deleted.
+
+**Reason for change:** The app has rich data — priorities, due dates, completion states — but no way to see your overall progress at a glance. A stats panel is the natural complement to filtering and sorting: instead of navigating through todos to count them mentally, users can see their productivity at a single glance. It's a meaningful quality-of-life addition before moving to more complex features like categories or recurring tasks.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 127
+- Lines deleted: 0
+- Tests added: 12
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 9 — [2026-03-29] — Feature: Dark Mode Toggle
 
 **Description:** A sun/moon icon button now appears in the top-right corner of the app bar. Clicking it switches the application between light and dark themes. The button's icon and tooltip update to reflect the current mode — a moon icon when in light mode, a sun icon when in dark mode.
