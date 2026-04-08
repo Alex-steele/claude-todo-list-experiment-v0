@@ -12,6 +12,7 @@ using TodoApp.Features.Todos.EditTodo;
 using TodoApp.Features.Todos.FilterSortTodos;
 using TodoApp.Features.Todos.GetTodos;
 using TodoApp.Features.Todos.GetTodosStats;
+using TodoApp.Features.Todos.Tags;
 using TodoApp.Features.Todos.UndoRedo;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
@@ -35,6 +36,9 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<BulkOperationsHandler>();
         ctx.Services.AddScoped<RestoreTodosHandler>();
         ctx.Services.AddScoped<GetTodosStatsHandler>();
+        ctx.Services.AddScoped<AddTagHandler>();
+        ctx.Services.AddScoped<RemoveTagHandler>();
+        ctx.Services.AddScoped<GetTodoTagsHandler>();
         return ctx;
     }
 
@@ -677,5 +681,68 @@ public class HomeTests : BunitContext
         await cut.InvokeAsync(() => cut.Instance.ToggleShortcutsHelp());
 
         Assert.Contains("keyboard-shortcuts-panel", cut.Markup);
+    }
+
+    // Tag tests
+
+    [Fact]
+    public async Task AddTagButton_IsRendered_ForEachTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("add-tag-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickAddTagButton_ShowsTagInput()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".add-tag-btn").Click();
+
+        Assert.Contains("todo-tag-input", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TagsPreAddedToTodo_AreDisplayedAsChips()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+
+        var todoId = await addTodo.HandleAsync("Walk the dog");
+        await addTag.HandleAsync(todoId, "health");
+        await addTag.HandleAsync(todoId, "daily");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("todo-tag-chip", cut.Markup);
+        Assert.Contains("health", cut.Markup);
+        Assert.Contains("daily", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TodoWithNoTags_ShowsAddTagButton_ButNoChips()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("todo-tag-chip", cut.Markup);
+        Assert.Contains("add-tag-btn", cut.Markup);
     }
 }

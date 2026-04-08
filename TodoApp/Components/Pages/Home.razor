@@ -8,15 +8,19 @@
 @using TodoApp.Features.Todos.FilterSortTodos
 @using TodoApp.Features.Todos.GetTodos
 @using TodoApp.Features.Todos.GetTodosStats
+@using TodoApp.Features.Todos.Tags
 @using TodoApp.Features.Todos.UndoRedo
+@inject AddTagHandler AddTagHandler
 @inject AddTodoHandler AddTodoHandler
 @inject BulkOperationsHandler BulkOperationsHandler
 @inject CompleteTodoHandler CompleteTodoHandler
 @inject DeleteTodoHandler DeleteTodoHandler
 @inject EditTodoHandler EditTodoHandler
+@inject GetTodoTagsHandler GetTodoTagsHandler
 @inject GetTodosHandler GetTodosHandler
 @inject FilterSortTodosHandler FilterSortTodosHandler
 @inject GetTodosStatsHandler GetTodosStatsHandler
+@inject RemoveTagHandler RemoveTagHandler
 @inject RestoreTodosHandler RestoreTodosHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
@@ -326,6 +330,42 @@ else
                                         }
                                     </div>
                                 }
+                                <div class="d-flex align-center gap-1 mt-1 flex-wrap todo-tags-row">
+                                    @foreach (var tag in _todoTags.GetValueOrDefault(todo.Id, []))
+                                    {
+                                        var tagId = tag.Id;
+                                        <MudChip T="string"
+                                                 Size="Size.Small"
+                                                 Color="Color.Secondary"
+                                                 Variant="Variant.Outlined"
+                                                 OnClose="@(async (MudChip<string> _) => await HandleRemoveTag(tagId))"
+                                                 Class="todo-tag-chip">
+                                            @tag.Name
+                                        </MudChip>
+                                    }
+                                    @if (_addingTagForTodoId == todo.Id)
+                                    {
+                                        var currentTodoId = todo.Id;
+                                        <MudTextField
+                                            @bind-Value="_newTagInput"
+                                            Variant="Variant.Outlined"
+                                            Margin="Margin.Dense"
+                                            Style="width: 110px; font-size: 0.75rem;"
+                                            OnKeyUp="@(async (KeyboardEventArgs e) => await HandleTagInputKeyUp(e, currentTodoId))"
+                                            Class="todo-tag-input" />
+                                    }
+                                    else
+                                    {
+                                        var currentTodoId = todo.Id;
+                                        <MudIconButton
+                                            Icon="@Icons.Material.Filled.LocalOffer"
+                                            Size="Size.Small"
+                                            Color="Color.Secondary"
+                                            OnClick="@(() => HandleStartAddTag(currentTodoId))"
+                                            title="Add tag"
+                                            Class="add-tag-btn" />
+                                    }
+                                </div>
                             </div>
                             <MudIconButton
                                 Icon="@Icons.Material.Filled.Delete"
@@ -363,6 +403,10 @@ else
     private bool _showShortcutsHelp;
     private DotNetObjectReference<Home>? _dotNetRef;
     private bool _shortcutsRegistered;
+
+    private Dictionary<int, List<Tag>> _todoTags = new();
+    private int? _addingTagForTodoId;
+    private string _newTagInput = string.Empty;
 
     private IReadOnlyList<TodoSummary> DisplayedTodos =>
         _todos is null ? [] : FilterSortTodosHandler.Handle(_todos, _statusFilter, _sortOrder, _searchQuery);
@@ -416,6 +460,10 @@ else
     private async Task LoadTodosAsync()
     {
         _todos = await GetTodosHandler.HandleAsync();
+        if (_todos.Count > 0)
+            _todoTags = await GetTodoTagsHandler.HandleAsync(_todos.Select(t => t.Id));
+        else
+            _todoTags = [];
     }
 
     private async Task HandleAddTodo()
@@ -596,6 +644,47 @@ else
         TodoPriority.Low    => Color.Info,
         _                   => Color.Default
     };
+
+    private void HandleStartAddTag(int todoId)
+    {
+        _addingTagForTodoId = todoId;
+        _newTagInput = string.Empty;
+    }
+
+    private async Task HandleTagInputKeyUp(KeyboardEventArgs e, int todoId)
+    {
+        if (e.Key == "Enter")
+            await HandleSaveTag(todoId);
+        else if (e.Key == "Escape")
+            _addingTagForTodoId = null;
+    }
+
+    private async Task HandleSaveTag(int todoId)
+    {
+        if (string.IsNullOrWhiteSpace(_newTagInput))
+        {
+            _addingTagForTodoId = null;
+            return;
+        }
+
+        try
+        {
+            await AddTagHandler.HandleAsync(todoId, _newTagInput);
+            _addingTagForTodoId = null;
+            _newTagInput = string.Empty;
+            await LoadTodosAsync();
+        }
+        catch (ArgumentException)
+        {
+            _addingTagForTodoId = null;
+        }
+    }
+
+    private async Task HandleRemoveTag(int tagId)
+    {
+        await RemoveTagHandler.HandleAsync(tagId);
+        await LoadTodosAsync();
+    }
 
     private static DueDateStatus GetDueDateStatus(TodoSummary todo)
     {
