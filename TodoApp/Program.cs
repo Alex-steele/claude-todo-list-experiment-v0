@@ -7,6 +7,7 @@ using TodoApp.Features.Todos.DeleteTodo;
 using TodoApp.Features.Todos.EditTodo;
 using TodoApp.Features.Todos.FilterSortTodos;
 using TodoApp.Features.Todos.GetTodos;
+using TodoApp.Features.Todos.GetTodosStats;
 using TodoApp.Features.Todos.UndoRedo;
 using TodoApp.Infrastructure;
 
@@ -35,6 +36,7 @@ builder.Services.AddScoped<GetTodosHandler>();
 builder.Services.AddScoped<FilterSortTodosHandler>();
 builder.Services.AddScoped<BulkOperationsHandler>();
 builder.Services.AddScoped<RestoreTodosHandler>();
+builder.Services.AddScoped<GetTodosStatsHandler>();
 
 var app = builder.Build();
 
