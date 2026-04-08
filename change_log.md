@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 12 — [2026-04-08] — Feature: Tags/Labels
+
+**Description:** Users can now attach tags (labels) to any todo. Each todo displays a row of small tag chips below its title and due date. Clicking the label icon on a todo opens an inline text input — press Enter to save the tag, Escape to cancel. Tags are normalized to lowercase for consistency. Clicking the × on a tag chip removes it immediately. Tags persist in the database and reload correctly between sessions.
+
+**Reason for change:** Tags provide lightweight categorization without the overhead of a full list/project system. They complement the existing search and filter features by letting users organize todos semantically (e.g., "work", "personal", "urgent"). This is a natural mid-to-later stage feature that makes the app meaningfully more useful as a real task manager.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 392
+- Lines deleted: 0
+- Tests added: 16
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 11 — [2026-04-08] — Feature: Keyboard Shortcuts
 
 **Description:** Users can now navigate the app without reaching for the mouse. Pressing `N` anywhere on the page (while not typing in an input) jumps focus directly to the new-todo input. Pressing `/` jumps to the search field. Pressing `?` toggles a shortcuts reference panel that lists all available shortcuts. The reference panel is also accessible via a keyboard icon button in the "Add a New Todo" card header.

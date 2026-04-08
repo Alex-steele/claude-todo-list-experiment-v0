@@ -49,5 +49,13 @@ public class Database(string connectionString)
         {
             // Column already exists — ignore
         }
+
+        await conn.ExecuteAsync("""
+            CREATE TABLE IF NOT EXISTS TodoTags (
+                Id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                TodoId  INTEGER NOT NULL,
+                Name    TEXT    NOT NULL
+            )
+            """);
     }
 }
