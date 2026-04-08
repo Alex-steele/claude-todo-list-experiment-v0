@@ -580,4 +580,102 @@ public class HomeTests : BunitContext
         Assert.Contains("stats-progress", cut.Markup);
         Assert.Contains("stats-percentage", cut.Markup);
     }
+
+    // Keyboard shortcuts tests
+
+    [Fact]
+    public async Task KeyboardShortcutsButton_IsRendered()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("keyboard-shortcuts-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ShortcutsPanel_IsNotVisible_ByDefault()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("keyboard-shortcuts-panel", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingShortcutsButton_ShowsShortcutsPanel()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".keyboard-shortcuts-btn").Click();
+
+        Assert.Contains("keyboard-shortcuts-panel", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ShortcutsPanel_ShowsNShortcut()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".keyboard-shortcuts-btn").Click();
+
+        Assert.Contains("Focus new todo input", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ShortcutsPanel_ShowsSlashShortcut()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".keyboard-shortcuts-btn").Click();
+
+        Assert.Contains("Focus search", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ShortcutsPanel_ShowsQuestionMarkShortcut()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".keyboard-shortcuts-btn").Click();
+
+        Assert.Contains("Toggle this panel", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingShortcutsButton_WhenPanelVisible_HidesPanel()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Open panel
+        cut.Find(".keyboard-shortcuts-btn").Click();
+        Assert.Contains("keyboard-shortcuts-panel", cut.Markup);
+
+        // Close panel
+        cut.Find(".keyboard-shortcuts-btn").Click();
+        Assert.DoesNotContain("keyboard-shortcuts-panel", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ToggleShortcutsHelp_JSInvokable_ShowsPanel()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.InvokeAsync(() => cut.Instance.ToggleShortcutsHelp());
+
+        Assert.Contains("keyboard-shortcuts-panel", cut.Markup);
+    }
 }

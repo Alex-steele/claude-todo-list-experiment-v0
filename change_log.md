@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 11 — [2026-04-08] — Feature: Keyboard Shortcuts
+
+**Description:** Users can now navigate the app without reaching for the mouse. Pressing `N` anywhere on the page (while not typing in an input) jumps focus directly to the new-todo input. Pressing `/` jumps to the search field. Pressing `?` toggles a shortcuts reference panel that lists all available shortcuts. The reference panel is also accessible via a keyboard icon button in the "Add a New Todo" card header.
+
+**Reason for change:** The app now has enough features that power users benefit from faster navigation. Keyboard shortcuts are a natural "later stage" enhancement — they don't change what the app can do, but they make it significantly faster to use for anyone who prefers the keyboard over the mouse. The `?` help panel ensures discoverability: users can always see what shortcuts are available without needing external documentation.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 209
+- Lines deleted: 2
+- Tests added: 8
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 10 — [2026-04-08] — Feature: Stats/Progress Summary Panel
 
 **Description:** A summary panel now appears below the "Add Todo" card whenever at least one todo exists. It shows four chips — Total, Active, Completed, and Overdue (only shown when there are overdue items) — along with a progress bar and percentage reflecting how many todos have been completed. The panel updates instantly as todos are added, completed, or deleted.

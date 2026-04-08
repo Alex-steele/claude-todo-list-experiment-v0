@@ -19,18 +19,50 @@
 @inject GetTodosStatsHandler GetTodosStatsHandler
 @inject RestoreTodosHandler RestoreTodosHandler
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <PageTitle>My Todo List</PageTitle>
 
 <MudCard Elevation="2" Class="mb-6">
     <MudCardContent>
-        <MudText Typo="Typo.h6" Class="mb-4">Add a New Todo</MudText>
+        <div class="d-flex align-center justify-space-between mb-4">
+            <MudText Typo="Typo.h6">Add a New Todo</MudText>
+            <MudIconButton
+                Icon="@Icons.Material.Filled.Keyboard"
+                Size="Size.Small"
+                Color="Color.Default"
+                OnClick="ToggleShortcutsHelp"
+                title="Keyboard shortcuts"
+                Class="keyboard-shortcuts-btn" />
+        </div>
+        @if (_showShortcutsHelp)
+        {
+            <MudPaper Elevation="0" Class="pa-3 mb-4 keyboard-shortcuts-panel" Style="background: var(--mud-palette-background-grey); border-radius: 8px;">
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Keyboard Shortcuts</MudText>
+                <div class="d-flex flex-column gap-1">
+                    <div class="d-flex align-center gap-3">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="shortcut-key">N</MudChip>
+                        <MudText Typo="Typo.body2">Focus new todo input</MudText>
+                    </div>
+                    <div class="d-flex align-center gap-3">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="shortcut-key">/</MudChip>
+                        <MudText Typo="Typo.body2">Focus search</MudText>
+                    </div>
+                    <div class="d-flex align-center gap-3">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="shortcut-key">?</MudChip>
+                        <MudText Typo="Typo.body2">Toggle this panel</MudText>
+                    </div>
+                </div>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">Shortcuts are inactive when typing in an input.</MudText>
+            </MudPaper>
+        }
         <MudTextField
             @bind-Value="_newTitle"
             Label="What needs to be done?"
             Variant="Variant.Outlined"
             FullWidth="true"
-            Class="mb-3"
+            Class="mb-3 new-todo-input"
             OnKeyUp="HandleEnterKey"
             Disabled="_isSubmitting" />
         <MudSelect
@@ -328,6 +360,10 @@ else
     private bool _isSelectMode;
     private HashSet<int> _selectedIds = new();
 
+    private bool _showShortcutsHelp;
+    private DotNetObjectReference<Home>? _dotNetRef;
+    private bool _shortcutsRegistered;
+
     private IReadOnlyList<TodoSummary> DisplayedTodos =>
         _todos is null ? [] : FilterSortTodosHandler.Handle(_todos, _statusFilter, _sortOrder, _searchQuery);
 
@@ -336,6 +372,45 @@ else
     protected override async Task OnInitializedAsync()
     {
         await LoadTodosAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("todoApp.registerKeyboardShortcuts", _dotNetRef);
+            _shortcutsRegistered = true;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_shortcutsRegistered)
+        {
+            try { await JS.InvokeVoidAsync("todoApp.unregisterKeyboardShortcuts"); }
+            catch { /* ignore disposal errors */ }
+        }
+        _dotNetRef?.Dispose();
+    }
+
+    [JSInvokable]
+    public async Task FocusNewTodoInput()
+    {
+        await JS.InvokeVoidAsync("todoApp.focusElement", ".new-todo-input input");
+    }
+
+    [JSInvokable]
+    public async Task FocusSearchInput()
+    {
+        await JS.InvokeVoidAsync("todoApp.focusElement", ".todo-search-field input");
+    }
+
+    [JSInvokable]
+    public void ToggleShortcutsHelp()
+    {
+        _showShortcutsHelp = !_showShortcutsHelp;
+        StateHasChanged();
     }
 
     private async Task LoadTodosAsync()
