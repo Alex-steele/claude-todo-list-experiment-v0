@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 17 — [2026-04-11] — Feature: Notes / Description Field
+
+**Description:** Each todo now has a sticky-note icon button in its action row. When no notes exist the icon is outlined (grey); when notes are present it fills in blue. Clicking the icon opens an inline multiline editor with a Save and Cancel button directly on the todo item. Existing notes are shown as a clickable caption below the tags row — clicking anywhere on the note text opens the editor. Notes are trimmed on save; saving whitespace clears the note back to null. Notes survive undo/restore and are included as an additional column in CSV exports.
+
+**Reason for change:** Tags provide short categorical labels; notes provide free-form context. At this stage of a real todo list, users frequently need to capture "how" alongside "what" — e.g. a phone number, a URL, a reminder of why something matters. The inline editor mirrors the existing title-edit pattern, keeping the UI consistent without opening a dialog.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 487
+- Lines deleted: 12
+- Tests added: 12
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 16 — [2026-04-11] — Feature: Clear Completed
 
 **Description:** A "Clear completed" button now appears at the bottom-right of the stats panel whenever at least one todo is marked done. Clicking it removes every completed todo in a single action and shows an undo snackbar (e.g. "3 completed todos cleared") with a full undo that restores them all — leveraging the existing `RestoreTodosHandler`. The button disappears as soon as no completed todos remain. Active and pinned todos are never touched.

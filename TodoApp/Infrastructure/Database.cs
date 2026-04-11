@@ -50,6 +50,16 @@ public class Database(string connectionString)
             // Column already exists — ignore
         }
 
+        // Migration: add Notes column for existing databases
+        try
+        {
+            await conn.ExecuteAsync("ALTER TABLE Todos ADD COLUMN Notes TEXT NULL");
+        }
+        catch (SqliteException)
+        {
+            // Column already exists — ignore
+        }
+
         // Migration: add IsPinned column for existing databases
         try
         {

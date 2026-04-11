@@ -13,6 +13,7 @@ using TodoApp.Features.Todos.FilterSortTodos;
 using TodoApp.Features.Todos.GetTodos;
 using TodoApp.Features.Todos.ClearCompleted;
 using TodoApp.Features.Todos.Export;
+using TodoApp.Features.Todos.UpdateNotes;
 using TodoApp.Features.Todos.PinTodo;
 using TodoApp.Features.Todos.GetTodosStats;
 using TodoApp.Features.Todos.Tags;
@@ -42,6 +43,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<ClearCompletedHandler>();
         ctx.Services.AddScoped<CsvExportHandler>();
         ctx.Services.AddScoped<PinTodoHandler>();
+        ctx.Services.AddScoped<UpdateNotesHandler>();
         ctx.Services.AddScoped<AddTagHandler>();
         ctx.Services.AddScoped<RemoveTagHandler>();
         ctx.Services.AddScoped<GetTodoTagsHandler>();
@@ -750,6 +752,90 @@ public class HomeTests : BunitContext
 
         Assert.DoesNotContain("todo-tag-chip", cut.Markup);
         Assert.Contains("add-tag-btn", cut.Markup);
+    }
+
+    // Notes tests
+
+    [Fact]
+    public async Task NotesButton_IsRendered_ForEachTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("todo-notes-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingNotesButton_ShowsNotesEditor()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-notes-btn").Click();
+
+        Assert.Contains("todo-notes-editor", cut.Markup);
+        Assert.Contains("todo-notes-input", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingCancelNotes_HidesEditor()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-notes-btn").Click();
+        Assert.Contains("todo-notes-editor", cut.Markup);
+
+        cut.Find(".todo-notes-cancel-btn").Click();
+        Assert.DoesNotContain("todo-notes-editor", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ExistingNotes_AreDisplayed_InTodoItem()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var updateNotes = new UpdateNotesHandler(db);
+
+        var id = await addTodo.HandleAsync("Walk the dog");
+        await updateNotes.HandleAsync(id, "Take the riverside path");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("todo-notes-display", cut.Markup);
+        Assert.Contains("Take the riverside path", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SaveNotes_UpdatesTodoWithNewNotes()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-notes-btn").Click();
+        var notesInput = cut.Find(".todo-notes-input textarea");
+        notesInput.Change("Remember the lead");
+        cut.Find(".todo-notes-save-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Remember the lead", cut.Markup));
     }
 
     // Clear completed tests

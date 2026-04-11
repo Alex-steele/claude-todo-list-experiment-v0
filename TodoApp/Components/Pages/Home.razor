@@ -11,6 +11,7 @@
 @using TodoApp.Features.Todos.ClearCompleted
 @using TodoApp.Features.Todos.Export
 @using TodoApp.Features.Todos.PinTodo
+@using TodoApp.Features.Todos.UpdateNotes
 @using TodoApp.Features.Todos.Tags
 @using TodoApp.Features.Todos.UndoRedo
 @inject AddTagHandler AddTagHandler
@@ -20,6 +21,7 @@
 @inject DeleteTodoHandler DeleteTodoHandler
 @inject EditTodoHandler EditTodoHandler
 @inject ClearCompletedHandler ClearCompletedHandler
+@inject UpdateNotesHandler UpdateNotesHandler
 @inject CsvExportHandler CsvExportHandler
 @inject PinTodoHandler PinTodoHandler
 @inject GetTodoTagsHandler GetTodoTagsHandler
@@ -382,6 +384,39 @@ else
                                         }
                                     </div>
                                 }
+                                @if (_editingNotesForTodoId == todo.Id)
+                                {
+                                    var currentTodoId = todo.Id;
+                                    <div class="mt-2 todo-notes-editor">
+                                        <MudTextField
+                                            @bind-Value="_notesValue"
+                                            Label="Notes"
+                                            Variant="Variant.Outlined"
+                                            Lines="3"
+                                            FullWidth="true"
+                                            Class="todo-notes-input" />
+                                        <div class="d-flex gap-2 mt-1">
+                                            <MudButton
+                                                Variant="Variant.Filled"
+                                                Color="Color.Primary"
+                                                Size="Size.Small"
+                                                OnClick="@(async () => await HandleSaveNotes(currentTodoId))"
+                                                Class="todo-notes-save-btn">Save</MudButton>
+                                            <MudButton
+                                                Variant="Variant.Text"
+                                                Color="Color.Default"
+                                                Size="Size.Small"
+                                                OnClick="HandleCancelNotes"
+                                                Class="todo-notes-cancel-btn">Cancel</MudButton>
+                                        </div>
+                                    </div>
+                                }
+                                else if (!string.IsNullOrEmpty(todo.Notes))
+                                {
+                                    <div class="mt-1 todo-notes-display" @onclick="@(() => HandleStartEditNotes(todo.Id, todo.Notes!))">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="cursor:pointer; white-space:pre-wrap;">@todo.Notes</MudText>
+                                    </div>
+                                }
                                 <div class="d-flex align-center gap-1 mt-1 flex-wrap todo-tags-row">
                                     @foreach (var tag in _todoTags.GetValueOrDefault(todo.Id, []))
                                     {
@@ -419,6 +454,13 @@ else
                                     }
                                 </div>
                             </div>
+                            <MudIconButton
+                                Icon="@(string.IsNullOrEmpty(todo.Notes) ? Icons.Material.Outlined.StickyNote2 : Icons.Material.Filled.StickyNote2)"
+                                Color="@(string.IsNullOrEmpty(todo.Notes) ? Color.Default : Color.Info)"
+                                Size="Size.Small"
+                                OnClick="@(() => HandleStartEditNotes(todo.Id, todo.Notes ?? string.Empty))"
+                                title="@(string.IsNullOrEmpty(todo.Notes) ? "Add notes" : "Edit notes")"
+                                Class="todo-notes-btn" />
                             <MudIconButton
                                 Icon="@(todo.IsPinned ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
                                 Color="@(todo.IsPinned ? Color.Warning : Color.Default)"
@@ -467,6 +509,9 @@ else
     private int? _addingTagForTodoId;
     private string _newTagInput = string.Empty;
     private string? _tagFilter;
+
+    private int? _editingNotesForTodoId;
+    private string _notesValue = string.Empty;
 
     private IReadOnlyList<string> AllTagNames =>
         _todoTags.Values.SelectMany(tags => tags.Select(t => t.Name))
@@ -740,6 +785,24 @@ else
                 };
             });
         }
+    }
+
+    private void HandleStartEditNotes(int todoId, string currentNotes)
+    {
+        _editingNotesForTodoId = todoId;
+        _notesValue = currentNotes;
+    }
+
+    private async Task HandleSaveNotes(int todoId)
+    {
+        await UpdateNotesHandler.HandleAsync(todoId, _notesValue);
+        _editingNotesForTodoId = null;
+        await LoadTodosAsync();
+    }
+
+    private void HandleCancelNotes()
+    {
+        _editingNotesForTodoId = null;
     }
 
     private async Task HandleTogglePin(int id)
