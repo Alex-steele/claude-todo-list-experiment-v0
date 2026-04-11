@@ -93,9 +93,32 @@
             @bind-Date="_newDueDate"
             Label="Due date (optional)"
             Variant="Variant.Outlined"
-            Class="mb-3"
+            Class="mb-2"
             Disabled="_isSubmitting"
             Clearable="true" />
+        <div class="d-flex gap-2 mb-3 due-date-shortcuts">
+            <MudButton
+                Size="Size.Small"
+                Variant="@(_newDueDate?.Date == DateTime.Today ? Variant.Filled : Variant.Outlined)"
+                Color="Color.Secondary"
+                OnClick="@(() => SetQuickDueDate(0))"
+                Disabled="_isSubmitting"
+                Class="due-date-today-btn">Today</MudButton>
+            <MudButton
+                Size="Size.Small"
+                Variant="@(_newDueDate?.Date == DateTime.Today.AddDays(1) ? Variant.Filled : Variant.Outlined)"
+                Color="Color.Secondary"
+                OnClick="@(() => SetQuickDueDate(1))"
+                Disabled="_isSubmitting"
+                Class="due-date-tomorrow-btn">Tomorrow</MudButton>
+            <MudButton
+                Size="Size.Small"
+                Variant="@(_newDueDate?.Date == DateTime.Today.AddDays(7) ? Variant.Filled : Variant.Outlined)"
+                Color="Color.Secondary"
+                OnClick="@(() => SetQuickDueDate(7))"
+                Disabled="_isSubmitting"
+                Class="due-date-next-week-btn">Next week</MudButton>
+        </div>
         <MudButton
             Variant="Variant.Filled"
             Color="Color.Primary"
@@ -365,21 +388,21 @@ else
                                         @if (dueDateStatus == DueDateStatus.Overdue)
                                         {
                                             <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Color="Color.Error" />
-                                            <MudText Typo="Typo.caption" Color="Color.Error">
-                                                Due @todo.DueDate.Value.ToString("MMM d, yyyy")
+                                            <MudText Typo="Typo.caption" Color="Color.Error" Class="due-date-text">
+                                                @FormatDueDateDisplay(todo.DueDate.Value)
                                             </MudText>
                                         }
                                         else if (dueDateStatus == DueDateStatus.DueToday)
                                         {
                                             <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Color="Color.Warning" />
-                                            <MudText Typo="Typo.caption" Color="Color.Warning">
-                                                Due @todo.DueDate.Value.ToString("MMM d, yyyy")
+                                            <MudText Typo="Typo.caption" Color="Color.Warning" Class="due-date-text">
+                                                @FormatDueDateDisplay(todo.DueDate.Value)
                                             </MudText>
                                         }
                                         else
                                         {
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                Due @todo.DueDate.Value.ToString("MMM d, yyyy")
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="due-date-text">
+                                                @FormatDueDateDisplay(todo.DueDate.Value)
                                             </MudText>
                                         }
                                     </div>
@@ -858,6 +881,27 @@ else
     {
         await RemoveTagHandler.HandleAsync(tagId);
         await LoadTodosAsync();
+    }
+
+    private void SetQuickDueDate(int daysFromToday)
+    {
+        var target = DateTime.Today.AddDays(daysFromToday);
+        // Toggle: clicking the active shortcut clears the date
+        _newDueDate = _newDueDate?.Date == target.Date ? null : target;
+    }
+
+    private static string FormatDueDateDisplay(DateTime dueDate)
+    {
+        var diff = (dueDate.Date - DateTime.Today).Days;
+        return diff switch
+        {
+            0    => "Due today",
+            1    => "Due tomorrow",
+            > 1 and <= 7 => $"Due in {diff} days",
+            < 0 and >= -1 => "Overdue by 1 day",
+            < -1 => $"Overdue by {-diff} days",
+            _    => $"Due {dueDate:MMM d, yyyy}"
+        };
     }
 
     private static DueDateStatus GetDueDateStatus(TodoSummary todo)

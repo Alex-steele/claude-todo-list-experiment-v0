@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 18 — [2026-04-11] — Feature: Due Date UX Improvements
+
+**Description:** Two complementary improvements to how due dates work. First, three shortcut buttons ("Today", "Tomorrow", "Next week") appear below the date picker in the Add Todo form; clicking a button sets the due date instantly without opening the calendar — clicking it again toggles the date back off. Second, the due date label on list items now uses relative language instead of raw dates for nearby/overdue items: "Due today", "Due tomorrow", "Due in 5 days", "Overdue by 1 day", "Overdue by 3 days" etc. Dates more than 7 days away still display in absolute `MMM d, yyyy` format. Two existing tests that asserted on the old absolute-date text were updated to match the new relative phrasing.
+
+**Reason for change:** The date picker requires multiple clicks just to set "today" or "tomorrow" — the two most common due dates. Shortcuts make the common case a single click. Relative labels make the urgency immediately readable: "Overdue by 2 days" communicates more at a glance than "Apr 9, 2026" would.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 134
+- Lines deleted: 12
+- Tests added: 5 (+ 2 existing tests updated)
+- Tests removed: 0
+- Test failures before green: 2 (pre-existing tests checking old absolute-date format)
+
 ## Day 17 — [2026-04-11] — Feature: Notes / Description Field
 
 **Description:** Each todo now has a sticky-note icon button in its action row. When no notes exist the icon is outlined (grey); when notes are present it fills in blue. Clicking the icon opens an inline multiline editor with a Save and Cancel button directly on the todo item. Existing notes are shown as a clickable caption below the tags row — clicking anywhere on the note text opens the editor. Notes are trimmed on save; saving whitespace clears the note back to null. Notes survive undo/restore and are included as an additional column in CSV exports.
