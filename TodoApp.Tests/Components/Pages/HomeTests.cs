@@ -80,8 +80,8 @@ public class HomeTests : BunitContext
         var ctx = CreateBunitContext(db);
         var cut = RenderHome(ctx);
 
-        var markup = cut.Markup;
-        Assert.Contains(dueDate.ToString("MMM d, yyyy"), markup);
+        // Relative display: 5 days out shows "Due in 5 days"
+        Assert.Contains("Due in 5 days", cut.Markup);
     }
 
     [Fact]
@@ -113,10 +113,10 @@ public class HomeTests : BunitContext
         var ctx = CreateBunitContext(db);
         var cut = RenderHome(ctx);
 
-        var markup = cut.Markup;
-        Assert.Contains(pastDueDate.ToString("MMM d, yyyy"), markup);
+        // Relative display: 3 days overdue shows "Overdue by 3 days"
+        Assert.Contains("Overdue by 3 days", cut.Markup);
         // MudBlazor renders Color.Error text with mud-error-text CSS class
-        Assert.Contains("mud-error-text", markup);
+        Assert.Contains("mud-error-text", cut.Markup);
     }
 
     [Fact]
@@ -1138,5 +1138,83 @@ public class HomeTests : BunitContext
         // Only the active health todo should remain
         Assert.Contains("Walk the dog", cut.Markup);
         Assert.DoesNotContain("Go for a run", cut.Markup);
+    }
+
+    // Due date UX tests
+
+    [Fact]
+    public async Task DueDateShortcuts_AreRendered_InAddForm()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("due-date-shortcuts", cut.Markup);
+        Assert.Contains("due-date-today-btn", cut.Markup);
+        Assert.Contains("due-date-tomorrow-btn", cut.Markup);
+        Assert.Contains("due-date-next-week-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingTodayShortcut_ThenAddingTodo_ShowsDueTodayInList()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Set "Today" shortcut
+        cut.Find(".due-date-today-btn").Click();
+
+        // Fill in title and submit
+        var input = cut.Find(".new-todo-input input");
+        input.Change("Urgent task");
+        cut.Find(".mud-button-root.mud-button-filled-primary").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Due today", cut.Markup));
+    }
+
+    [Fact]
+    public async Task ClickingTomorrowShortcut_ThenAddingTodo_ShowsDueTomorrowInList()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".due-date-tomorrow-btn").Click();
+
+        var input = cut.Find(".new-todo-input input");
+        input.Change("Task due tomorrow");
+        cut.Find(".mud-button-root.mud-button-filled-primary").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Due tomorrow", cut.Markup));
+    }
+
+    [Fact]
+    public async Task RelativeDueDate_OverdueByOneDay_ShowsCorrectText()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Yesterday's task", dueDate: DateTime.Today.AddDays(-1));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("Overdue by 1 day", cut.Markup);
+    }
+
+    [Fact]
+    public async Task RelativeDueDate_FarFuture_ShowsAbsoluteDate()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var farFuture = DateTime.Today.AddDays(30);
+        await addHandler.HandleAsync("Long-term task", dueDate: farFuture);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains(farFuture.ToString("MMM d, yyyy"), cut.Markup);
     }
 }
