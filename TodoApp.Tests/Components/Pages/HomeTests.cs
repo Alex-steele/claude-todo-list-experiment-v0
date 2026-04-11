@@ -11,6 +11,7 @@ using TodoApp.Features.Todos.DeleteTodo;
 using TodoApp.Features.Todos.EditTodo;
 using TodoApp.Features.Todos.FilterSortTodos;
 using TodoApp.Features.Todos.GetTodos;
+using TodoApp.Features.Todos.Export;
 using TodoApp.Features.Todos.GetTodosStats;
 using TodoApp.Features.Todos.Tags;
 using TodoApp.Features.Todos.UndoRedo;
@@ -36,6 +37,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<BulkOperationsHandler>();
         ctx.Services.AddScoped<RestoreTodosHandler>();
         ctx.Services.AddScoped<GetTodosStatsHandler>();
+        ctx.Services.AddScoped<CsvExportHandler>();
         ctx.Services.AddScoped<AddTagHandler>();
         ctx.Services.AddScoped<RemoveTagHandler>();
         ctx.Services.AddScoped<GetTodoTagsHandler>();
@@ -744,6 +746,50 @@ public class HomeTests : BunitContext
 
         Assert.DoesNotContain("todo-tag-chip", cut.Markup);
         Assert.Contains("add-tag-btn", cut.Markup);
+    }
+
+    // Export tests
+
+    [Fact]
+    public async Task ExportButton_IsRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("export-csv-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ExportButton_IsNotRendered_WhenNoTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("export-csv-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingExportButton_DoesNotThrow()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // JSInterop is in Loose mode — JS call completes without error
+        var ex = await Record.ExceptionAsync(async () =>
+        {
+            cut.Find(".export-csv-btn").Click();
+            await Task.Delay(50);
+        });
+        Assert.Null(ex);
     }
 
     // Tag filter tests

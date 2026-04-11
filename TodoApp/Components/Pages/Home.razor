@@ -8,6 +8,7 @@
 @using TodoApp.Features.Todos.FilterSortTodos
 @using TodoApp.Features.Todos.GetTodos
 @using TodoApp.Features.Todos.GetTodosStats
+@using TodoApp.Features.Todos.Export
 @using TodoApp.Features.Todos.Tags
 @using TodoApp.Features.Todos.UndoRedo
 @inject AddTagHandler AddTagHandler
@@ -16,6 +17,7 @@
 @inject CompleteTodoHandler CompleteTodoHandler
 @inject DeleteTodoHandler DeleteTodoHandler
 @inject EditTodoHandler EditTodoHandler
+@inject CsvExportHandler CsvExportHandler
 @inject GetTodoTagsHandler GetTodoTagsHandler
 @inject GetTodosHandler GetTodosHandler
 @inject FilterSortTodosHandler FilterSortTodosHandler
@@ -189,18 +191,29 @@ else
                         @(_isSelectMode ? "Cancel" : "Select")
                     </MudButton>
                 </div>
-                <MudSelect
-                    T="TodoSortOrder"
-                    @bind-Value="_sortOrder"
-                    Label="Sort"
-                    Variant="Variant.Outlined"
-                    Dense="true"
-                    Style="min-width: 150px;">
-                    <MudSelectItem Value="@TodoSortOrder.Newest">Newest first</MudSelectItem>
-                    <MudSelectItem Value="@TodoSortOrder.Oldest">Oldest first</MudSelectItem>
-                    <MudSelectItem Value="@TodoSortOrder.DueDateAsc">Due date</MudSelectItem>
-                    <MudSelectItem Value="@TodoSortOrder.PriorityDesc">Priority</MudSelectItem>
-                </MudSelect>
+                <div class="d-flex align-center gap-1">
+                    <MudSelect
+                        T="TodoSortOrder"
+                        @bind-Value="_sortOrder"
+                        Label="Sort"
+                        Variant="Variant.Outlined"
+                        Dense="true"
+                        Style="min-width: 150px;">
+                        <MudSelectItem Value="@TodoSortOrder.Newest">Newest first</MudSelectItem>
+                        <MudSelectItem Value="@TodoSortOrder.Oldest">Oldest first</MudSelectItem>
+                        <MudSelectItem Value="@TodoSortOrder.DueDateAsc">Due date</MudSelectItem>
+                        <MudSelectItem Value="@TodoSortOrder.PriorityDesc">Priority</MudSelectItem>
+                    </MudSelect>
+                    <MudTooltip Text="Export to CSV">
+                        <MudIconButton
+                            Icon="@Icons.Material.Filled.FileDownload"
+                            Size="Size.Small"
+                            Color="Color.Default"
+                            OnClick="HandleExportCsv"
+                            title="Export to CSV"
+                            Class="export-csv-btn" />
+                    </MudTooltip>
+                </div>
             </div>
             @if (AllTagNames.Count > 0)
             {
@@ -681,6 +694,14 @@ else
         TodoPriority.Low    => Color.Info,
         _                   => Color.Default
     };
+
+    private async Task HandleExportCsv()
+    {
+        if (_todos is null || _todos.Count == 0) return;
+        var csv = CsvExportHandler.Generate(_todos, _todoTags);
+        var filename = $"todos-{DateTime.Today:yyyy-MM-dd}.csv";
+        await JS.InvokeVoidAsync("todoApp.downloadFile", filename, csv, "text/csv");
+    }
 
     private void HandleStartAddTag(int todoId)
     {
