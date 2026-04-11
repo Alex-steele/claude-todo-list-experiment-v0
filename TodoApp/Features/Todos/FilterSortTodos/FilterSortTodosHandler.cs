@@ -21,15 +21,17 @@ public class FilterSortTodosHandler
             _                          => searched
         };
 
+        var pinFirst = filtered.OrderByDescending(t => t.IsPinned ? 1 : 0);
+
         var sorted = sortOrder switch
         {
-            TodoSortOrder.Oldest       => filtered.OrderBy(t => t.Id),
-            TodoSortOrder.DueDateAsc   => filtered.OrderBy(t => t.DueDate.HasValue ? 0 : 1)
+            TodoSortOrder.Oldest       => pinFirst.ThenBy(t => t.Id),
+            TodoSortOrder.DueDateAsc   => pinFirst.ThenBy(t => t.DueDate.HasValue ? 0 : 1)
                                                   .ThenBy(t => t.DueDate)
                                                   .ThenBy(t => -t.Id),
-            TodoSortOrder.PriorityDesc => filtered.OrderByDescending(t => (int)t.Priority)
+            TodoSortOrder.PriorityDesc => pinFirst.ThenByDescending(t => (int)t.Priority)
                                                   .ThenBy(t => -t.Id),
-            _                          => filtered.OrderByDescending(t => t.Id)  // Newest (default)
+            _                          => pinFirst.ThenByDescending(t => t.Id)  // Newest (default)
         };
 
         return sorted.ToList();
