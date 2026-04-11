@@ -745,4 +745,124 @@ public class HomeTests : BunitContext
         Assert.DoesNotContain("todo-tag-chip", cut.Markup);
         Assert.Contains("add-tag-btn", cut.Markup);
     }
+
+    // Tag filter tests
+
+    [Fact]
+    public async Task TagFilterRow_IsNotRendered_WhenNoTagsExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("tag-filter-row", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TagFilterRow_IsRendered_WhenTagsExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+
+        var id = await addTodo.HandleAsync("Walk the dog");
+        await addTag.HandleAsync(id, "health");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("tag-filter-row", cut.Markup);
+        Assert.Contains("tag-filter-chip", cut.Markup);
+        Assert.Contains("health", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingTagFilter_ShowsOnlyTodosWithThatTag()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+
+        var id1 = await addTodo.HandleAsync("Walk the dog");
+        var id2 = await addTodo.HandleAsync("Buy groceries");
+        await addTag.HandleAsync(id1, "health");
+        await addTag.HandleAsync(id2, "shopping");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("Walk the dog", cut.Markup);
+        Assert.Contains("Buy groceries", cut.Markup);
+
+        // Click the "health" filter chip
+        var healthChip = cut.FindAll(".tag-filter-chip").First(c => c.TextContent.Contains("health"));
+        healthChip.Click();
+
+        Assert.Contains("Walk the dog", cut.Markup);
+        Assert.DoesNotContain("Buy groceries", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingAllTagFilter_ShowsAllTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+
+        var id1 = await addTodo.HandleAsync("Walk the dog");
+        var id2 = await addTodo.HandleAsync("Buy groceries");
+        await addTag.HandleAsync(id1, "health");
+        await addTag.HandleAsync(id2, "shopping");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Filter to "health" first
+        var healthChip = cut.FindAll(".tag-filter-chip").First(c => c.TextContent.Contains("health"));
+        healthChip.Click();
+        Assert.DoesNotContain("Buy groceries", cut.Markup);
+
+        // Click "All" to reset
+        cut.Find(".tag-filter-all").Click();
+
+        Assert.Contains("Walk the dog", cut.Markup);
+        Assert.Contains("Buy groceries", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TagFilter_CombinesWithStatusFilter()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+        var complete = new CompleteTodoHandler(db);
+
+        var id1 = await addTodo.HandleAsync("Walk the dog");
+        var id2 = await addTodo.HandleAsync("Go for a run");
+        await addTag.HandleAsync(id1, "health");
+        await addTag.HandleAsync(id2, "health");
+        await complete.HandleAsync(id2);   // "Go for a run" is completed
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Filter by "health" tag
+        var healthChip = cut.FindAll(".tag-filter-chip").First(c => c.TextContent.Contains("health"));
+        healthChip.Click();
+
+        // Both health todos visible
+        Assert.Contains("Walk the dog", cut.Markup);
+        Assert.Contains("Go for a run", cut.Markup);
+
+        // Also filter to Active only
+        var activeButton = cut.FindAll("button").First(b => b.TextContent.Trim() == "Active");
+        activeButton.Click();
+
+        // Only the active health todo should remain
+        Assert.Contains("Walk the dog", cut.Markup);
+        Assert.DoesNotContain("Go for a run", cut.Markup);
+    }
 }

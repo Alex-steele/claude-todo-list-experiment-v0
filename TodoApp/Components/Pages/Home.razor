@@ -202,6 +202,28 @@ else
                     <MudSelectItem Value="@TodoSortOrder.PriorityDesc">Priority</MudSelectItem>
                 </MudSelect>
             </div>
+            @if (AllTagNames.Count > 0)
+            {
+                <div class="d-flex align-center gap-1 flex-wrap mt-3 tag-filter-row">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1">Tag:</MudText>
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Variant="@(_tagFilter is null ? Variant.Filled : Variant.Outlined)"
+                             Color="Color.Secondary"
+                             OnClick="@(() => _tagFilter = null)"
+                             Class="tag-filter-all">All</MudChip>
+                    @foreach (var name in AllTagNames)
+                    {
+                        var tagName = name;
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Variant="@(_tagFilter == tagName ? Variant.Filled : Variant.Outlined)"
+                                 Color="Color.Secondary"
+                                 OnClick="@(() => _tagFilter = tagName)"
+                                 Class="tag-filter-chip">@tagName</MudChip>
+                    }
+                </div>
+            }
         </MudCardContent>
     </MudCard>
 
@@ -407,9 +429,24 @@ else
     private Dictionary<int, List<Tag>> _todoTags = new();
     private int? _addingTagForTodoId;
     private string _newTagInput = string.Empty;
+    private string? _tagFilter;
 
-    private IReadOnlyList<TodoSummary> DisplayedTodos =>
-        _todos is null ? [] : FilterSortTodosHandler.Handle(_todos, _statusFilter, _sortOrder, _searchQuery);
+    private IReadOnlyList<string> AllTagNames =>
+        _todoTags.Values.SelectMany(tags => tags.Select(t => t.Name))
+            .Distinct().OrderBy(n => n).ToList();
+
+    private IReadOnlyList<TodoSummary> DisplayedTodos
+    {
+        get
+        {
+            if (_todos is null) return [];
+            var filtered = FilterSortTodosHandler.Handle(_todos, _statusFilter, _sortOrder, _searchQuery);
+            if (_tagFilter is null) return filtered;
+            return filtered
+                .Where(t => _todoTags.TryGetValue(t.Id, out var tags) && tags.Any(tag => tag.Name == _tagFilter))
+                .ToList();
+        }
+    }
 
     private enum DueDateStatus { Future, DueToday, Overdue }
 
