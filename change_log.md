@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 14 — [2026-04-11] — Feature: Export to CSV
+
+**Description:** A download icon button (⬇) now appears next to the sort dropdown whenever todos exist. Clicking it generates a `todos-YYYY-MM-DD.csv` file and triggers an immediate browser download. The CSV includes seven columns: Id, Title, Priority, DueDate, IsCompleted, CreatedAt, Tags (tags are pipe-separated within the cell). Titles containing commas, double-quotes, or newlines are automatically quoted and escaped per RFC 4180.
+
+**Reason for change:** Export is a practical "later stage" feature — once a user has accumulated a meaningful list of todos, they want a way to get the data out for archiving, sharing, or importing into another tool. The implementation is clean: `CsvExportHandler` is a pure, stateless class (no DB access) that takes an in-memory list and returns a string, making it easy to unit-test exhaustively. The JS file-download helper is a small, reusable addition to the existing `todoApp` namespace.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 305
+- Lines deleted: 12
+- Tests added: 13
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 13 — [2026-04-11] — Feature: Filter by Tag
 
 **Description:** The filter bar now shows a row of tag chips whenever any todos have tags. An "All" chip is always present (selected by default). Clicking any tag chip narrows the list to todos that carry that tag. The tag filter composes cleanly with the existing status filter (All / Active / Completed) and the search field — for example, selecting "health" and then "Active" shows only active todos tagged "health". Clicking "All" resets the tag filter. The chip row is hidden entirely when no tags exist.
