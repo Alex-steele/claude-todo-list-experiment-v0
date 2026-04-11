@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 16 — [2026-04-11] — Feature: Clear Completed
+
+**Description:** A "Clear completed" button now appears at the bottom-right of the stats panel whenever at least one todo is marked done. Clicking it removes every completed todo in a single action and shows an undo snackbar (e.g. "3 completed todos cleared") with a full undo that restores them all — leveraging the existing `RestoreTodosHandler`. The button disappears as soon as no completed todos remain. Active and pinned todos are never touched.
+
+**Reason for change:** The stats panel already tells users how many completed todos they have; "Clear completed" lets them act on that information without selecting items one-by-one or using bulk select. It's the classic TodoMVC sweep, and it fits naturally at this stage: the list is now long enough that cleaning it up periodically is genuinely useful.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 348
+- Lines deleted: 0
+- Tests added: 10
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 15 — [2026-04-11] — Feature: Pin/Star Todos
 
 **Description:** Every todo now has a star (☆) icon button on its right edge. Clicking it pins the todo — the star fills in amber and the tooltip changes to "Unpin". Clicking again unpins. Pinned todos are always sorted to the top of the list, regardless of the active sort order (Newest, Oldest, Due Date, or Priority). The pin state persists in the database and survives undo/restore. Pinning is additive with all existing filters — e.g. pinned todos appear first within an "Active" filter or a tag filter.

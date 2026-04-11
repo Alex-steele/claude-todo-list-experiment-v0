@@ -11,6 +11,7 @@ using TodoApp.Features.Todos.DeleteTodo;
 using TodoApp.Features.Todos.EditTodo;
 using TodoApp.Features.Todos.FilterSortTodos;
 using TodoApp.Features.Todos.GetTodos;
+using TodoApp.Features.Todos.ClearCompleted;
 using TodoApp.Features.Todos.Export;
 using TodoApp.Features.Todos.PinTodo;
 using TodoApp.Features.Todos.GetTodosStats;
@@ -38,6 +39,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<BulkOperationsHandler>();
         ctx.Services.AddScoped<RestoreTodosHandler>();
         ctx.Services.AddScoped<GetTodosStatsHandler>();
+        ctx.Services.AddScoped<ClearCompletedHandler>();
         ctx.Services.AddScoped<CsvExportHandler>();
         ctx.Services.AddScoped<PinTodoHandler>();
         ctx.Services.AddScoped<AddTagHandler>();
@@ -748,6 +750,79 @@ public class HomeTests : BunitContext
 
         Assert.DoesNotContain("todo-tag-chip", cut.Markup);
         Assert.Contains("add-tag-btn", cut.Markup);
+    }
+
+    // Clear completed tests
+
+    [Fact]
+    public async Task ClearCompletedButton_NotRendered_WhenNoCompletedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Active task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("clear-completed-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClearCompletedButton_IsRendered_WhenCompletedTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+
+        var id = await addHandler.HandleAsync("Done task");
+        await completeHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("clear-completed-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingClearCompleted_RemovesCompletedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+
+        await addHandler.HandleAsync("Active task");
+        var doneId = await addHandler.HandleAsync("Done task");
+        await completeHandler.HandleAsync(doneId);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".clear-completed-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.DoesNotContain("Done task", cut.Markup));
+        Assert.Contains("Active task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClearCompleted_ShowsUndoSnackbar()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+
+        var id = await addHandler.HandleAsync("Done task");
+        await completeHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var snackbarProvider = ctx.Render<MudSnackbarProvider>();
+        var cut = RenderHome(ctx);
+
+        cut.Find(".clear-completed-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("cleared", snackbarProvider.Markup));
+        Assert.Contains("Undo", snackbarProvider.Markup);
     }
 
     // Pin tests
