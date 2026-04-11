@@ -8,6 +8,7 @@
 @using TodoApp.Features.Todos.FilterSortTodos
 @using TodoApp.Features.Todos.GetTodos
 @using TodoApp.Features.Todos.GetTodosStats
+@using TodoApp.Features.Todos.ClearCompleted
 @using TodoApp.Features.Todos.Export
 @using TodoApp.Features.Todos.PinTodo
 @using TodoApp.Features.Todos.Tags
@@ -18,6 +19,7 @@
 @inject CompleteTodoHandler CompleteTodoHandler
 @inject DeleteTodoHandler DeleteTodoHandler
 @inject EditTodoHandler EditTodoHandler
+@inject ClearCompletedHandler ClearCompletedHandler
 @inject CsvExportHandler CsvExportHandler
 @inject PinTodoHandler PinTodoHandler
 @inject GetTodoTagsHandler GetTodoTagsHandler
@@ -142,6 +144,19 @@
                 Class="flex-grow-1 stats-progress" />
             <MudText Typo="Typo.caption" Color="Color.Secondary" Class="stats-percentage">@stats.CompletionPercentage%</MudText>
         </div>
+        @if (stats.Completed > 0)
+        {
+            <div class="d-flex justify-end mt-2">
+                <MudButton
+                    Variant="Variant.Text"
+                    Color="Color.Error"
+                    Size="Size.Small"
+                    OnClick="HandleClearCompleted"
+                    Class="clear-completed-btn">
+                    Clear completed
+                </MudButton>
+            </div>
+        }
     </MudPaper>
 }
 
@@ -703,6 +718,29 @@ else
         TodoPriority.Low    => Color.Info,
         _                   => Color.Default
     };
+
+    private async Task HandleClearCompleted()
+    {
+        var deleted = await ClearCompletedHandler.HandleAsync();
+        await LoadTodosAsync();
+
+        if (deleted.Count > 0)
+        {
+            var snapshot = deleted;
+            var count = snapshot.Count;
+            Snackbar.Add($"{count} completed todo{(count == 1 ? "" : "s")} cleared", Severity.Normal, config =>
+            {
+                config.Action = "Undo";
+                config.ActionColor = Color.Primary;
+                config.Onclick = async _ =>
+                {
+                    await RestoreTodosHandler.HandleAsync(snapshot);
+                    await LoadTodosAsync();
+                    StateHasChanged();
+                };
+            });
+        }
+    }
 
     private async Task HandleTogglePin(int id)
     {
