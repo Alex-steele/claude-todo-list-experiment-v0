@@ -9,6 +9,7 @@
 @using TodoApp.Features.Todos.GetTodos
 @using TodoApp.Features.Todos.GetTodosStats
 @using TodoApp.Features.Todos.Export
+@using TodoApp.Features.Todos.PinTodo
 @using TodoApp.Features.Todos.Tags
 @using TodoApp.Features.Todos.UndoRedo
 @inject AddTagHandler AddTagHandler
@@ -18,6 +19,7 @@
 @inject DeleteTodoHandler DeleteTodoHandler
 @inject EditTodoHandler EditTodoHandler
 @inject CsvExportHandler CsvExportHandler
+@inject PinTodoHandler PinTodoHandler
 @inject GetTodoTagsHandler GetTodoTagsHandler
 @inject GetTodosHandler GetTodosHandler
 @inject FilterSortTodosHandler FilterSortTodosHandler
@@ -403,6 +405,13 @@ else
                                 </div>
                             </div>
                             <MudIconButton
+                                Icon="@(todo.IsPinned ? Icons.Material.Filled.Star : Icons.Material.Outlined.StarBorder)"
+                                Color="@(todo.IsPinned ? Color.Warning : Color.Default)"
+                                Size="Size.Small"
+                                OnClick="@(async () => await HandleTogglePin(todo.Id))"
+                                title="@(todo.IsPinned ? "Unpin" : "Pin to top")"
+                                Class="todo-pin-btn" />
+                            <MudIconButton
                                 Icon="@Icons.Material.Filled.Delete"
                                 Color="Color.Error"
                                 Size="Size.Small"
@@ -694,6 +703,12 @@ else
         TodoPriority.Low    => Color.Info,
         _                   => Color.Default
     };
+
+    private async Task HandleTogglePin(int id)
+    {
+        await PinTodoHandler.HandleAsync(id);
+        await LoadTodosAsync();
+    }
 
     private async Task HandleExportCsv()
     {

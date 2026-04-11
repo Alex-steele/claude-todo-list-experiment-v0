@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 15 — [2026-04-11] — Feature: Pin/Star Todos
+
+**Description:** Every todo now has a star (☆) icon button on its right edge. Clicking it pins the todo — the star fills in amber and the tooltip changes to "Unpin". Clicking again unpins. Pinned todos are always sorted to the top of the list, regardless of the active sort order (Newest, Oldest, Due Date, or Priority). The pin state persists in the database and survives undo/restore. Pinning is additive with all existing filters — e.g. pinned todos appear first within an "Active" filter or a tag filter.
+
+**Reason for change:** Priority levels let users rank todos by importance, but they require editing the todo. Pinning is a faster, one-click way to say "this is what I'm working on right now". It's a natural later-stage feature — users with a long list benefit most from being able to keep a few critical items anchored at the top without disrupting the rest of their sort order.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 383
+- Lines deleted: 11
+- Tests added: 10
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 14 — [2026-04-11] — Feature: Export to CSV
 
 **Description:** A download icon button (⬇) now appears next to the sort dropdown whenever todos exist. Clicking it generates a `todos-YYYY-MM-DD.csv` file and triggers an immediate browser download. The CSV includes seven columns: Id, Title, Priority, DueDate, IsCompleted, CreatedAt, Tags (tags are pipe-separated within the cell). Titles containing commas, double-quotes, or newlines are automatically quoted and escaped per RFC 4180.

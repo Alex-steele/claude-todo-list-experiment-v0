@@ -12,6 +12,7 @@ using TodoApp.Features.Todos.EditTodo;
 using TodoApp.Features.Todos.FilterSortTodos;
 using TodoApp.Features.Todos.GetTodos;
 using TodoApp.Features.Todos.Export;
+using TodoApp.Features.Todos.PinTodo;
 using TodoApp.Features.Todos.GetTodosStats;
 using TodoApp.Features.Todos.Tags;
 using TodoApp.Features.Todos.UndoRedo;
@@ -38,6 +39,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<RestoreTodosHandler>();
         ctx.Services.AddScoped<GetTodosStatsHandler>();
         ctx.Services.AddScoped<CsvExportHandler>();
+        ctx.Services.AddScoped<PinTodoHandler>();
         ctx.Services.AddScoped<AddTagHandler>();
         ctx.Services.AddScoped<RemoveTagHandler>();
         ctx.Services.AddScoped<GetTodoTagsHandler>();
@@ -746,6 +748,71 @@ public class HomeTests : BunitContext
 
         Assert.DoesNotContain("todo-tag-chip", cut.Markup);
         Assert.Contains("add-tag-btn", cut.Markup);
+    }
+
+    // Pin tests
+
+    [Fact]
+    public async Task PinButton_IsRendered_ForEachTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("todo-pin-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task PinButton_Title_IsPinToTop_WhenUnpinned()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("Pin to top", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingPinButton_ChangesTitleToUnpin()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-pin-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Unpin", cut.Markup));
+    }
+
+    [Fact]
+    public async Task PinnedTodo_AppearsBeforeUnpinnedTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var pinHandler = new PinTodoHandler(db);
+
+        var id1 = await addTodo.HandleAsync("Older todo");
+        var id2 = await addTodo.HandleAsync("Newer todo");   // would normally be first
+        await pinHandler.HandleAsync(id1);                   // pin the older one
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var markup = cut.Markup;
+        var olderPos = markup.IndexOf("Older todo", StringComparison.Ordinal);
+        var newerPos = markup.IndexOf("Newer todo", StringComparison.Ordinal);
+
+        Assert.True(olderPos < newerPos, "Pinned todo should appear before unpinned todo");
     }
 
     // Export tests
