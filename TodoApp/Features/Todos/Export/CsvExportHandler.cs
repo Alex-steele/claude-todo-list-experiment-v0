@@ -11,7 +11,7 @@ public class CsvExportHandler
         Dictionary<int, List<Tag>>? tags = null)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("Id,Title,Priority,DueDate,IsCompleted,CreatedAt,Tags");
+        sb.AppendLine("Id,Title,Priority,DueDate,IsCompleted,CreatedAt,Tags,Notes");
 
         foreach (var todo in todos)
         {
@@ -25,7 +25,8 @@ public class CsvExportHandler
                 todo.DueDate?.ToString("yyyy-MM-dd") ?? "",
                 todo.IsCompleted.ToString(),
                 todo.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ss"),
-                EscapeCsv(tagsCell)
+                EscapeCsv(tagsCell),
+                EscapeCsv(todo.Notes ?? "")
             ]));
         }
 

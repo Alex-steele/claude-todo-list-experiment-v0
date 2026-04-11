@@ -13,8 +13,8 @@ public class ClearCompletedHandler(Database db)
     {
         using var conn = db.CreateConnection();
 
-        var rows = await conn.QueryAsync<(int Id, string Title, int IsCompleted, string CreatedAt, int Priority, string? DueDate, int IsPinned)>(
-            "SELECT Id, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned FROM Todos WHERE IsCompleted = 1");
+        var rows = await conn.QueryAsync<(int Id, string Title, int IsCompleted, string CreatedAt, int Priority, string? DueDate, int IsPinned, string? Notes)>(
+            "SELECT Id, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes FROM Todos WHERE IsCompleted = 1");
 
         var completed = rows
             .Select(r => new TodoSummary(
@@ -24,7 +24,8 @@ public class ClearCompletedHandler(Database db)
                 DateTime.Parse(r.CreatedAt),
                 (TodoPriority)r.Priority,
                 r.DueDate is not null ? DateTime.Parse(r.DueDate) : (DateTime?)null,
-                r.IsPinned == 1))
+                r.IsPinned == 1,
+                r.Notes))
             .ToList();
 
         if (completed.Count == 0) return [];
