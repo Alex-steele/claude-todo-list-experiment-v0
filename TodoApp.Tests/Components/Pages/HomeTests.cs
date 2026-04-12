@@ -20,6 +20,7 @@ using TodoApp.Features.Todos.GetTodosStats;
 using TodoApp.Features.Todos.Import;
 using TodoApp.Features.Todos.Subtasks;
 using TodoApp.Features.Todos.Tags;
+using TodoApp.Features.Todos.QuickAdd;
 using TodoApp.Features.Todos.RecurringTodos;
 using TodoApp.Features.Todos.UndoRedo;
 using TodoApp.Tests.Infrastructure;
@@ -1460,6 +1461,67 @@ public class HomeTests : BunitContext
             // After completing, a new instance should appear (total 2 — one completed, one active)
             var todos = cut.FindAll(".mud-list-item");
             Assert.Equal(2, todos.Count);
+        });
+    }
+
+    // Natural language quick-add tests
+
+    [Fact]
+    public async Task QuickAdd_NoHints_HintStripNotVisible()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".new-todo-input input").Change("Buy groceries");
+
+        Assert.DoesNotContain("quick-add-hint-strip", cut.Markup);
+    }
+
+    [Fact]
+    public async Task QuickAdd_WithDateHint_ShowsHintStrip()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".new-todo-input input").Input("Call dentist tomorrow");
+        cut.Find(".new-todo-input input").Change("Call dentist tomorrow");
+
+        Assert.Contains("quick-add-hint-strip", cut.Markup);
+        Assert.Contains("quick-add-hint-text", cut.Markup);
+    }
+
+    [Fact]
+    public async Task QuickAdd_WithPriorityHint_ShowsHintStrip()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".new-todo-input input").Change("Fix bug !high");
+
+        Assert.Contains("quick-add-hint-strip", cut.Markup);
+    }
+
+    [Fact]
+    public async Task QuickAdd_AddWithPriorityHint_StoresParsedPriority()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var getHandler = new GetTodosHandler(db);
+
+        var cut = RenderHome(ctx);
+
+        cut.Find(".new-todo-input input").Change("Fix bug !high");
+        cut.Find("button.add-todo-btn").Click();
+
+        await cut.WaitForAssertionAsync(async () =>
+        {
+            var todos = await getHandler.HandleAsync();
+            Assert.Single(todos);
+            Assert.Equal("Fix bug", todos[0].Title);
+            Assert.Equal(TodoPriority.High, todos[0].Priority);
         });
     }
 }

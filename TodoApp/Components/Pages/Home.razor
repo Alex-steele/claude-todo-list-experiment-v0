@@ -16,6 +16,7 @@
 @using TodoApp.Features.Todos.UpdateNotes
 @using TodoApp.Features.Todos.Subtasks
 @using TodoApp.Features.Todos.Tags
+@using TodoApp.Features.Todos.QuickAdd
 @using TodoApp.Features.Todos.RecurringTodos
 @using TodoApp.Features.Todos.UndoRedo
 @inject AddSubtaskHandler AddSubtaskHandler
@@ -87,6 +88,30 @@
             Class="mb-3 new-todo-input"
             OnKeyUp="HandleEnterKey"
             Disabled="_isSubmitting" />
+        @{
+            var hints = NaturalLanguageParser.Parse(_newTitle);
+        }
+        @if (!string.IsNullOrWhiteSpace(_newTitle) && (hints.Priority.HasValue || hints.DueDate.HasValue))
+        {
+            <div class="d-flex align-center gap-1 mb-2 quick-add-hint-strip">
+                <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" Color="Color.Tertiary" />
+                <MudText Typo="Typo.caption" Color="Color.Tertiary" Class="quick-add-hint-text">
+                    Quick-add:
+                    @if (!string.IsNullOrWhiteSpace(hints.CleanTitle))
+                    {
+                        <strong>@hints.CleanTitle</strong>
+                    }
+                    @if (hints.DueDate.HasValue)
+                    {
+                        <span> · Due @FormatDueDateDisplay(hints.DueDate.Value)</span>
+                    }
+                    @if (hints.Priority.HasValue)
+                    {
+                        <span> · @hints.Priority.Value priority</span>
+                    }
+                </MudText>
+            </div>
+        }
         <MudSelect
             T="TodoPriority"
             @bind-Value="_newPriority"
@@ -147,7 +172,8 @@
             OnClick="HandleAddTodo"
             Disabled="_isSubmitting"
             FullWidth="true"
-            Size="Size.Large">
+            Size="Size.Large"
+            Class="add-todo-btn">
             @if (_isSubmitting)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -766,7 +792,12 @@ else
 
         try
         {
-            await AddTodoHandler.HandleAsync(_newTitle, _newPriority, _newDueDate, _newRecurrence);
+            var parsed = NaturalLanguageParser.Parse(_newTitle);
+            var effectiveTitle    = parsed.CleanTitle.Length > 0 ? parsed.CleanTitle : _newTitle;
+            var effectivePriority = _newPriority != TodoPriority.None ? _newPriority : (parsed.Priority ?? TodoPriority.None);
+            var effectiveDueDate  = _newDueDate ?? parsed.DueDate;
+
+            await AddTodoHandler.HandleAsync(effectiveTitle, effectivePriority, effectiveDueDate, _newRecurrence);
             _newTitle = string.Empty;
             _newPriority = TodoPriority.None;
             _newDueDate = null;
