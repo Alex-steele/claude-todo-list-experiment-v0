@@ -32,6 +32,16 @@ window.todoApp.downloadFile = function (filename, content, mimeType) {
     URL.revokeObjectURL(url);
 };
 
+window.todoApp.getDarkModePreference = function () {
+    const stored = localStorage.getItem('todoApp:darkMode');
+    if (stored !== null) return stored === 'true';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+};
+
+window.todoApp.saveDarkModePreference = function (isDark) {
+    localStorage.setItem('todoApp:darkMode', isDark.toString());
+};
+
 window.todoApp._handleKeyDown = function (e) {
     const tag = e.target.tagName.toLowerCase();
     if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;

@@ -9,11 +9,15 @@ namespace TodoApp.Tests.Components.Layout;
 
 public class MainLayoutTests : BunitContext
 {
-    private static BunitContext CreateBunitContext()
+    private static BunitContext CreateBunitContext(bool darkModePreference = false)
     {
         var ctx = new BunitContext();
         ctx.Services.AddMudServices();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        ctx.JSInterop.SetupVoid("todoApp.saveDarkModePreference", _ => true);
+        ctx.JSInterop
+            .Setup<bool>("todoApp.getDarkModePreference")
+            .SetResult(darkModePreference);
         return ctx;
     }
 
@@ -35,7 +39,7 @@ public class MainLayoutTests : BunitContext
     [Fact]
     public void DarkModeToggleButton_InitialTitle_IsSwitchToDarkMode()
     {
-        var ctx = CreateBunitContext();
+        var ctx = CreateBunitContext(darkModePreference: false);
         var cut = RenderLayout(ctx);
 
         var toggleBtn = cut.Find(".dark-mode-toggle");
@@ -65,5 +69,33 @@ public class MainLayoutTests : BunitContext
 
         var toggleBtn = cut.Find(".dark-mode-toggle");
         Assert.Equal("Switch to dark mode", toggleBtn.GetAttribute("title"));
+    }
+
+    [Fact]
+    public async Task DarkMode_LoadsPreferenceFromJs_OnFirstRender()
+    {
+        var ctx = CreateBunitContext(darkModePreference: true);
+        var cut = RenderLayout(ctx);
+
+        // After first render the JS interop loads the preference
+        await cut.WaitForAssertionAsync(() =>
+        {
+            var toggleBtn = cut.Find(".dark-mode-toggle");
+            Assert.Equal("Switch to light mode", toggleBtn.GetAttribute("title"));
+        });
+    }
+
+    [Fact]
+    public async Task DarkMode_Toggle_CallsSavePreference()
+    {
+        var ctx = CreateBunitContext();
+        var cut = RenderLayout(ctx);
+
+        cut.Find(".dark-mode-toggle").Click();
+
+        // Verify saveDarkModePreference was invoked
+        var saveInvocations = ctx.JSInterop.Invocations["todoApp.saveDarkModePreference"];
+        Assert.NotEmpty(saveInvocations);
+        Assert.Equal(true, saveInvocations[0].Arguments[0]);
     }
 }

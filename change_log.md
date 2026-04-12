@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 24 — [2026-04-12] — Feature: Dark Mode Persistence
+
+**Description:** The dark mode preference now persists across page reloads. On first render, the app reads from `localStorage` via JS interop (`todoApp.getDarkModePreference`). If no stored preference exists, it falls back to the system's `prefers-color-scheme` media query — so users on dark OS themes automatically get dark mode on first visit. Toggling dark mode saves the preference to `localStorage` via `todoApp.saveDarkModePreference`. Previously the toggle reset to light mode on every page reload.
+
+**Reason for change:** Dark mode was already toggleable but ephemeral — it reset on every reload. Persisting the preference is the minimum needed for the feature to be genuinely useful. Respecting the system color scheme on first visit is a low-cost, high-quality UX improvement.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 59
+- Lines deleted: 3
+- Tests added: 2
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 23 — [2026-04-12] — Feature: Natural Language Quick-Add
 
 **Description:** The title input now understands natural language date and priority hints. Type "call dentist tomorrow !high" and the app detects the hints in real time: a small preview strip appears below the input showing "Quick-add: call dentist · Due tomorrow · High priority". When the todo is added, the hints are stripped from the title and the parsed due date and priority are applied automatically — no need to touch the dropdowns. Date keywords supported: `today`, `tomorrow`, `next week`, `in N days`. Priority shortcuts: `!high` / `!h`, `!medium` / `!med` / `!m`, `!low` / `!l`. Manual selections in the Priority dropdown or date picker always take precedence over hints.
