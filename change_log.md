@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 21 — [2026-04-12] — Feature: Priority Filter
+
+**Description:** A "Priority:" chip row now appears in the filter toolbar between the sort controls and the tag filter. Clicking High, Medium, Low, or None restricts the list to todos of that priority; clicking All resets it. The priority filter compounds with the existing status filter, search, and tag filter. Internally, `FilterSortTodosHandler.Handle()` gained an optional `TodoPriority? priorityFilter = null` parameter — no callers needed updating since it defaults to null. Color coding matches the priority chips on todo items (red for High, orange for Medium, blue for Low, default for None).
+
+**Reason for change:** The app already supports sorting by priority and filtering by status/tag. Priority filtering was the obvious missing piece — a user managing a large list needs to be able to focus just on High priority items without scrolling past everything else.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 130
+- Lines deleted: 2
+- Tests added: 10
+- Tests removed: 0
+- Test failures before green: 1 (missing `using TodoApp.Features.Todos` in HomeTests.cs)
+
 ## Day 20 — [2026-04-12] — Feature: Import from CSV
 
 **Description:** A file-upload icon button now sits next to the existing export button in the filter toolbar. Clicking it opens a native file picker filtered to `.csv`; selecting a file reads it in the browser, calls `ImportTodosHandler`, and shows a success snackbar ("Imported N todos") or a warning if no valid rows were found. The handler parses the same format the app exports (columns: `Id, Title, Priority, DueDate, IsCompleted, CreatedAt, Tags, Notes`): it skips the `Id` column and assigns new IDs, handles RFC 4180 quoted fields (titles with commas), parses pipe-separated tags and creates them in `TodoTags`, sets notes, and silently skips any malformed rows. A round-trip test exports from one database and re-imports into a clean one, verifying title, priority, and count are preserved.

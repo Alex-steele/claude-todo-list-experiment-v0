@@ -1,4 +1,5 @@
 using Bunit;
+using TodoApp.Features.Todos;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
@@ -1325,5 +1326,73 @@ public class HomeTests : BunitContext
 
         cut.Find(".subtasks-toggle-btn").Click();
         Assert.DoesNotContain("add-subtask-btn", cut.Markup);
+    }
+
+    // Priority filter tests
+
+    [Fact]
+    public async Task PriorityFilterRow_IsRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("priority-filter-row", cut.Markup);
+    }
+
+    [Fact]
+    public async Task PriorityFilter_High_ShowsOnlyHighPriorityTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("High task", TodoPriority.High);
+        await addHandler.HandleAsync("Low task",  TodoPriority.Low);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".priority-filter-high").Click();
+
+        Assert.Contains("High task", cut.Markup);
+        Assert.DoesNotContain("Low task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task PriorityFilter_All_ShowsAllTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("High task",   TodoPriority.High);
+        await addHandler.HandleAsync("Medium task", TodoPriority.Medium);
+        await addHandler.HandleAsync("No priority");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Filter to High first, then reset
+        cut.Find(".priority-filter-high").Click();
+        cut.Find(".priority-filter-all").Click();
+
+        Assert.Contains("High task", cut.Markup);
+        Assert.Contains("Medium task", cut.Markup);
+        Assert.Contains("No priority", cut.Markup);
+    }
+
+    [Fact]
+    public async Task PriorityFilter_NoMatch_ShowsNoMatchMessage()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Low task", TodoPriority.Low);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".priority-filter-high").Click();
+
+        Assert.Contains("No todos match your filters", cut.Markup);
     }
 }

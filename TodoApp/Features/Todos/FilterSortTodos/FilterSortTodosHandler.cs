@@ -8,7 +8,8 @@ public class FilterSortTodosHandler
         IReadOnlyList<TodoSummary> todos,
         TodoStatusFilter statusFilter,
         TodoSortOrder sortOrder,
-        string searchQuery = "")
+        string searchQuery = "",
+        TodoPriority? priorityFilter = null)
     {
         var searched = string.IsNullOrWhiteSpace(searchQuery)
             ? todos.AsEnumerable()
@@ -21,7 +22,11 @@ public class FilterSortTodosHandler
             _                          => searched
         };
 
-        var pinFirst = filtered.OrderByDescending(t => t.IsPinned ? 1 : 0);
+        var priorityFiltered = priorityFilter.HasValue
+            ? filtered.Where(t => t.Priority == priorityFilter.Value)
+            : filtered;
+
+        var pinFirst = priorityFiltered.OrderByDescending(t => t.IsPinned ? 1 : 0);
 
         var sorted = sortOrder switch
         {

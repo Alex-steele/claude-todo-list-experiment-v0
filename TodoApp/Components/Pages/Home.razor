@@ -275,9 +275,28 @@ else
                     <InputFile id="csv-import-input" OnChange="HandleFileSelected" accept=".csv" style="display:none;" />
                 </div>
             </div>
+            <div class="d-flex align-center gap-1 flex-wrap mt-3 priority-filter-row">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1">Priority:</MudText>
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_priorityFilter is null ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Secondary"
+                         OnClick="@(() => _priorityFilter = null)"
+                         Class="priority-filter-all">All</MudChip>
+                @foreach (var p in new[] { TodoPriority.High, TodoPriority.Medium, TodoPriority.Low, TodoPriority.None })
+                {
+                    var pri = p;
+                    <MudChip T="string" Size="Size.Small"
+                             Variant="@(_priorityFilter == pri ? Variant.Filled : Variant.Outlined)"
+                             Color="@GetPriorityColor(pri)"
+                             OnClick="@(() => _priorityFilter = pri)"
+                             Class="@($"priority-filter-{pri.ToString().ToLower()}")">
+                        @(pri == TodoPriority.None ? "None" : pri.ToString())
+                    </MudChip>
+                }
+            </div>
             @if (AllTagNames.Count > 0)
             {
-                <div class="d-flex align-center gap-1 flex-wrap mt-3 tag-filter-row">
+                <div class="d-flex align-center gap-1 flex-wrap mt-2 tag-filter-row">
                     <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1">Tag:</MudText>
                     <MudChip T="string"
                              Size="Size.Small"
@@ -624,6 +643,7 @@ else
     private int? _addingTagForTodoId;
     private string _newTagInput = string.Empty;
     private string? _tagFilter;
+    private TodoPriority? _priorityFilter;
 
     private int? _editingNotesForTodoId;
     private string _notesValue = string.Empty;
@@ -642,7 +662,7 @@ else
         get
         {
             if (_todos is null) return [];
-            var filtered = FilterSortTodosHandler.Handle(_todos, _statusFilter, _sortOrder, _searchQuery);
+            var filtered = FilterSortTodosHandler.Handle(_todos, _statusFilter, _sortOrder, _searchQuery, _priorityFilter);
             if (_tagFilter is null) return filtered;
             return filtered
                 .Where(t => _todoTags.TryGetValue(t.Id, out var tags) && tags.Any(tag => tag.Name == _tagFilter))
