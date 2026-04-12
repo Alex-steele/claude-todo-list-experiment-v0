@@ -15,6 +15,11 @@ window.todoApp.focusElement = function (selector) {
     if (el) el.focus();
 };
 
+window.todoApp.clickElement = function (selector) {
+    const el = document.querySelector(selector);
+    if (el) el.click();
+};
+
 window.todoApp.downloadFile = function (filename, content, mimeType) {
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);

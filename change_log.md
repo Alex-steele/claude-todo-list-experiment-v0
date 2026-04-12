@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 20 — [2026-04-12] — Feature: Import from CSV
+
+**Description:** A file-upload icon button now sits next to the existing export button in the filter toolbar. Clicking it opens a native file picker filtered to `.csv`; selecting a file reads it in the browser, calls `ImportTodosHandler`, and shows a success snackbar ("Imported N todos") or a warning if no valid rows were found. The handler parses the same format the app exports (columns: `Id, Title, Priority, DueDate, IsCompleted, CreatedAt, Tags, Notes`): it skips the `Id` column and assigns new IDs, handles RFC 4180 quoted fields (titles with commas), parses pipe-separated tags and creates them in `TodoTags`, sets notes, and silently skips any malformed rows. A round-trip test exports from one database and re-imports into a clean one, verifying title, priority, and count are preserved.
+
+**Reason for change:** Day 14 added export; import completes the data portability story. Users can now back up their todos to a CSV, open it in Excel, and re-import — or migrate from another system by editing the CSV into the right format.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 235
+- Lines deleted: 0
+- Tests added: 13
+- Tests removed: 0
+- Test failures before green: 1 (missing `using TodoApp.Features.Todos` in test file)
+
 ## Day 19 — [2026-04-12] — Feature: Subtasks
 
 **Description:** Each todo now has a collapsible subtask list. A "Subtasks" toggle button at the bottom of every todo item expands an inline list of subtasks; the button also shows a `done/total` progress count when subtasks exist (e.g. "1/2 subtasks"). Expanded subtasks can be individually checked off (toggle), deleted with the × button, or added via an inline "Add subtask" text field (Enter to save, Escape to cancel). A new `Subtasks` table stores subtask data; four new handler slices cover add, complete, delete, and get operations.

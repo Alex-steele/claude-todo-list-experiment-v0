@@ -10,6 +10,8 @@
 @using TodoApp.Features.Todos.GetTodosStats
 @using TodoApp.Features.Todos.ClearCompleted
 @using TodoApp.Features.Todos.Export
+@using TodoApp.Features.Todos.Import
+@using Microsoft.AspNetCore.Components.Forms
 @using TodoApp.Features.Todos.PinTodo
 @using TodoApp.Features.Todos.UpdateNotes
 @using TodoApp.Features.Todos.Subtasks
@@ -25,6 +27,7 @@
 @inject ClearCompletedHandler ClearCompletedHandler
 @inject UpdateNotesHandler UpdateNotesHandler
 @inject CsvExportHandler CsvExportHandler
+@inject ImportTodosHandler ImportTodosHandler
 @inject PinTodoHandler PinTodoHandler
 @inject CompleteSubtaskHandler CompleteSubtaskHandler
 @inject DeleteSubtaskHandler DeleteSubtaskHandler
@@ -260,6 +263,16 @@ else
                             title="Export to CSV"
                             Class="export-csv-btn" />
                     </MudTooltip>
+                    <MudTooltip Text="Import from CSV">
+                        <MudIconButton
+                            Icon="@Icons.Material.Filled.FileUpload"
+                            Size="Size.Small"
+                            Color="Color.Default"
+                            OnClick="HandleImportClick"
+                            title="Import from CSV"
+                            Class="import-csv-btn" />
+                    </MudTooltip>
+                    <InputFile id="csv-import-input" OnChange="HandleFileSelected" accept=".csv" style="display:none;" />
                 </div>
             </div>
             @if (AllTagNames.Count > 0)
@@ -923,6 +936,28 @@ else
     {
         await PinTodoHandler.HandleAsync(id);
         await LoadTodosAsync();
+    }
+
+    private async Task HandleImportClick()
+    {
+        await JS.InvokeVoidAsync("todoApp.clickElement", "#csv-import-input");
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+
+        using var reader = new StreamReader(file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024));
+        var content = await reader.ReadToEndAsync();
+
+        var count = await ImportTodosHandler.HandleAsync(content);
+        await LoadTodosAsync();
+
+        if (count > 0)
+            Snackbar.Add($"Imported {count} todo{(count == 1 ? "" : "s")}", Severity.Success);
+        else
+            Snackbar.Add("No todos found to import.", Severity.Warning);
     }
 
     private async Task HandleExportCsv()

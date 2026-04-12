@@ -16,6 +16,7 @@ using TodoApp.Features.Todos.Export;
 using TodoApp.Features.Todos.UpdateNotes;
 using TodoApp.Features.Todos.PinTodo;
 using TodoApp.Features.Todos.GetTodosStats;
+using TodoApp.Features.Todos.Import;
 using TodoApp.Features.Todos.Subtasks;
 using TodoApp.Features.Todos.Tags;
 using TodoApp.Features.Todos.UndoRedo;
@@ -48,6 +49,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<AddTagHandler>();
         ctx.Services.AddScoped<RemoveTagHandler>();
         ctx.Services.AddScoped<GetTodoTagsHandler>();
+        ctx.Services.AddScoped<ImportTodosHandler>();
         ctx.Services.AddScoped<AddSubtaskHandler>();
         ctx.Services.AddScoped<CompleteSubtaskHandler>();
         ctx.Services.AddScoped<DeleteSubtaskHandler>();
@@ -1143,6 +1145,21 @@ public class HomeTests : BunitContext
         // Only the active health todo should remain
         Assert.Contains("Walk the dog", cut.Markup);
         Assert.DoesNotContain("Go for a run", cut.Markup);
+    }
+
+    // Import tests
+
+    [Fact]
+    public async Task ImportButton_IsRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("import-csv-btn", cut.Markup);
     }
 
     // Due date UX tests
