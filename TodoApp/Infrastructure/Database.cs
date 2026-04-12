@@ -77,5 +77,15 @@ public class Database(string connectionString)
                 Name    TEXT    NOT NULL
             )
             """);
+
+        await conn.ExecuteAsync("""
+            CREATE TABLE IF NOT EXISTS Subtasks (
+                Id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                TodoId      INTEGER NOT NULL,
+                Title       TEXT    NOT NULL,
+                IsCompleted INTEGER NOT NULL DEFAULT 0,
+                CreatedAt   TEXT    NOT NULL
+            )
+            """);
     }
 }

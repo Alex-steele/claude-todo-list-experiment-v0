@@ -16,6 +16,7 @@ using TodoApp.Features.Todos.Export;
 using TodoApp.Features.Todos.UpdateNotes;
 using TodoApp.Features.Todos.PinTodo;
 using TodoApp.Features.Todos.GetTodosStats;
+using TodoApp.Features.Todos.Subtasks;
 using TodoApp.Features.Todos.Tags;
 using TodoApp.Features.Todos.UndoRedo;
 using TodoApp.Tests.Infrastructure;
@@ -47,6 +48,10 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<AddTagHandler>();
         ctx.Services.AddScoped<RemoveTagHandler>();
         ctx.Services.AddScoped<GetTodoTagsHandler>();
+        ctx.Services.AddScoped<AddSubtaskHandler>();
+        ctx.Services.AddScoped<CompleteSubtaskHandler>();
+        ctx.Services.AddScoped<DeleteSubtaskHandler>();
+        ctx.Services.AddScoped<GetSubtasksHandler>();
         return ctx;
     }
 
@@ -1216,5 +1221,92 @@ public class HomeTests : BunitContext
         var cut = RenderHome(ctx);
 
         Assert.Contains(farFuture.ToString("MMM d, yyyy"), cut.Markup);
+    }
+
+    // Subtask tests
+
+    [Fact]
+    public async Task SubtasksToggleButton_IsRendered_ForEachTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Main task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("subtasks-toggle-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingSubtasksToggle_ExpandsSubtasksSection()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Main task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".subtasks-toggle-btn").Click();
+
+        Assert.Contains("add-subtask-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ExistingSubtasks_AreShown_WhenExpanded()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addSubtask = new AddSubtaskHandler(db);
+
+        var todoId = await addTodo.HandleAsync("Main task");
+        await addSubtask.HandleAsync(todoId, "Step one");
+        await addSubtask.HandleAsync(todoId, "Step two");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".subtasks-toggle-btn").Click();
+
+        Assert.Contains("Step one", cut.Markup);
+        Assert.Contains("Step two", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SubtasksToggleButton_ShowsProgressCount_WhenSubtasksExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addSubtask = new AddSubtaskHandler(db);
+        var completeSubtask = new CompleteSubtaskHandler(db);
+
+        var todoId = await addTodo.HandleAsync("Main task");
+        await addSubtask.HandleAsync(todoId, "Step one");
+        var id2 = await addSubtask.HandleAsync(todoId, "Step two");
+        await completeSubtask.HandleAsync(id2);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Button shows "1/2 subtasks"
+        Assert.Contains("1/2", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingSubtasksToggleTwice_CollapsesSection()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Main task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".subtasks-toggle-btn").Click();
+        Assert.Contains("add-subtask-btn", cut.Markup);
+
+        cut.Find(".subtasks-toggle-btn").Click();
+        Assert.DoesNotContain("add-subtask-btn", cut.Markup);
     }
 }

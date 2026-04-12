@@ -12,6 +12,7 @@ using TodoApp.Features.Todos.ClearCompleted;
 using TodoApp.Features.Todos.Export;
 using TodoApp.Features.Todos.UpdateNotes;
 using TodoApp.Features.Todos.PinTodo;
+using TodoApp.Features.Todos.Subtasks;
 using TodoApp.Features.Todos.Tags;
 using TodoApp.Features.Todos.UndoRedo;
 using TodoApp.Infrastructure;
@@ -49,6 +50,10 @@ builder.Services.AddScoped<PinTodoHandler>();
 builder.Services.AddScoped<AddTagHandler>();
 builder.Services.AddScoped<RemoveTagHandler>();
 builder.Services.AddScoped<GetTodoTagsHandler>();
+builder.Services.AddScoped<AddSubtaskHandler>();
+builder.Services.AddScoped<CompleteSubtaskHandler>();
+builder.Services.AddScoped<DeleteSubtaskHandler>();
+builder.Services.AddScoped<GetSubtasksHandler>();
 
 var app = builder.Build();
 

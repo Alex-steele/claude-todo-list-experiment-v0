@@ -12,8 +12,10 @@
 @using TodoApp.Features.Todos.Export
 @using TodoApp.Features.Todos.PinTodo
 @using TodoApp.Features.Todos.UpdateNotes
+@using TodoApp.Features.Todos.Subtasks
 @using TodoApp.Features.Todos.Tags
 @using TodoApp.Features.Todos.UndoRedo
+@inject AddSubtaskHandler AddSubtaskHandler
 @inject AddTagHandler AddTagHandler
 @inject AddTodoHandler AddTodoHandler
 @inject BulkOperationsHandler BulkOperationsHandler
@@ -24,6 +26,9 @@
 @inject UpdateNotesHandler UpdateNotesHandler
 @inject CsvExportHandler CsvExportHandler
 @inject PinTodoHandler PinTodoHandler
+@inject CompleteSubtaskHandler CompleteSubtaskHandler
+@inject DeleteSubtaskHandler DeleteSubtaskHandler
+@inject GetSubtasksHandler GetSubtasksHandler
 @inject GetTodoTagsHandler GetTodoTagsHandler
 @inject GetTodosHandler GetTodosHandler
 @inject FilterSortTodosHandler FilterSortTodosHandler
@@ -476,6 +481,80 @@ else
                                             Class="add-tag-btn" />
                                     }
                                 </div>
+                                @{
+                                    var todoSubtasks = _subtasks.GetValueOrDefault(todo.Id, []);
+                                    var completedSubtasks = todoSubtasks.Count(s => s.IsCompleted);
+                                    var isExpanded = _expandedSubtasksForTodoId == todo.Id;
+                                }
+                                <div class="mt-1 subtasks-section">
+                                    <MudButton
+                                        Size="Size.Small"
+                                        Variant="Variant.Text"
+                                        Color="@(todoSubtasks.Count > 0 ? Color.Primary : Color.Secondary)"
+                                        StartIcon="@(isExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ChevronRight)"
+                                        OnClick="@(() => ToggleSubtasksExpanded(todo.Id))"
+                                        Class="subtasks-toggle-btn">
+                                        @if (todoSubtasks.Count > 0)
+                                        {
+                                            @($"{completedSubtasks}/{todoSubtasks.Count} subtask{(todoSubtasks.Count == 1 ? "" : "s")}")
+                                        }
+                                        else
+                                        {
+                                            @("Subtasks")
+                                        }
+                                    </MudButton>
+                                    @if (isExpanded)
+                                    {
+                                        <div class="ps-3 subtasks-list">
+                                            @foreach (var subtask in todoSubtasks)
+                                            {
+                                                var stId = subtask.Id;
+                                                <div class="d-flex align-center gap-1">
+                                                    <MudCheckBox
+                                                        Value="@subtask.IsCompleted"
+                                                        ValueChanged="@(async (bool _) => await HandleToggleSubtask(stId))"
+                                                        Color="Color.Primary"
+                                                        Size="Size.Small"
+                                                        Class="subtask-checkbox" />
+                                                    <MudText Typo="Typo.body2" Class="flex-grow-1"
+                                                        Style="@(subtask.IsCompleted ? "text-decoration: line-through; opacity: 0.5;" : "")">
+                                                        @subtask.Title
+                                                    </MudText>
+                                                    <MudIconButton
+                                                        Icon="@Icons.Material.Filled.Close"
+                                                        Size="Size.Small"
+                                                        Color="Color.Default"
+                                                        OnClick="@(async () => await HandleDeleteSubtask(stId))"
+                                                        Class="subtask-delete-btn" />
+                                                </div>
+                                            }
+                                            @if (_addingSubtaskForTodoId == todo.Id)
+                                            {
+                                                var currentTodoId = todo.Id;
+                                                <MudTextField
+                                                    @bind-Value="_newSubtaskTitle"
+                                                    Variant="Variant.Outlined"
+                                                    Margin="Margin.Dense"
+                                                    Placeholder="New subtask..."
+                                                    OnKeyUp="@(async (KeyboardEventArgs e) => await HandleSubtaskInputKeyUp(e, currentTodoId))"
+                                                    Class="subtask-input" />
+                                            }
+                                            else
+                                            {
+                                                var currentTodoId = todo.Id;
+                                                <MudButton
+                                                    Size="Size.Small"
+                                                    Variant="Variant.Text"
+                                                    Color="Color.Secondary"
+                                                    StartIcon="@Icons.Material.Filled.Add"
+                                                    OnClick="@(() => HandleStartAddSubtask(currentTodoId))"
+                                                    Class="add-subtask-btn">
+                                                    Add subtask
+                                                </MudButton>
+                                            }
+                                        </div>
+                                    }
+                                </div>
                             </div>
                             <MudIconButton
                                 Icon="@(string.IsNullOrEmpty(todo.Notes) ? Icons.Material.Outlined.StickyNote2 : Icons.Material.Filled.StickyNote2)"
@@ -535,6 +614,11 @@ else
 
     private int? _editingNotesForTodoId;
     private string _notesValue = string.Empty;
+
+    private Dictionary<int, List<Subtask>> _subtasks = new();
+    private int? _expandedSubtasksForTodoId;
+    private int? _addingSubtaskForTodoId;
+    private string _newSubtaskTitle = string.Empty;
 
     private IReadOnlyList<string> AllTagNames =>
         _todoTags.Values.SelectMany(tags => tags.Select(t => t.Name))
@@ -603,9 +687,16 @@ else
     {
         _todos = await GetTodosHandler.HandleAsync();
         if (_todos.Count > 0)
-            _todoTags = await GetTodoTagsHandler.HandleAsync(_todos.Select(t => t.Id));
+        {
+            var ids = _todos.Select(t => t.Id).ToList();
+            _todoTags = await GetTodoTagsHandler.HandleAsync(ids);
+            _subtasks = await GetSubtasksHandler.HandleAsync(ids);
+        }
         else
+        {
             _todoTags = [];
+            _subtasks = [];
+        }
     }
 
     private async Task HandleAddTodo()
@@ -840,6 +931,66 @@ else
         var csv = CsvExportHandler.Generate(_todos, _todoTags);
         var filename = $"todos-{DateTime.Today:yyyy-MM-dd}.csv";
         await JS.InvokeVoidAsync("todoApp.downloadFile", filename, csv, "text/csv");
+    }
+
+    private void ToggleSubtasksExpanded(int todoId)
+    {
+        if (_expandedSubtasksForTodoId == todoId)
+        {
+            _expandedSubtasksForTodoId = null;
+            _addingSubtaskForTodoId = null;
+        }
+        else
+        {
+            _expandedSubtasksForTodoId = todoId;
+        }
+    }
+
+    private void HandleStartAddSubtask(int todoId)
+    {
+        _addingSubtaskForTodoId = todoId;
+        _newSubtaskTitle = string.Empty;
+    }
+
+    private async Task HandleSubtaskInputKeyUp(KeyboardEventArgs e, int todoId)
+    {
+        if (e.Key == "Enter")
+            await HandleSaveSubtask(todoId);
+        else if (e.Key == "Escape")
+            _addingSubtaskForTodoId = null;
+    }
+
+    private async Task HandleSaveSubtask(int todoId)
+    {
+        if (string.IsNullOrWhiteSpace(_newSubtaskTitle))
+        {
+            _addingSubtaskForTodoId = null;
+            return;
+        }
+
+        try
+        {
+            await AddSubtaskHandler.HandleAsync(todoId, _newSubtaskTitle);
+            _addingSubtaskForTodoId = null;
+            _newSubtaskTitle = string.Empty;
+            await LoadTodosAsync();
+        }
+        catch (ArgumentException)
+        {
+            _addingSubtaskForTodoId = null;
+        }
+    }
+
+    private async Task HandleToggleSubtask(int subtaskId)
+    {
+        await CompleteSubtaskHandler.HandleAsync(subtaskId);
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleDeleteSubtask(int subtaskId)
+    {
+        await DeleteSubtaskHandler.HandleAsync(subtaskId);
+        await LoadTodosAsync();
     }
 
     private void HandleStartAddTag(int todoId)
