@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 23 — [2026-04-12] — Feature: Natural Language Quick-Add
+
+**Description:** The title input now understands natural language date and priority hints. Type "call dentist tomorrow !high" and the app detects the hints in real time: a small preview strip appears below the input showing "Quick-add: call dentist · Due tomorrow · High priority". When the todo is added, the hints are stripped from the title and the parsed due date and priority are applied automatically — no need to touch the dropdowns. Date keywords supported: `today`, `tomorrow`, `next week`, `in N days`. Priority shortcuts: `!high` / `!h`, `!medium` / `!med` / `!m`, `!low` / `!l`. Manual selections in the Priority dropdown or date picker always take precedence over hints.
+
+**Reason for change:** The form already has separate fields for title, priority, and due date, but filling all three is slow for power users. Natural language parsing makes the common case (add a task with a time and urgency in one typing motion) much faster — it's inspired by tools like Things and Todoist's quick-entry.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 152
+- Lines deleted: 2
+- Tests added: 24
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 22 — [2026-04-12] — Feature: Recurring Todos
 
 **Description:** Todos can now repeat on a schedule. When adding a todo, a "Repeats" dropdown lets you choose Daily, Weekly, Monthly, or "Does not repeat". Recurring todos display a badge (Daily/Weekly/Monthly) next to the title. When a recurring todo is completed, a new active instance is automatically created with the due date advanced by the interval (overdue todos advance from today). A snackbar notification confirms the next instance was scheduled.
