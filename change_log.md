@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 22 — [2026-04-12] — Feature: Recurring Todos
+
+**Description:** Todos can now repeat on a schedule. When adding a todo, a "Repeats" dropdown lets you choose Daily, Weekly, Monthly, or "Does not repeat". Recurring todos display a badge (Daily/Weekly/Monthly) next to the title. When a recurring todo is completed, a new active instance is automatically created with the due date advanced by the interval (overdue todos advance from today). A snackbar notification confirms the next instance was scheduled.
+
+**Reason for change:** Recurring tasks are a core productivity feature — things like daily standups, weekly reviews, or monthly bills naturally repeat, and having to manually re-create them breaks the flow. This brings the app closer to real-world todo app utility.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 147
+- Lines deleted: 12
+- Tests added: 15
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 21 — [2026-04-12] — Feature: Priority Filter
 
 **Description:** A "Priority:" chip row now appears in the filter toolbar between the sort controls and the tag filter. Clicking High, Medium, Low, or None restricts the list to todos of that priority; clicking All resets it. The priority filter compounds with the existing status filter, search, and tag filter. Internally, `FilterSortTodosHandler.Handle()` gained an optional `TodoPriority? priorityFilter = null` parameter — no callers needed updating since it defaults to null. Color coding matches the priority chips on todo items (red for High, orange for Medium, blue for Low, default for None).

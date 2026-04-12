@@ -16,6 +16,7 @@
 @using TodoApp.Features.Todos.UpdateNotes
 @using TodoApp.Features.Todos.Subtasks
 @using TodoApp.Features.Todos.Tags
+@using TodoApp.Features.Todos.RecurringTodos
 @using TodoApp.Features.Todos.UndoRedo
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -37,6 +38,7 @@
 @inject FilterSortTodosHandler FilterSortTodosHandler
 @inject GetTodosStatsHandler GetTodosStatsHandler
 @inject RemoveTagHandler RemoveTagHandler
+@inject CreateRecurringInstanceHandler CreateRecurringInstanceHandler
 @inject RestoreTodosHandler RestoreTodosHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
@@ -127,6 +129,18 @@
                 Disabled="_isSubmitting"
                 Class="due-date-next-week-btn">Next week</MudButton>
         </div>
+        <MudSelect
+            T="RecurrenceRule"
+            @bind-Value="_newRecurrence"
+            Label="Repeats"
+            Variant="Variant.Outlined"
+            Class="mb-3 recurrence-select"
+            Disabled="_isSubmitting">
+            <MudSelectItem Value="@RecurrenceRule.None">Does not repeat</MudSelectItem>
+            <MudSelectItem Value="@RecurrenceRule.Daily">Daily</MudSelectItem>
+            <MudSelectItem Value="@RecurrenceRule.Weekly">Weekly</MudSelectItem>
+            <MudSelectItem Value="@RecurrenceRule.Monthly">Monthly</MudSelectItem>
+        </MudSelect>
         <MudButton
             Variant="Variant.Filled"
             Color="Color.Primary"
@@ -406,6 +420,12 @@ else
                                                 @todo.Priority.ToString()
                                             </MudChip>
                                         }
+                                        @if (todo.Recurrence != RecurrenceRule.None)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Tertiary" Variant="Variant.Outlined" Class="recurrence-badge">
+                                                @GetRecurrenceLabel(todo.Recurrence)
+                                            </MudChip>
+                                        }
                                         <MudIconButton
                                             Icon="@Icons.Material.Filled.Edit"
                                             Color="Color.Default"
@@ -621,6 +641,7 @@ else
     private string _newTitle = string.Empty;
     private TodoPriority _newPriority = TodoPriority.None;
     private DateTime? _newDueDate;
+    private RecurrenceRule _newRecurrence = RecurrenceRule.None;
     private IReadOnlyList<TodoSummary>? _todos;
     private bool _isSubmitting;
     private string? _errorMessage;
@@ -745,10 +766,11 @@ else
 
         try
         {
-            await AddTodoHandler.HandleAsync(_newTitle, _newPriority, _newDueDate);
+            await AddTodoHandler.HandleAsync(_newTitle, _newPriority, _newDueDate, _newRecurrence);
             _newTitle = string.Empty;
             _newPriority = TodoPriority.None;
             _newDueDate = null;
+            _newRecurrence = RecurrenceRule.None;
             await LoadTodosAsync();
         }
         catch (ArgumentException ex)
@@ -769,7 +791,16 @@ else
 
     private async Task HandleToggleComplete(int id)
     {
+        var todo = _todos?.FirstOrDefault(t => t.Id == id);
         await CompleteTodoHandler.HandleAsync(id);
+
+        // If completing a recurring todo, spawn the next instance
+        if (todo is { Recurrence: not RecurrenceRule.None, IsCompleted: false })
+        {
+            await CreateRecurringInstanceHandler.HandleAsync(todo);
+            Snackbar.Add($"Next \"{todo.Title}\" scheduled ({todo.Recurrence.ToString().ToLower()})", Severity.Info);
+        }
+
         await LoadTodosAsync();
     }
 
@@ -902,6 +933,14 @@ else
             });
         }
     }
+
+    private static string GetRecurrenceLabel(RecurrenceRule rule) => rule switch
+    {
+        RecurrenceRule.Daily   => "Daily",
+        RecurrenceRule.Weekly  => "Weekly",
+        RecurrenceRule.Monthly => "Monthly",
+        _                      => string.Empty
+    };
 
     private static Color GetPriorityColor(TodoPriority priority) => priority switch
     {
