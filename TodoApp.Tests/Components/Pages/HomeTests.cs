@@ -20,6 +20,7 @@ using TodoApp.Features.Todos.GetTodosStats;
 using TodoApp.Features.Todos.Import;
 using TodoApp.Features.Todos.Subtasks;
 using TodoApp.Features.Todos.Tags;
+using TodoApp.Features.Todos.RecurringTodos;
 using TodoApp.Features.Todos.UndoRedo;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
@@ -55,6 +56,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<CompleteSubtaskHandler>();
         ctx.Services.AddScoped<DeleteSubtaskHandler>();
         ctx.Services.AddScoped<GetSubtasksHandler>();
+        ctx.Services.AddScoped<CreateRecurringInstanceHandler>();
         return ctx;
     }
 
@@ -1394,5 +1396,70 @@ public class HomeTests : BunitContext
         cut.Find(".priority-filter-high").Click();
 
         Assert.Contains("No todos match your filters", cut.Markup);
+    }
+
+    // Recurring todos tests
+
+    [Fact]
+    public async Task RecurrenceSelect_IsRenderedInAddForm()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("recurrence-select", cut.Markup);
+    }
+
+    [Fact]
+    public async Task AddTodo_WithRecurrence_ShowsRecurrenceBadge()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Daily standup", recurrence: RecurrenceRule.Daily);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("recurrence-badge", cut.Markup);
+        Assert.Contains("Daily", cut.Markup);
+    }
+
+    [Fact]
+    public async Task AddTodo_NoRecurrence_NoRecurrenceBadge()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("One-time task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("recurrence-badge", cut.Markup);
+    }
+
+    [Fact]
+    public async Task CompleteRecurringTodo_CreatesNextInstance()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Weekly review", recurrence: RecurrenceRule.Weekly);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // There should be exactly 1 todo initially
+        Assert.Single(cut.FindAll(".mud-list-item"));
+
+        // Trigger completion via the checkbox input element
+        var checkboxInput = cut.Find(".mud-checkbox input");
+        checkboxInput.Change(true);
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            // After completing, a new instance should appear (total 2 — one completed, one active)
+            var todos = cut.FindAll(".mud-list-item");
+            Assert.Equal(2, todos.Count);
+        });
     }
 }
