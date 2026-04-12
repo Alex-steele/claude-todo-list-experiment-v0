@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 19 — [2026-04-12] — Feature: Subtasks
+
+**Description:** Each todo now has a collapsible subtask list. A "Subtasks" toggle button at the bottom of every todo item expands an inline list of subtasks; the button also shows a `done/total` progress count when subtasks exist (e.g. "1/2 subtasks"). Expanded subtasks can be individually checked off (toggle), deleted with the × button, or added via an inline "Add subtask" text field (Enter to save, Escape to cancel). A new `Subtasks` table stores subtask data; four new handler slices cover add, complete, delete, and get operations.
+
+**Reason for change:** Complex tasks rarely fit in a single title. Subtasks are the most impactful remaining feature for making the app genuinely useful for real work — they let users break a todo into smaller, trackable steps without needing a separate todo per step. The collapsible design keeps the list clean when subtasks aren't needed.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 370
+- Lines deleted: 8
+- Tests added: 21
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 18 — [2026-04-11] — Feature: Due Date UX Improvements
 
 **Description:** Two complementary improvements to how due dates work. First, three shortcut buttons ("Today", "Tomorrow", "Next week") appear below the date picker in the Add Todo form; clicking a button sets the due date instantly without opening the calendar — clicking it again toggles the date back off. Second, the due date label on list items now uses relative language instead of raw dates for nearby/overdue items: "Due today", "Due tomorrow", "Due in 5 days", "Overdue by 1 day", "Overdue by 3 days" etc. Dates more than 7 days away still display in absolute `MMM d, yyyy` format. Two existing tests that asserted on the old absolute-date text were updated to match the new relative phrasing.
