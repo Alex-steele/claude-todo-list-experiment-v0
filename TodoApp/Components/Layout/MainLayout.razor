@@ -1,4 +1,6 @@
 @inherits LayoutComponentBase
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <MudThemeProvider IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
@@ -25,8 +27,20 @@
 @code {
     private bool _isDarkMode;
 
-    private void ToggleDarkMode()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _isDarkMode = await JS.InvokeAsync<bool>("todoApp.getDarkModePreference");
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleDarkMode()
     {
         _isDarkMode = !_isDarkMode;
+        await JS.InvokeVoidAsync("todoApp.saveDarkModePreference", _isDarkMode);
     }
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
