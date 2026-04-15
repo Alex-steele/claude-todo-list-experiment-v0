@@ -62,6 +62,7 @@ builder.Services.AddScoped<CreateRecurringInstanceHandler>();
 builder.Services.AddScoped<GetListsHandler>();
 builder.Services.AddScoped<CreateListHandler>();
 builder.Services.AddScoped<DeleteListHandler>();
+builder.Services.AddScoped<RenameListHandler>();
 
 var app = builder.Build();
 
