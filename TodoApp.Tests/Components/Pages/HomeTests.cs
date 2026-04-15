@@ -62,6 +62,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<GetListsHandler>();
         ctx.Services.AddScoped<CreateListHandler>();
         ctx.Services.AddScoped<DeleteListHandler>();
+        ctx.Services.AddScoped<RenameListHandler>();
         return ctx;
     }
 
@@ -1603,5 +1604,67 @@ public class HomeTests : BunitContext
             Assert.NotNull(workTodo);
             Assert.Equal(workId, workTodo.ListId);
         });
+    }
+
+    // Rename list tests
+
+    [Fact]
+    public async Task RenameList_ShowsRenameInputOnDoubleClick()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var createListHandler = new CreateListHandler(db);
+        await createListHandler.HandleAsync("Work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Double-click the Work list chip
+        cut.FindAll(".list-chip")[1].DoubleClick();
+
+        Assert.Contains("rename-list-input", cut.Markup);
+    }
+
+    [Fact]
+    public async Task RenameList_SaveOnEnter_UpdatesName()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var createListHandler = new CreateListHandler(db);
+        await createListHandler.HandleAsync("Work");
+        var getHandler = new GetListsHandler(db);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Double-click the Work chip to start rename
+        cut.FindAll(".list-chip")[1].DoubleClick();
+
+        // Type new name and press Enter
+        cut.Find(".rename-list-input input").Change("Projects");
+        cut.Find(".rename-list-input input").KeyUp(Key.Enter);
+
+        await cut.WaitForAssertionAsync(async () =>
+        {
+            var lists = await getHandler.HandleAsync();
+            Assert.Contains(lists, l => l.Name == "Projects");
+        });
+    }
+
+    [Fact]
+    public async Task RenameList_EscapeKey_CancelsRename()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var createListHandler = new CreateListHandler(db);
+        await createListHandler.HandleAsync("Work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.FindAll(".list-chip")[1].DoubleClick();
+        Assert.Contains("rename-list-input", cut.Markup);
+
+        cut.Find(".rename-list-input input").KeyUp(Key.Escape);
+
+        Assert.DoesNotContain("rename-list-input", cut.Markup);
+        Assert.Contains("Work", cut.Markup);
     }
 }

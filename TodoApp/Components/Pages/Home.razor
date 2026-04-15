@@ -44,6 +44,7 @@
 @inject CreateRecurringInstanceHandler CreateRecurringInstanceHandler
 @inject DeleteListHandler DeleteListHandler
 @inject GetListsHandler GetListsHandler
+@inject RenameListHandler RenameListHandler
 @inject RestoreTodosHandler RestoreTodosHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
@@ -59,14 +60,28 @@
                 @foreach (var list in _lists)
                 {
                     var listId = list.Id;
-                    <MudChip T="string"
-                             Variant="@(_activeListId == listId ? Variant.Filled : Variant.Outlined)"
-                             Color="Color.Primary"
-                             OnClick="@(() => HandleSwitchList(listId))"
-                             OnClose="@(list.Id != DeleteListHandler.DefaultListId ? EventCallback.Factory.Create<MudChip<string>>(this, async (MudChip<string> _) => await HandleDeleteList(listId)) : new EventCallback<MudChip<string>>())"
-                             Class="list-chip">
-                        @list.Name
-                    </MudChip>
+                    @if (_renamingListId == listId)
+                    {
+                        <MudTextField
+                            @bind-Value="_renameListValue"
+                            Variant="Variant.Outlined"
+                            Margin="Margin.Dense"
+                            Style="width: 130px; font-size: 0.875rem;"
+                            OnKeyUp="@(async (KeyboardEventArgs e) => await HandleRenameListKeyUp(e, listId))"
+                            Class="rename-list-input" />
+                    }
+                    else
+                    {
+                        <MudChip T="string"
+                                 Variant="@(_activeListId == listId ? Variant.Filled : Variant.Outlined)"
+                                 Color="Color.Primary"
+                                 OnClick="@(() => HandleSwitchList(listId))"
+                                 OnClose="@(list.Id != DeleteListHandler.DefaultListId ? EventCallback.Factory.Create<MudChip<string>>(this, async (MudChip<string> _) => await HandleDeleteList(listId)) : new EventCallback<MudChip<string>>())"
+                                 Class="list-chip"
+                                 @ondblclick="@(() => HandleStartRenameList(listId, list.Name))">
+                            @list.Name
+                        </MudChip>
+                    }
                 }
                 @if (_creatingList)
                 {
@@ -720,6 +735,8 @@ else
     private int _activeListId = 1;
     private bool _creatingList;
     private string _newListName = string.Empty;
+    private int? _renamingListId;
+    private string _renameListValue = string.Empty;
     private IReadOnlyList<TodoSummary>? _todos;
     private bool _isSubmitting;
     private string? _errorMessage;
@@ -1250,6 +1267,40 @@ else
         catch (ArgumentException)
         {
             _creatingList = false;
+        }
+    }
+
+    private void HandleStartRenameList(int listId, string currentName)
+    {
+        _renamingListId = listId;
+        _renameListValue = currentName;
+    }
+
+    private async Task HandleRenameListKeyUp(KeyboardEventArgs e, int listId)
+    {
+        if (e.Key == "Enter")
+            await HandleSaveRenameList(listId);
+        else if (e.Key == "Escape")
+            _renamingListId = null;
+    }
+
+    private async Task HandleSaveRenameList(int listId)
+    {
+        if (string.IsNullOrWhiteSpace(_renameListValue))
+        {
+            _renamingListId = null;
+            return;
+        }
+
+        try
+        {
+            await RenameListHandler.HandleAsync(listId, _renameListValue);
+            _renamingListId = null;
+            await LoadTodosAsync();
+        }
+        catch (ArgumentException)
+        {
+            _renamingListId = null;
         }
     }
 

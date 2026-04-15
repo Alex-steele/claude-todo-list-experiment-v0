@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 26 — [2026-04-15] — Feature: Rename List
+
+**Description:** List names are now editable. Double-clicking any list chip puts it into an inline edit mode — the chip is replaced with a compact text field pre-filled with the current name. Pressing Enter saves the new name; pressing Escape cancels without changes. All lists can be renamed, including the default "Personal" list. An empty name is rejected and the rename is silently cancelled. The feature is surfaced through a new `RenameListHandler` vertical slice.
+
+**Reason for change:** Day 25 let users create and delete lists but not rename them — an obvious gap. Users who create a list with a typo or want to repurpose it had no recourse. Inline rename is the lowest-friction UX pattern for this.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 194
+- Lines deleted: 8
+- Tests added: 8
+- Tests removed: 0
+- Test failures before green: 3
+
 ## Day 25 — [2026-04-15] — Feature: Multiple Lists
 
 **Description:** Users can now organise their todos into multiple named lists. A list selector row appears at the top of the page showing all lists as chips — clicking a chip switches to that list, showing only its todos. A "+" button lets you create a new list by typing a name and pressing Enter (Escape cancels). Non-default lists show a close button on their chip to delete them; deleting a list moves its todos to the default "Personal" list rather than discarding them. New todos are always added to the currently active list. The default "Personal" list is seeded on first run and cannot be deleted.

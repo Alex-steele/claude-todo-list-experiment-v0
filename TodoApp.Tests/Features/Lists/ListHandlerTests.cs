@@ -127,4 +127,71 @@ public class ListHandlerTests
         var todos = await getHandler.HandleAsync();
         Assert.Equal(1, todos[0].ListId);
     }
+
+    // RenameListHandler tests
+
+    [Fact]
+    public async Task RenameList_UpdatesName()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var createHandler = new CreateListHandler(db);
+        var renameHandler = new RenameListHandler(db);
+        var getHandler = new GetListsHandler(db);
+
+        var id = await createHandler.HandleAsync("Work");
+        await renameHandler.HandleAsync(id, "Projects");
+
+        var lists = await getHandler.HandleAsync();
+        Assert.Contains(lists, l => l.Name == "Projects");
+        Assert.DoesNotContain(lists, l => l.Name == "Work");
+    }
+
+    [Fact]
+    public async Task RenameList_TrimsWhitespace()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var createHandler = new CreateListHandler(db);
+        var renameHandler = new RenameListHandler(db);
+        var getHandler = new GetListsHandler(db);
+
+        var id = await createHandler.HandleAsync("Work");
+        await renameHandler.HandleAsync(id, "  Projects  ");
+
+        var lists = await getHandler.HandleAsync();
+        Assert.Contains(lists, l => l.Name == "Projects");
+    }
+
+    [Fact]
+    public async Task RenameList_EmptyName_Throws()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var createHandler = new CreateListHandler(db);
+        var renameHandler = new RenameListHandler(db);
+
+        var id = await createHandler.HandleAsync("Work");
+
+        await Assert.ThrowsAsync<ArgumentException>(() => renameHandler.HandleAsync(id, "  "));
+    }
+
+    [Fact]
+    public async Task RenameList_DefaultList_CanBeRenamed()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var renameHandler = new RenameListHandler(db);
+        var getHandler = new GetListsHandler(db);
+
+        await renameHandler.HandleAsync(1, "Home");
+
+        var lists = await getHandler.HandleAsync();
+        Assert.Contains(lists, l => l.Id == 1 && l.Name == "Home");
+    }
+
+    [Fact]
+    public async Task RenameList_NotFound_Throws()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var renameHandler = new RenameListHandler(db);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => renameHandler.HandleAsync(999, "Ghost"));
+    }
 }
