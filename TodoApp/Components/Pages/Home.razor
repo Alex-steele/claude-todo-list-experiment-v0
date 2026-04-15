@@ -16,6 +16,7 @@
 @using TodoApp.Features.Todos.UpdateNotes
 @using TodoApp.Features.Todos.Subtasks
 @using TodoApp.Features.Todos.Tags
+@using TodoApp.Features.Lists
 @using TodoApp.Features.Todos.QuickAdd
 @using TodoApp.Features.Todos.RecurringTodos
 @using TodoApp.Features.Todos.UndoRedo
@@ -39,13 +40,59 @@
 @inject FilterSortTodosHandler FilterSortTodosHandler
 @inject GetTodosStatsHandler GetTodosStatsHandler
 @inject RemoveTagHandler RemoveTagHandler
+@inject CreateListHandler CreateListHandler
 @inject CreateRecurringInstanceHandler CreateRecurringInstanceHandler
+@inject DeleteListHandler DeleteListHandler
+@inject GetListsHandler GetListsHandler
 @inject RestoreTodosHandler RestoreTodosHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
 <PageTitle>My Todo List</PageTitle>
+
+@if (_lists is { Count: > 0 })
+{
+    <MudCard Elevation="1" Class="mb-4">
+        <MudCardContent Class="py-2">
+            <div class="d-flex align-center gap-1 flex-wrap list-selector-row">
+                @foreach (var list in _lists)
+                {
+                    var listId = list.Id;
+                    <MudChip T="string"
+                             Variant="@(_activeListId == listId ? Variant.Filled : Variant.Outlined)"
+                             Color="Color.Primary"
+                             OnClick="@(() => HandleSwitchList(listId))"
+                             OnClose="@(list.Id != DeleteListHandler.DefaultListId ? EventCallback.Factory.Create<MudChip<string>>(this, async (MudChip<string> _) => await HandleDeleteList(listId)) : new EventCallback<MudChip<string>>())"
+                             Class="list-chip">
+                        @list.Name
+                    </MudChip>
+                }
+                @if (_creatingList)
+                {
+                    <MudTextField
+                        @bind-Value="_newListName"
+                        Variant="Variant.Outlined"
+                        Margin="Margin.Dense"
+                        Placeholder="List name..."
+                        Style="width: 130px; font-size: 0.875rem;"
+                        OnKeyUp="HandleNewListKeyUp"
+                        Class="new-list-input" />
+                }
+                else
+                {
+                    <MudIconButton
+                        Icon="@Icons.Material.Filled.Add"
+                        Size="Size.Small"
+                        Color="Color.Primary"
+                        OnClick="@(() => { _creatingList = true; _newListName = string.Empty; })"
+                        title="New list"
+                        Class="add-list-btn" />
+                }
+            </div>
+        </MudCardContent>
+    </MudCard>
+}
 
 <MudCard Elevation="2" Class="mb-6">
     <MudCardContent>
@@ -668,6 +715,11 @@ else
     private TodoPriority _newPriority = TodoPriority.None;
     private DateTime? _newDueDate;
     private RecurrenceRule _newRecurrence = RecurrenceRule.None;
+
+    private IReadOnlyList<TodoList>? _lists;
+    private int _activeListId = 1;
+    private bool _creatingList;
+    private string _newListName = string.Empty;
     private IReadOnlyList<TodoSummary>? _todos;
     private bool _isSubmitting;
     private string? _errorMessage;
@@ -709,7 +761,8 @@ else
         get
         {
             if (_todos is null) return [];
-            var filtered = FilterSortTodosHandler.Handle(_todos, _statusFilter, _sortOrder, _searchQuery, _priorityFilter);
+            var listFiltered = _todos.Where(t => t.ListId == _activeListId).ToList();
+            var filtered = FilterSortTodosHandler.Handle(listFiltered, _statusFilter, _sortOrder, _searchQuery, _priorityFilter);
             if (_tagFilter is null) return filtered;
             return filtered
                 .Where(t => _todoTags.TryGetValue(t.Id, out var tags) && tags.Any(tag => tag.Name == _tagFilter))
@@ -765,6 +818,7 @@ else
 
     private async Task LoadTodosAsync()
     {
+        _lists = await GetListsHandler.HandleAsync();
         _todos = await GetTodosHandler.HandleAsync();
         if (_todos.Count > 0)
         {
@@ -797,7 +851,7 @@ else
             var effectivePriority = _newPriority != TodoPriority.None ? _newPriority : (parsed.Priority ?? TodoPriority.None);
             var effectiveDueDate  = _newDueDate ?? parsed.DueDate;
 
-            await AddTodoHandler.HandleAsync(effectiveTitle, effectivePriority, effectiveDueDate, _newRecurrence);
+            await AddTodoHandler.HandleAsync(effectiveTitle, effectivePriority, effectiveDueDate, _newRecurrence, _activeListId);
             _newTitle = string.Empty;
             _newPriority = TodoPriority.None;
             _newDueDate = null;
@@ -1156,6 +1210,56 @@ else
     private async Task HandleRemoveTag(int tagId)
     {
         await RemoveTagHandler.HandleAsync(tagId);
+        await LoadTodosAsync();
+    }
+
+    private void HandleSwitchList(int listId)
+    {
+        _activeListId = listId;
+        // Reset filters when switching lists
+        _statusFilter = TodoStatusFilter.All;
+        _searchQuery = string.Empty;
+        _priorityFilter = null;
+        _tagFilter = null;
+    }
+
+    private async Task HandleNewListKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await HandleSaveNewList();
+        else if (e.Key == "Escape")
+            _creatingList = false;
+    }
+
+    private async Task HandleSaveNewList()
+    {
+        if (string.IsNullOrWhiteSpace(_newListName))
+        {
+            _creatingList = false;
+            return;
+        }
+
+        try
+        {
+            var newId = await CreateListHandler.HandleAsync(_newListName);
+            _newListName = string.Empty;
+            _creatingList = false;
+            await LoadTodosAsync();
+            HandleSwitchList(newId);
+        }
+        catch (ArgumentException)
+        {
+            _creatingList = false;
+        }
+    }
+
+    private async Task HandleDeleteList(int listId)
+    {
+        if (listId == DeleteListHandler.DefaultListId) return;
+
+        await DeleteListHandler.HandleAsync(listId);
+        if (_activeListId == listId)
+            _activeListId = DeleteListHandler.DefaultListId;
         await LoadTodosAsync();
     }
 

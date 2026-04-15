@@ -15,6 +15,7 @@ using TodoApp.Features.Todos.PinTodo;
 using TodoApp.Features.Todos.Import;
 using TodoApp.Features.Todos.Subtasks;
 using TodoApp.Features.Todos.Tags;
+using TodoApp.Features.Lists;
 using TodoApp.Features.Todos.RecurringTodos;
 using TodoApp.Features.Todos.UndoRedo;
 using TodoApp.Infrastructure;
@@ -58,6 +59,9 @@ builder.Services.AddScoped<CompleteSubtaskHandler>();
 builder.Services.AddScoped<DeleteSubtaskHandler>();
 builder.Services.AddScoped<GetSubtasksHandler>();
 builder.Services.AddScoped<CreateRecurringInstanceHandler>();
+builder.Services.AddScoped<GetListsHandler>();
+builder.Services.AddScoped<CreateListHandler>();
+builder.Services.AddScoped<DeleteListHandler>();
 
 var app = builder.Build();
 

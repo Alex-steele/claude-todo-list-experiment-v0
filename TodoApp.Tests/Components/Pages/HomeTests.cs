@@ -20,6 +20,7 @@ using TodoApp.Features.Todos.GetTodosStats;
 using TodoApp.Features.Todos.Import;
 using TodoApp.Features.Todos.Subtasks;
 using TodoApp.Features.Todos.Tags;
+using TodoApp.Features.Lists;
 using TodoApp.Features.Todos.QuickAdd;
 using TodoApp.Features.Todos.RecurringTodos;
 using TodoApp.Features.Todos.UndoRedo;
@@ -58,6 +59,9 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<DeleteSubtaskHandler>();
         ctx.Services.AddScoped<GetSubtasksHandler>();
         ctx.Services.AddScoped<CreateRecurringInstanceHandler>();
+        ctx.Services.AddScoped<GetListsHandler>();
+        ctx.Services.AddScoped<CreateListHandler>();
+        ctx.Services.AddScoped<DeleteListHandler>();
         return ctx;
     }
 
@@ -1522,6 +1526,82 @@ public class HomeTests : BunitContext
             Assert.Single(todos);
             Assert.Equal("Fix bug", todos[0].Title);
             Assert.Equal(TodoPriority.High, todos[0].Priority);
+        });
+    }
+
+    // Multiple lists tests
+
+    [Fact]
+    public async Task ListSelector_IsRenderedWithDefaultList()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("list-selector-row", cut.Markup);
+        Assert.Contains("Personal", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ListSelector_HasAddListButton()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("add-list-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SwitchList_FiltersToActiveList()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var createListHandler = new CreateListHandler(db);
+
+        await addHandler.HandleAsync("Personal todo", listId: 1);
+        var workId = await createListHandler.HandleAsync("Work");
+        await addHandler.HandleAsync("Work todo", listId: workId);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Initially on Personal list — should show "Personal todo"
+        Assert.Contains("Personal todo", cut.Markup);
+        Assert.DoesNotContain("Work todo", cut.Markup);
+
+        // Switch to Work list — click the second list chip
+        var listChips = cut.FindAll(".list-chip");
+        listChips[1].Click();
+
+        Assert.Contains("Work todo", cut.Markup);
+        Assert.DoesNotContain("Personal todo", cut.Markup);
+    }
+
+    [Fact]
+    public async Task NewTodo_AddedToActiveList()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var createListHandler = new CreateListHandler(db);
+        var workId = await createListHandler.HandleAsync("Work");
+        var getHandler = new GetTodosHandler(db);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Switch to Work list and add a todo
+        cut.FindAll(".list-chip")[1].Click();
+        cut.Find(".new-todo-input input").Change("Work item");
+        cut.Find("button.add-todo-btn").Click();
+
+        await cut.WaitForAssertionAsync(async () =>
+        {
+            var todos = await getHandler.HandleAsync();
+            var workTodo = todos.FirstOrDefault(t => t.Title == "Work item");
+            Assert.NotNull(workTodo);
+            Assert.Equal(workId, workTodo.ListId);
         });
     }
 }
