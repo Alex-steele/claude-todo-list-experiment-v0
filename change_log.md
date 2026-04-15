@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 25 — [2026-04-15] — Feature: Multiple Lists
+
+**Description:** Users can now organise their todos into multiple named lists. A list selector row appears at the top of the page showing all lists as chips — clicking a chip switches to that list, showing only its todos. A "+" button lets you create a new list by typing a name and pressing Enter (Escape cancels). Non-default lists show a close button on their chip to delete them; deleting a list moves its todos to the default "Personal" list rather than discarding them. New todos are always added to the currently active list. The default "Personal" list is seeded on first run and cannot be deleted.
+
+**Reason for change:** Multiple lists are one of the most-requested features in any todo application — "Work", "Shopping", "Personal" are the classic split. Without them the list grows unbounded with no separation of concerns. This is the natural next step after subtasks, tags, and priority filtering.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 255
+- Lines deleted: 13
+- Tests added: 13
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 24 — [2026-04-12] — Feature: Dark Mode Persistence
 
 **Description:** The dark mode preference now persists across page reloads. On first render, the app reads from `localStorage` via JS interop (`todoApp.getDarkModePreference`). If no stored preference exists, it falls back to the system's `prefers-color-scheme` media query — so users on dark OS themes automatically get dark mode on first visit. Toggling dark mode saves the preference to `localStorage` via `todoApp.saveDarkModePreference`. Previously the toggle reset to light mode on every page reload.

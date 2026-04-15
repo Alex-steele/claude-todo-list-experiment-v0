@@ -80,6 +80,31 @@ public class Database(string connectionString)
             // Column already exists — ignore
         }
 
+        // Lists table — must exist before we add ListId to Todos
+        await conn.ExecuteAsync("""
+            CREATE TABLE IF NOT EXISTS TodoLists (
+                Id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name TEXT    NOT NULL
+            )
+            """);
+
+        // Seed the default list if not present
+        await conn.ExecuteAsync("""
+            INSERT INTO TodoLists (Id, Name)
+            SELECT 1, 'Personal'
+            WHERE NOT EXISTS (SELECT 1 FROM TodoLists WHERE Id = 1)
+            """);
+
+        // Migration: add ListId column for existing databases
+        try
+        {
+            await conn.ExecuteAsync("ALTER TABLE Todos ADD COLUMN ListId INTEGER NOT NULL DEFAULT 1");
+        }
+        catch (SqliteException)
+        {
+            // Column already exists — ignore
+        }
+
         await conn.ExecuteAsync("""
             CREATE TABLE IF NOT EXISTS TodoTags (
                 Id      INTEGER PRIMARY KEY AUTOINCREMENT,
