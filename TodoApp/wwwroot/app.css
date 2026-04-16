@@ -2,6 +2,19 @@ html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
+/* Drag-to-reorder */
+[data-todo-id] {
+    transition: opacity 0.15s;
+}
+[data-todo-id].dragging {
+    opacity: 0.4;
+}
+[data-todo-id].drag-target {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: -2px;
+    border-radius: 4px;
+}
+
 a, .btn-link {
     color: #006bb7;
 }
