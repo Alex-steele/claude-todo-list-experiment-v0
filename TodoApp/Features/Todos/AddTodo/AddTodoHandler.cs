@@ -13,8 +13,9 @@ public class AddTodoHandler(Database db)
 
         using var conn = db.CreateConnection();
         var id = await conn.ExecuteScalarAsync<int>("""
-            INSERT INTO Todos (Title, CreatedAt, Priority, DueDate, Recurrence, ListId)
-            VALUES (@Title, @CreatedAt, @Priority, @DueDate, @Recurrence, @ListId);
+            INSERT INTO Todos (Title, CreatedAt, Priority, DueDate, Recurrence, ListId, SortOrder)
+            VALUES (@Title, @CreatedAt, @Priority, @DueDate, @Recurrence, @ListId,
+                    (SELECT COALESCE(MAX(SortOrder), 0) + 1 FROM Todos));
             SELECT last_insert_rowid();
             """, new
             {

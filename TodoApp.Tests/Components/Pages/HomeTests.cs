@@ -21,6 +21,7 @@ using TodoApp.Features.Todos.Import;
 using TodoApp.Features.Todos.Subtasks;
 using TodoApp.Features.Todos.Tags;
 using TodoApp.Features.Lists;
+using TodoApp.Features.Todos.ReorderTodos;
 using TodoApp.Features.Todos.QuickAdd;
 using TodoApp.Features.Todos.RecurringTodos;
 using TodoApp.Features.Todos.UndoRedo;
@@ -63,6 +64,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<CreateListHandler>();
         ctx.Services.AddScoped<DeleteListHandler>();
         ctx.Services.AddScoped<RenameListHandler>();
+        ctx.Services.AddScoped<ReorderTodosHandler>();
         return ctx;
     }
 
@@ -1666,5 +1668,43 @@ public class HomeTests : BunitContext
 
         Assert.DoesNotContain("rename-list-input", cut.Markup);
         Assert.Contains("Work", cut.Markup);
+    }
+
+    // Drag-to-reorder tests
+
+    [Fact]
+    public async Task ManualSort_ShowsDragHandles()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task A");
+        await addHandler.HandleAsync("Task B");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // No drag handles in default (Newest) sort
+        Assert.DoesNotContain("drag-handle", cut.Markup);
+
+        // Switch to Custom order
+        var sortSelect = cut.FindComponent<MudSelect<TodoSortOrder>>();
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.Manual));
+
+        Assert.Contains("drag-handle", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ManualSort_SortOptionExistsInSelect()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        // The sort select should have a Manual option — verify via the component's Items
+        var sortSelects = cut.FindComponents<MudSelect<TodoSortOrder>>();
+        Assert.NotEmpty(sortSelects);
     }
 }

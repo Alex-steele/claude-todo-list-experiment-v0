@@ -12,7 +12,7 @@ public class GetTodosHandler(Database db)
     {
         using var conn = db.CreateConnection();
         var rows = await conn.QueryAsync<(int Id, string Title, int IsCompleted, string CreatedAt, int Priority, string? DueDate, int IsPinned, string? Notes, int Recurrence, int ListId)>(
-            "SELECT Id, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId FROM Todos ORDER BY Id DESC");
+            "SELECT Id, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId FROM Todos ORDER BY SortOrder ASC, Id DESC");
 
         return rows
             .Select(r => new TodoSummary(

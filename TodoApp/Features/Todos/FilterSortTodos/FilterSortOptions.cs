@@ -12,5 +12,6 @@ public enum TodoSortOrder
     Newest = 0,
     Oldest = 1,
     DueDateAsc = 2,
-    PriorityDesc = 3
+    PriorityDesc = 3,
+    Manual = 4
 }

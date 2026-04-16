@@ -19,8 +19,10 @@ public class GetTodosHandlerTests
     }
 
     [Fact]
-    public async Task HandleAsync_WithTodos_ReturnsMostRecentFirst()
+    public async Task HandleAsync_WithTodos_ReturnsInSortOrderAsc()
     {
+        // GetTodosHandler now returns todos ordered by SortOrder ASC (insertion order)
+        // so they arrive ready for Manual sort. FilterSortTodosHandler re-sorts for other modes.
         var db = await TestDatabase.CreateAsync();
         var addHandler = new AddTodoHandler(db);
         var getHandler = new GetTodosHandler(db);
@@ -31,8 +33,8 @@ public class GetTodosHandlerTests
         var todos = await getHandler.HandleAsync();
 
         Assert.Equal(2, todos.Count);
-        Assert.Equal("Second", todos[0].Title);
-        Assert.Equal("First", todos[1].Title);
+        Assert.Equal("First", todos[0].Title);
+        Assert.Equal("Second", todos[1].Title);
     }
 
     [Fact]

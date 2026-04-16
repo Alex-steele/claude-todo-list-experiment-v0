@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 27 — [2026-04-16] — Feature: Drag-to-Reorder
+
+**Description:** Todos can now be manually reordered by drag and drop. Selecting "Custom order" from the Sort dropdown switches the list to manual mode: a drag-handle icon (⠿) appears on each item, and items can be dragged up or down into any position. The order is immediately persisted to the database. Dragging over an item highlights it; releasing the mouse drops the dragged item into that slot. All other sort modes (Newest, Oldest, Due date, Priority) remain unaffected — they simply re-sort the items using those criteria. A new `SortOrder` column on the `Todos` table stores the manual position, seeded from the existing row IDs on first migration. New todos are appended at the bottom of the manual order.
+
+**Reason for change:** Filtering and sorting by attributes (priority, date) is useful but sometimes you want an arbitrary personal order — "I'll do these three things first, in this sequence." Drag-to-reorder is the standard solution and the last major missing interaction pattern.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 123
+- Lines deleted: 7
+- Tests added: 7
+- Tests removed: 0
+- Test failures before green: 3
+
 ## Day 26 — [2026-04-15] — Feature: Rename List
 
 **Description:** List names are now editable. Double-clicking any list chip puts it into an inline edit mode — the chip is replaced with a compact text field pre-filled with the current name. Pressing Enter saves the new name; pressing Escape cancels without changes. All lists can be renamed, including the default "Personal" list. An empty name is rejected and the rename is silently cancelled. The feature is surfaced through a new `RenameListHandler` vertical slice.

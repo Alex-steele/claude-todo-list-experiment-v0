@@ -36,6 +36,7 @@ public class FilterSortTodosHandler
                                                   .ThenBy(t => -t.Id),
             TodoSortOrder.PriorityDesc => pinFirst.ThenByDescending(t => (int)t.Priority)
                                                   .ThenBy(t => -t.Id),
+            TodoSortOrder.Manual       => priorityFiltered.AsEnumerable(), // preserve DB order (SortOrder ASC)
             _                          => pinFirst.ThenByDescending(t => t.Id)  // Newest (default)
         };
 
