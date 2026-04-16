@@ -80,6 +80,18 @@ public class Database(string connectionString)
             // Column already exists — ignore
         }
 
+        // Migration: add SortOrder column for drag-to-reorder
+        try
+        {
+            await conn.ExecuteAsync("ALTER TABLE Todos ADD COLUMN SortOrder INTEGER NOT NULL DEFAULT 0");
+            // Seed existing rows so they have a stable initial order
+            await conn.ExecuteAsync("UPDATE Todos SET SortOrder = Id WHERE SortOrder = 0");
+        }
+        catch (SqliteException)
+        {
+            // Column already exists — ignore
+        }
+
         // Lists table — must exist before we add ListId to Todos
         await conn.ExecuteAsync("""
             CREATE TABLE IF NOT EXISTS TodoLists (

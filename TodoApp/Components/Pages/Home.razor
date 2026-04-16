@@ -17,6 +17,7 @@
 @using TodoApp.Features.Todos.Subtasks
 @using TodoApp.Features.Todos.Tags
 @using TodoApp.Features.Lists
+@using TodoApp.Features.Todos.ReorderTodos
 @using TodoApp.Features.Todos.QuickAdd
 @using TodoApp.Features.Todos.RecurringTodos
 @using TodoApp.Features.Todos.UndoRedo
@@ -45,6 +46,7 @@
 @inject DeleteListHandler DeleteListHandler
 @inject GetListsHandler GetListsHandler
 @inject RenameListHandler RenameListHandler
+@inject ReorderTodosHandler ReorderTodosHandler
 @inject RestoreTodosHandler RestoreTodosHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
@@ -355,6 +357,7 @@ else
                         <MudSelectItem Value="@TodoSortOrder.Oldest">Oldest first</MudSelectItem>
                         <MudSelectItem Value="@TodoSortOrder.DueDateAsc">Due date</MudSelectItem>
                         <MudSelectItem Value="@TodoSortOrder.PriorityDesc">Priority</MudSelectItem>
+                        <MudSelectItem Value="@TodoSortOrder.Manual">Custom order</MudSelectItem>
                     </MudSelect>
                     <MudTooltip Text="Export to CSV">
                         <MudIconButton
@@ -457,8 +460,24 @@ else
             <MudList T="TodoSummary" Dense="false">
                 @foreach (var todo in DisplayedTodos)
                 {
+                    var todoId = todo.Id;
+                    <div draggable="@(_sortOrder == TodoSortOrder.Manual ? "true" : "false")"
+                         @ondragstart="@(() => _draggingId = todoId)"
+                         @ondragend="@(() => { _draggingId = null; _dragOverId = null; })"
+                         @ondragover:preventDefault
+                         @ondragover="@(() => _dragOverId = todoId)"
+                         @ondrop="@(async () => await HandleDrop(todoId))"
+                         class="@(_dragOverId == todo.Id && _sortOrder == TodoSortOrder.Manual ? "drag-over" : "")">
                     <MudListItem>
                         <div class="d-flex align-center gap-3 flex-grow-1">
+                            @if (_sortOrder == TodoSortOrder.Manual)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.DragIndicator"
+                                         Size="Size.Small"
+                                         Color="Color.Default"
+                                         Style="cursor: grab; opacity: 0.5;"
+                                         Class="drag-handle" />
+                            }
                             @if (_isSelectMode)
                             {
                                 <MudCheckBox
@@ -718,6 +737,7 @@ else
                                 Class="todo-delete-btn" />
                         </div>
                     </MudListItem>
+                    </div>
                     <MudDivider />
                 }
             </MudList>
@@ -737,6 +757,9 @@ else
     private string _newListName = string.Empty;
     private int? _renamingListId;
     private string _renameListValue = string.Empty;
+
+    private int? _draggingId;
+    private int? _dragOverId;
     private IReadOnlyList<TodoSummary>? _todos;
     private bool _isSubmitting;
     private string? _errorMessage;
@@ -1227,6 +1250,32 @@ else
     private async Task HandleRemoveTag(int tagId)
     {
         await RemoveTagHandler.HandleAsync(tagId);
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleDrop(int targetId)
+    {
+        if (_draggingId is null || _draggingId == targetId)
+        {
+            _draggingId = null;
+            _dragOverId = null;
+            return;
+        }
+
+        // Build a new order by moving the dragged item to the target's position
+        var listTodos = _todos!.Where(t => t.ListId == _activeListId).ToList();
+        var dragged = listTodos.FirstOrDefault(t => t.Id == _draggingId.Value);
+        var target  = listTodos.FirstOrDefault(t => t.Id == targetId);
+        if (dragged is null || target is null) { _draggingId = null; _dragOverId = null; return; }
+
+        var reordered = listTodos.Where(t => t.Id != _draggingId.Value).ToList();
+        var insertAt  = reordered.IndexOf(target);
+        reordered.Insert(insertAt, dragged);
+
+        _draggingId = null;
+        _dragOverId = null;
+
+        await ReorderTodosHandler.HandleAsync(reordered.Select(t => t.Id).ToList());
         await LoadTodosAsync();
     }
 
