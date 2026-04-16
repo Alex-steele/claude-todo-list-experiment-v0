@@ -348,8 +348,7 @@ else
                 <div class="d-flex align-center gap-1">
                     <MudSelect
                         T="TodoSortOrder"
-                        Value="_sortOrder"
-                        ValueChanged="HandleSortOrderChanged"
+                        @bind-Value="_sortOrder"
                         Label="Sort"
                         Variant="Variant.Outlined"
                         Dense="true"
@@ -463,7 +462,12 @@ else
                 {
                     var todoId = todo.Id;
                     <div draggable="@(_sortOrder == TodoSortOrder.Manual ? "true" : "false")"
-                         data-todo-id="@todo.Id">
+                         @ondragstart="@(() => _draggingId = todoId)"
+                         @ondragend="@(() => { _draggingId = null; _dragOverId = null; })"
+                         @ondragover:preventDefault
+                         @ondragover="@(() => _dragOverId = todoId)"
+                         @ondrop="@(async () => await HandleDrop(todoId))"
+                         class="@(_dragOverId == todo.Id && _sortOrder == TodoSortOrder.Manual ? "drag-over" : "")">
                     <MudListItem>
                         <div class="d-flex align-center gap-3 flex-grow-1">
                             @if (_sortOrder == TodoSortOrder.Manual)
@@ -754,6 +758,8 @@ else
     private int? _renamingListId;
     private string _renameListValue = string.Empty;
 
+    private int? _draggingId;
+    private int? _dragOverId;
     private IReadOnlyList<TodoSummary>? _todos;
     private bool _isSubmitting;
     private string? _errorMessage;
@@ -828,8 +834,6 @@ else
             try { await JS.InvokeVoidAsync("todoApp.unregisterKeyboardShortcuts"); }
             catch { /* ignore disposal errors */ }
         }
-        try { await JS.InvokeVoidAsync("todoApp.destroyDragDrop"); }
-        catch { /* ignore disposal errors */ }
         _dotNetRef?.Dispose();
     }
 
@@ -1249,36 +1253,30 @@ else
         await LoadTodosAsync();
     }
 
-    private async Task HandleSortOrderChanged(TodoSortOrder newOrder)
+    private async Task HandleDrop(int targetId)
     {
-        var wasManual = _sortOrder == TodoSortOrder.Manual;
-        _sortOrder = newOrder;
-        var isManual = _sortOrder == TodoSortOrder.Manual;
-
-        if (isManual && !wasManual)
-            await JS.InvokeVoidAsync("todoApp.initDragDrop", _dotNetRef);
-        else if (!isManual && wasManual)
-            await JS.InvokeVoidAsync("todoApp.destroyDragDrop");
-    }
-
-    [JSInvokable]
-    public async Task OnDragDrop(int fromId, int toId)
-    {
-        if (fromId == toId) return;
+        if (_draggingId is null || _draggingId == targetId)
+        {
+            _draggingId = null;
+            _dragOverId = null;
+            return;
+        }
 
         // Build a new order by moving the dragged item to the target's position
         var listTodos = _todos!.Where(t => t.ListId == _activeListId).ToList();
-        var dragged = listTodos.FirstOrDefault(t => t.Id == fromId);
-        var target  = listTodos.FirstOrDefault(t => t.Id == toId);
-        if (dragged is null || target is null) return;
+        var dragged = listTodos.FirstOrDefault(t => t.Id == _draggingId.Value);
+        var target  = listTodos.FirstOrDefault(t => t.Id == targetId);
+        if (dragged is null || target is null) { _draggingId = null; _dragOverId = null; return; }
 
-        var reordered = listTodos.Where(t => t.Id != fromId).ToList();
+        var reordered = listTodos.Where(t => t.Id != _draggingId.Value).ToList();
         var insertAt  = reordered.IndexOf(target);
         reordered.Insert(insertAt, dragged);
 
+        _draggingId = null;
+        _dragOverId = null;
+
         await ReorderTodosHandler.HandleAsync(reordered.Select(t => t.Id).ToList());
         await LoadTodosAsync();
-        StateHasChanged();
     }
 
     private void HandleSwitchList(int listId)
