@@ -25,6 +25,7 @@ using TodoApp.Features.Todos.ReorderTodos;
 using TodoApp.Features.Todos.QuickAdd;
 using TodoApp.Features.Todos.RecurringTodos;
 using TodoApp.Features.Todos.UndoRedo;
+using TodoApp.Features.Todos.MoveTodo;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -65,6 +66,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<DeleteListHandler>();
         ctx.Services.AddScoped<RenameListHandler>();
         ctx.Services.AddScoped<ReorderTodosHandler>();
+        ctx.Services.AddScoped<MoveTodoHandler>();
         return ctx;
     }
 
@@ -1706,5 +1708,119 @@ public class HomeTests : BunitContext
         // The sort select should have a Manual option — verify via the component's Items
         var sortSelects = cut.FindComponents<MudSelect<TodoSortOrder>>();
         Assert.NotEmpty(sortSelects);
+    }
+
+    // ── Move Todo Between Lists ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task MoveTodo_ButtonNotShown_WhenOnlyOneList()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Solo task");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        // With only one list, no move button should appear
+        Assert.Empty(cut.FindAll(".todo-move-btn"));
+    }
+
+    [Fact]
+    public async Task MoveTodo_ButtonShown_WhenMultipleLists()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var createList = new CreateListHandler(db);
+        await addHandler.HandleAsync("Task to move");
+        await createList.HandleAsync("Work");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        Assert.NotEmpty(cut.FindAll(".todo-move-btn"));
+    }
+
+    [Fact]
+    public async Task MoveTodo_ClickingButton_ShowsMoveSelect()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var createList = new CreateListHandler(db);
+        await addHandler.HandleAsync("Task to move");
+        await createList.HandleAsync("Work");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-move-btn").Click();
+
+        Assert.NotEmpty(cut.FindAll(".todo-move-select"));
+        Assert.Empty(cut.FindAll(".todo-move-btn")); // button replaced by select
+    }
+
+    [Fact]
+    public async Task MoveTodo_CancelButton_HidesMoveSelect()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var createList = new CreateListHandler(db);
+        await addHandler.HandleAsync("Task to move");
+        await createList.HandleAsync("Work");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-move-btn").Click();
+        cut.Find(".todo-move-cancel-btn").Click();
+
+        Assert.Empty(cut.FindAll(".todo-move-select"));
+        Assert.NotEmpty(cut.FindAll(".todo-move-btn"));
+    }
+
+    [Fact]
+    public async Task MoveTodo_MovesToOtherList_DisappearsFromCurrentList()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var createList = new CreateListHandler(db);
+        var moveTodoHandler = new MoveTodoHandler(db);
+        var id = await addHandler.HandleAsync("Task to move");
+        var workId = await createList.HandleAsync("Work");
+        var ctx = CreateBunitContext(db);
+
+        // Move the todo to Work list via handler directly
+        await moveTodoHandler.HandleAsync(id, workId);
+
+        var cut = RenderHome(ctx);
+
+        // Personal list (default) should show no todos
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Empty(cut.FindAll(".mud-list-item")));
+    }
+
+    [Fact]
+    public async Task MoveTodo_MovedTodo_AppearsInTargetList()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var createList = new CreateListHandler(db);
+        var moveTodoHandler = new MoveTodoHandler(db);
+        var id = await addHandler.HandleAsync("Task to move");
+        var workId = await createList.HandleAsync("Work");
+        await moveTodoHandler.HandleAsync(id, workId);
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        // Switch to Work list
+        var chips = cut.FindAll(".list-chip");
+        chips[1].Click(); // Work is the second chip
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            var items = cut.FindAll(".mud-list-item");
+            Assert.Single(items);
+        });
     }
 }
