@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 28 — [2026-04-17] — Feature: Move Todo Between Lists
+
+**Description:** Todos can now be moved from one list to another after they've been created. When multiple lists exist, a move icon (→ folder) appears on each todo row. Clicking it reveals a compact dropdown listing all other lists; selecting one immediately moves the todo to that list and reloads the view. A cancel button (✕) dismisses the picker without making any change. The move button is hidden when only a single list exists, keeping the UI uncluttered for single-list users.
+
+**Reason for change:** Day 25 introduced multiple lists and Day 26 added renaming, but there was no way to move a todo between lists after creation. This is an obvious and frequently-needed action — adding a task to the wrong list, or reorganising work vs personal items — and without it the list feature feels incomplete.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 269
+- Lines deleted: 0
+- Tests added: 10
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 27 — [2026-04-16] — Feature: Drag-to-Reorder
 
 **Description:** Todos can now be manually reordered by drag and drop. Selecting "Custom order" from the Sort dropdown switches the list to manual mode: a drag-handle icon (⠿) appears on each item, and items can be dragged up or down into any position. The order is immediately persisted to the database. Dragging over an item highlights it; releasing the mouse drops the dragged item into that slot. All other sort modes (Newest, Oldest, Due date, Priority) remain unaffected — they simply re-sort the items using those criteria. A new `SortOrder` column on the `Todos` table stores the manual position, seeded from the existing row IDs on first migration. New todos are appended at the bottom of the manual order.

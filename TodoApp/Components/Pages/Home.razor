@@ -18,6 +18,7 @@
 @using TodoApp.Features.Todos.Tags
 @using TodoApp.Features.Lists
 @using TodoApp.Features.Todos.ReorderTodos
+@using TodoApp.Features.Todos.MoveTodo
 @using TodoApp.Features.Todos.QuickAdd
 @using TodoApp.Features.Todos.RecurringTodos
 @using TodoApp.Features.Todos.UndoRedo
@@ -47,6 +48,7 @@
 @inject GetListsHandler GetListsHandler
 @inject RenameListHandler RenameListHandler
 @inject ReorderTodosHandler ReorderTodosHandler
+@inject MoveTodoHandler MoveTodoHandler
 @inject RestoreTodosHandler RestoreTodosHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
@@ -729,6 +731,44 @@ else
                                 OnClick="@(async () => await HandleTogglePin(todo.Id))"
                                 title="@(todo.IsPinned ? "Unpin" : "Pin to top")"
                                 Class="todo-pin-btn" />
+                            @if (_lists is { Count: > 1 })
+                            {
+                                var currentTodoId = todo.Id;
+                                @if (_movingTodoId == todo.Id)
+                                {
+                                    <MudSelect
+                                        T="int"
+                                        Value="0"
+                                        ValueChanged="@(async (int targetListId) => await HandleMoveTodo(currentTodoId, targetListId))"
+                                        Dense="true"
+                                        Variant="Variant.Outlined"
+                                        Style="width: 110px; font-size: 0.75rem;"
+                                        Label="Move to"
+                                        Class="todo-move-select">
+                                        @foreach (var list in _lists.Where(l => l.Id != todo.ListId))
+                                        {
+                                            <MudSelectItem Value="@list.Id">@list.Name</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                    <MudIconButton
+                                        Icon="@Icons.Material.Filled.Close"
+                                        Color="Color.Default"
+                                        Size="Size.Small"
+                                        OnClick="@(() => _movingTodoId = null)"
+                                        title="Cancel move"
+                                        Class="todo-move-cancel-btn" />
+                                }
+                                else
+                                {
+                                    <MudIconButton
+                                        Icon="@Icons.Material.Filled.DriveFileMove"
+                                        Color="Color.Default"
+                                        Size="Size.Small"
+                                        OnClick="@(() => _movingTodoId = currentTodoId)"
+                                        title="Move to list"
+                                        Class="todo-move-btn" />
+                                }
+                            }
                             <MudIconButton
                                 Icon="@Icons.Material.Filled.Delete"
                                 Color="Color.Error"
@@ -763,6 +803,8 @@ else
     private IReadOnlyList<TodoSummary>? _todos;
     private bool _isSubmitting;
     private string? _errorMessage;
+
+    private int? _movingTodoId;
 
     private TodoStatusFilter _statusFilter = TodoStatusFilter.All;
     private TodoSortOrder _sortOrder = TodoSortOrder.Newest;
@@ -1276,6 +1318,14 @@ else
         _dragOverId = null;
 
         await ReorderTodosHandler.HandleAsync(reordered.Select(t => t.Id).ToList());
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleMoveTodo(int todoId, int targetListId)
+    {
+        if (targetListId <= 0) return;
+        await MoveTodoHandler.HandleAsync(todoId, targetListId);
+        _movingTodoId = null;
         await LoadTodosAsync();
     }
 
