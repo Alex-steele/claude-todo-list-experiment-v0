@@ -1823,4 +1823,108 @@ public class HomeTests : BunitContext
             Assert.Single(items);
         });
     }
+
+    // ── Global search across lists ────────────────────────────────────────────
+
+    [Fact]
+    public async Task GlobalSearch_WithSingleList_NoHintShown()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Solo task");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-search-field input").Input("solo");
+
+        Assert.DoesNotContain("search-all-lists-hint", cut.Markup);
+    }
+
+    [Fact]
+    public async Task GlobalSearch_WithMultipleLists_ShowsHint()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var createList = new CreateListHandler(db);
+        await addHandler.HandleAsync("Personal task");
+        await createList.HandleAsync("Work");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-search-field input").Input("task");
+
+        Assert.Contains("search-all-lists-hint", cut.Markup);
+        Assert.Contains("Searching all lists", cut.Markup);
+    }
+
+    [Fact]
+    public async Task GlobalSearch_FindsTodosFromOtherLists()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var createList = new CreateListHandler(db);
+        var workId = await createList.HandleAsync("Work");
+        await addHandler.HandleAsync("Personal task", listId: 1);
+        await addHandler.HandleAsync("Work report", listId: workId);
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        // Active list is Personal — searching should find the Work todo too
+        cut.Find(".todo-search-field input").Input("report");
+
+        Assert.Contains("Work report", cut.Markup);
+    }
+
+    [Fact]
+    public async Task GlobalSearch_ShowsListBadgeOnCrossListResults()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var createList = new CreateListHandler(db);
+        var workId = await createList.HandleAsync("Work");
+        await addHandler.HandleAsync("Personal task", listId: 1);
+        await addHandler.HandleAsync("Work report", listId: workId);
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-search-field input").Input("report");
+
+        // The Work list badge should appear on the cross-list result
+        Assert.NotEmpty(cut.FindAll(".search-result-list-badge"));
+    }
+
+    [Fact]
+    public async Task GlobalSearch_NoListBadge_OnActiveListResults()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var createList = new CreateListHandler(db);
+        await createList.HandleAsync("Work");
+        await addHandler.HandleAsync("Personal task", listId: 1);
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-search-field input").Input("personal");
+
+        // Result is in the active list — no list badge
+        Assert.Empty(cut.FindAll(".search-result-list-badge"));
+    }
+
+    [Fact]
+    public async Task GlobalSearch_ClearingQuery_HidesHint()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var createList = new CreateListHandler(db);
+        await addHandler.HandleAsync("Task");
+        await createList.HandleAsync("Work");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-search-field input").Input("task");
+        Assert.Contains("search-all-lists-hint", cut.Markup);
+
+        cut.Find(".todo-search-field input").Input("");
+        Assert.DoesNotContain("search-all-lists-hint", cut.Markup);
+    }
 }

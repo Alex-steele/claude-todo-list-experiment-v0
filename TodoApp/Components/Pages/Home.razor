@@ -321,7 +321,14 @@ else
                 AdornmentIcon="@Icons.Material.Filled.Search"
                 Clearable="true"
                 Immediate="true"
-                Class="mb-3 todo-search-field" />
+                Class="mb-2 todo-search-field" />
+            @if (IsGlobalSearch)
+            {
+                <div class="d-flex align-center gap-1 mb-2 search-all-lists-hint">
+                    <MudIcon Icon="@Icons.Material.Filled.Layers" Size="Size.Small" Color="Color.Info" />
+                    <MudText Typo="Typo.caption" Color="Color.Info">Searching all lists</MudText>
+                </div>
+            }
             <div class="d-flex align-center gap-2 flex-wrap justify-space-between">
                 <div class="d-flex align-center gap-2 flex-wrap">
                     <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
@@ -534,6 +541,14 @@ else
                                             <MudChip T="string" Size="Size.Small" Color="Color.Tertiary" Variant="Variant.Outlined" Class="recurrence-badge">
                                                 @GetRecurrenceLabel(todo.Recurrence)
                                             </MudChip>
+                                        }
+                                        @if (IsGlobalSearch && todo.ListId != _activeListId)
+                                        {
+                                            var listName = _lists?.FirstOrDefault(l => l.Id == todo.ListId)?.Name;
+                                            @if (listName is not null)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" Class="search-result-list-badge">@listName</MudChip>
+                                            }
                                         }
                                         <MudIconButton
                                             Icon="@Icons.Material.Filled.Edit"
@@ -838,13 +853,20 @@ else
         _todoTags.Values.SelectMany(tags => tags.Select(t => t.Name))
             .Distinct().OrderBy(n => n).ToList();
 
+    // When a non-empty search query is active and multiple lists exist,
+    // search spans all lists so users can find any todo regardless of where it lives.
+    private bool IsGlobalSearch =>
+        !string.IsNullOrWhiteSpace(_searchQuery) && _lists is { Count: > 1 };
+
     private IReadOnlyList<TodoSummary> DisplayedTodos
     {
         get
         {
             if (_todos is null) return [];
-            var listFiltered = _todos.Where(t => t.ListId == _activeListId).ToList();
-            var filtered = FilterSortTodosHandler.Handle(listFiltered, _statusFilter, _sortOrder, _searchQuery, _priorityFilter);
+            var source = IsGlobalSearch
+                ? _todos.ToList()
+                : _todos.Where(t => t.ListId == _activeListId).ToList();
+            var filtered = FilterSortTodosHandler.Handle(source, _statusFilter, _sortOrder, _searchQuery, _priorityFilter);
             if (_tagFilter is null) return filtered;
             return filtered
                 .Where(t => _todoTags.TryGetValue(t.Id, out var tags) && tags.Any(tag => tag.Name == _tagFilter))

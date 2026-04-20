@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 29 — [2026-04-20] — Feature: Global Search Across Lists
+
+**Description:** The search box now automatically searches across all lists when multiple lists exist. Typing a query while on the "Personal" list will surface matching todos from "Work", "Shopping", or any other list — no need to switch lists manually. A subtle "Searching all lists" banner (with a layers icon) appears below the search field to signal the expanded scope. Todos from other lists display a small info-coloured chip showing which list they belong to, so results remain easy to contextualise. With a single list the behaviour is unchanged.
+
+**Reason for change:** Once you have more than one list, per-list search is a real friction point — you have to remember which list a task is in before you can find it. Global search with clear provenance labels is the natural complement to the multiple-lists feature and makes the whole list system feel cohesive rather than siloed.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 129
+- Lines deleted: 3
+- Tests added: 6
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 28 — [2026-04-17] — Feature: Move Todo Between Lists
 
 **Description:** Todos can now be moved from one list to another after they've been created. When multiple lists exist, a move icon (→ folder) appears on each todo row. Clicking it reveals a compact dropdown listing all other lists; selecting one immediately moves the todo to that list and reloads the view. A cancel button (✕) dismisses the picker without making any change. The move button is hidden when only a single list exists, keeping the UI uncluttered for single-list users.
