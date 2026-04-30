@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 30 — [2026-04-20] — Feature: Due-Date Quick Filters
+
+**Description:** Three new filter chips — **Overdue**, **Today**, and **This week** — appear in the filter bar below the priority filters. Clicking one instantly narrows the list to incomplete todos matching that date range: Overdue shows anything past due, Today shows items due on the current date, and This week shows items due within the next 7 days. When multiple lists exist, date filters automatically search across all lists (the same "Showing results across all lists" banner appears). Clicking **Any** resets to unfiltered. The date filter is also cleared when switching lists.
+
+**Reason for change:** The existing filters (status, priority, tags, search) are all attribute-based but there was no way to quickly answer "what's overdue right now?" or "what do I need to do this week?" — the two most common time-sensitive questions a todo app needs to answer. Date quick-filters complete the filter bar.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 274
+- Lines deleted: 9
+- Tests added: 12
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 29 — [2026-04-20] — Feature: Global Search Across Lists
 
 **Description:** The search box now automatically searches across all lists when multiple lists exist. Typing a query while on the "Personal" list will surface matching todos from "Work", "Shopping", or any other list — no need to switch lists manually. A subtle "Searching all lists" banner (with a layers icon) appears below the search field to signal the expanded scope. Todos from other lists display a small info-coloured chip showing which list they belong to, so results remain easy to contextualise. With a single list the behaviour is unchanged.

@@ -113,4 +113,119 @@ public class FilterSortTodosHandlerTests
 
         Assert.Empty(result);
     }
+
+    // ── Date filter ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public void DateFilter_None_ReturnsAll()
+    {
+        var today = DateTime.Today;
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Overdue",   dueDate: today.AddDays(-1)),
+            Make(2, "Today",     dueDate: today),
+            Make(3, "Future",    dueDate: today.AddDays(3)),
+            Make(4, "No due date")
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            dateFilter: TodoDateFilter.None);
+
+        Assert.Equal(4, result.Count);
+    }
+
+    [Fact]
+    public void DateFilter_Overdue_ReturnsOnlyOverdueTodos()
+    {
+        var today = DateTime.Today;
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Overdue",    dueDate: today.AddDays(-2)),
+            Make(2, "Also overdue", dueDate: today.AddDays(-1)),
+            Make(3, "Due today",  dueDate: today),
+            Make(4, "Future",     dueDate: today.AddDays(3)),
+            Make(5, "No due date")
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            dateFilter: TodoDateFilter.Overdue);
+
+        Assert.Equal(2, result.Count);
+        Assert.All(result, t => Assert.True(t.DueDate!.Value.Date < today));
+    }
+
+    [Fact]
+    public void DateFilter_Overdue_ExcludesCompletedTodos()
+    {
+        var today = DateTime.Today;
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Overdue active",    dueDate: today.AddDays(-1)),
+            Make(2, "Overdue completed", dueDate: today.AddDays(-1), isCompleted: true),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            dateFilter: TodoDateFilter.Overdue);
+
+        Assert.Single(result);
+        Assert.Equal("Overdue active", result[0].Title);
+    }
+
+    [Fact]
+    public void DateFilter_DueToday_ReturnsOnlyTodayTodos()
+    {
+        var today = DateTime.Today;
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Overdue",   dueDate: today.AddDays(-1)),
+            Make(2, "Today",     dueDate: today),
+            Make(3, "Tomorrow",  dueDate: today.AddDays(1)),
+            Make(4, "No due date")
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            dateFilter: TodoDateFilter.DueToday);
+
+        Assert.Single(result);
+        Assert.Equal("Today", result[0].Title);
+    }
+
+    [Fact]
+    public void DateFilter_DueThisWeek_ReturnsNextSevenDays()
+    {
+        var today = DateTime.Today;
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Overdue",       dueDate: today.AddDays(-1)),
+            Make(2, "Today",         dueDate: today),
+            Make(3, "In 3 days",     dueDate: today.AddDays(3)),
+            Make(4, "In 6 days",     dueDate: today.AddDays(6)),
+            Make(5, "In 7 days",     dueDate: today.AddDays(7)),  // exclusive
+            Make(6, "No due date")
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            dateFilter: TodoDateFilter.DueThisWeek);
+
+        Assert.Equal(3, result.Count); // Today, +3, +6
+        Assert.DoesNotContain(result, t => t.Title == "Overdue");
+        Assert.DoesNotContain(result, t => t.Title == "In 7 days");
+    }
+
+    [Fact]
+    public void DateFilter_DueThisWeek_ExcludesCompletedTodos()
+    {
+        var today = DateTime.Today;
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Active",    dueDate: today.AddDays(2)),
+            Make(2, "Completed", dueDate: today.AddDays(2), isCompleted: true),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            dateFilter: TodoDateFilter.DueThisWeek);
+
+        Assert.Single(result);
+        Assert.Equal("Active", result[0].Title);
+    }
 }
