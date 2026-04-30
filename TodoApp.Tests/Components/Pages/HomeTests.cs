@@ -1854,7 +1854,7 @@ public class HomeTests : BunitContext
         cut.Find(".todo-search-field input").Input("task");
 
         Assert.Contains("search-all-lists-hint", cut.Markup);
-        Assert.Contains("Searching all lists", cut.Markup);
+        Assert.Contains("Showing results across all lists", cut.Markup);
     }
 
     [Fact]
@@ -1926,5 +1926,110 @@ public class HomeTests : BunitContext
 
         cut.Find(".todo-search-field input").Input("");
         Assert.DoesNotContain("search-all-lists-hint", cut.Markup);
+    }
+
+    // ── Due-date quick filters ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DateFilterRow_IsRendered()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("A task");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        Assert.NotEmpty(cut.FindAll(".date-filter-row"));
+        Assert.NotEmpty(cut.FindAll(".date-filter-overdue"));
+        Assert.NotEmpty(cut.FindAll(".date-filter-today"));
+        Assert.NotEmpty(cut.FindAll(".date-filter-week"));
+    }
+
+    [Fact]
+    public async Task DateFilter_Overdue_ShowsOnlyOverdueTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-2));
+        await addHandler.HandleAsync("Future task",  dueDate: DateTime.Today.AddDays(3));
+        await addHandler.HandleAsync("No date task");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".date-filter-overdue").Click();
+
+        Assert.Contains("Overdue task", cut.Markup);
+        Assert.DoesNotContain("Future task", cut.Markup);
+        Assert.DoesNotContain("No date task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task DateFilter_DueToday_ShowsOnlyTodayTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Today task",  dueDate: DateTime.Today);
+        await addHandler.HandleAsync("Future task", dueDate: DateTime.Today.AddDays(3));
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".date-filter-today").Click();
+
+        Assert.Contains("Today task", cut.Markup);
+        Assert.DoesNotContain("Future task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task DateFilter_DueThisWeek_ShowsNextSevenDaysTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Due today task",    dueDate: DateTime.Today);
+        await addHandler.HandleAsync("Due in four days",  dueDate: DateTime.Today.AddDays(4));
+        await addHandler.HandleAsync("Due in eight days", dueDate: DateTime.Today.AddDays(8));
+        await addHandler.HandleAsync("Past due task",     dueDate: DateTime.Today.AddDays(-1));
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".date-filter-week").Click();
+
+        Assert.Contains("Due today task", cut.Markup);
+        Assert.Contains("Due in four days", cut.Markup);
+        Assert.DoesNotContain("Due in eight days", cut.Markup);
+        Assert.DoesNotContain("Past due task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task DateFilter_Any_ResetsToAll()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-1));
+        await addHandler.HandleAsync("No date task");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".date-filter-overdue").Click();
+        Assert.DoesNotContain("No date task", cut.Markup);
+
+        cut.Find(".date-filter-all").Click();
+        Assert.Contains("No date task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task DateFilter_WithMultipleLists_ShowsCrossListHint()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var createList = new CreateListHandler(db);
+        await addHandler.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-1));
+        await createList.HandleAsync("Work");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".date-filter-overdue").Click();
+
+        Assert.Contains("search-all-lists-hint", cut.Markup);
     }
 }

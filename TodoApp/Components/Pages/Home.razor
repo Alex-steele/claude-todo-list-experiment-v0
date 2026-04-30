@@ -326,7 +326,7 @@ else
             {
                 <div class="d-flex align-center gap-1 mb-2 search-all-lists-hint">
                     <MudIcon Icon="@Icons.Material.Filled.Layers" Size="Size.Small" Color="Color.Info" />
-                    <MudText Typo="Typo.caption" Color="Color.Info">Searching all lists</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Info">Showing results across all lists</MudText>
                 </div>
             }
             <div class="d-flex align-center gap-2 flex-wrap justify-space-between">
@@ -407,6 +407,29 @@ else
                         @(pri == TodoPriority.None ? "None" : pri.ToString())
                     </MudChip>
                 }
+            </div>
+            <div class="d-flex align-center gap-1 flex-wrap mt-2 date-filter-row">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1">Due:</MudText>
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_dateFilter == TodoDateFilter.None ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Secondary"
+                         OnClick="@(() => _dateFilter = TodoDateFilter.None)"
+                         Class="date-filter-all">Any</MudChip>
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_dateFilter == TodoDateFilter.Overdue ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Error"
+                         OnClick="@(() => _dateFilter = TodoDateFilter.Overdue)"
+                         Class="date-filter-overdue">Overdue</MudChip>
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_dateFilter == TodoDateFilter.DueToday ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Warning"
+                         OnClick="@(() => _dateFilter = TodoDateFilter.DueToday)"
+                         Class="date-filter-today">Today</MudChip>
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_dateFilter == TodoDateFilter.DueThisWeek ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Info"
+                         OnClick="@(() => _dateFilter = TodoDateFilter.DueThisWeek)"
+                         Class="date-filter-week">This week</MudChip>
             </div>
             @if (AllTagNames.Count > 0)
             {
@@ -824,6 +847,7 @@ else
     private TodoStatusFilter _statusFilter = TodoStatusFilter.All;
     private TodoSortOrder _sortOrder = TodoSortOrder.Newest;
     private string _searchQuery = string.Empty;
+    private TodoDateFilter _dateFilter = TodoDateFilter.None;
 
     private int? _editingTodoId;
     private string _editValue = string.Empty;
@@ -853,10 +877,10 @@ else
         _todoTags.Values.SelectMany(tags => tags.Select(t => t.Name))
             .Distinct().OrderBy(n => n).ToList();
 
-    // When a non-empty search query is active and multiple lists exist,
-    // search spans all lists so users can find any todo regardless of where it lives.
+    // Cross-list mode: active when searching or date-filtering with multiple lists.
     private bool IsGlobalSearch =>
-        !string.IsNullOrWhiteSpace(_searchQuery) && _lists is { Count: > 1 };
+        (!string.IsNullOrWhiteSpace(_searchQuery) || _dateFilter != TodoDateFilter.None)
+        && _lists is { Count: > 1 };
 
     private IReadOnlyList<TodoSummary> DisplayedTodos
     {
@@ -866,7 +890,7 @@ else
             var source = IsGlobalSearch
                 ? _todos.ToList()
                 : _todos.Where(t => t.ListId == _activeListId).ToList();
-            var filtered = FilterSortTodosHandler.Handle(source, _statusFilter, _sortOrder, _searchQuery, _priorityFilter);
+            var filtered = FilterSortTodosHandler.Handle(source, _statusFilter, _sortOrder, _searchQuery, _priorityFilter, _dateFilter);
             if (_tagFilter is null) return filtered;
             return filtered
                 .Where(t => _todoTags.TryGetValue(t.Id, out var tags) && tags.Any(tag => tag.Name == _tagFilter))
@@ -1359,6 +1383,7 @@ else
         _searchQuery = string.Empty;
         _priorityFilter = null;
         _tagFilter = null;
+        _dateFilter = TodoDateFilter.None;
     }
 
     private async Task HandleNewListKeyUp(KeyboardEventArgs e)

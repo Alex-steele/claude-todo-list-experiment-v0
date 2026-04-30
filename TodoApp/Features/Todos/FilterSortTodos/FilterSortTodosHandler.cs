@@ -9,7 +9,8 @@ public class FilterSortTodosHandler
         TodoStatusFilter statusFilter,
         TodoSortOrder sortOrder,
         string searchQuery = "",
-        TodoPriority? priorityFilter = null)
+        TodoPriority? priorityFilter = null,
+        TodoDateFilter dateFilter = TodoDateFilter.None)
     {
         var searched = string.IsNullOrWhiteSpace(searchQuery)
             ? todos.AsEnumerable()
@@ -26,7 +27,18 @@ public class FilterSortTodosHandler
             ? filtered.Where(t => t.Priority == priorityFilter.Value)
             : filtered;
 
-        var pinFirst = priorityFiltered.OrderByDescending(t => t.IsPinned ? 1 : 0);
+        var today = DateTime.Today;
+        var endOfWeek = today.AddDays(7);
+
+        var dateFiltered = dateFilter switch
+        {
+            TodoDateFilter.Overdue      => priorityFiltered.Where(t => !t.IsCompleted && t.DueDate.HasValue && t.DueDate.Value.Date < today),
+            TodoDateFilter.DueToday     => priorityFiltered.Where(t => !t.IsCompleted && t.DueDate.HasValue && t.DueDate.Value.Date == today),
+            TodoDateFilter.DueThisWeek  => priorityFiltered.Where(t => !t.IsCompleted && t.DueDate.HasValue && t.DueDate.Value.Date >= today && t.DueDate.Value.Date < endOfWeek),
+            _                           => priorityFiltered
+        };
+
+        var pinFirst = dateFiltered.OrderByDescending(t => t.IsPinned ? 1 : 0);
 
         var sorted = sortOrder switch
         {
@@ -36,7 +48,7 @@ public class FilterSortTodosHandler
                                                   .ThenBy(t => -t.Id),
             TodoSortOrder.PriorityDesc => pinFirst.ThenByDescending(t => (int)t.Priority)
                                                   .ThenBy(t => -t.Id),
-            TodoSortOrder.Manual       => priorityFiltered.AsEnumerable(), // preserve DB order (SortOrder ASC)
+            TodoSortOrder.Manual       => dateFiltered.AsEnumerable(), // preserve DB order (SortOrder ASC)
             _                          => pinFirst.ThenByDescending(t => t.Id)  // Newest (default)
         };
 

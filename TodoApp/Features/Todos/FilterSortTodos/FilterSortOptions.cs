@@ -15,3 +15,11 @@ public enum TodoSortOrder
     PriorityDesc = 3,
     Manual = 4
 }
+
+public enum TodoDateFilter
+{
+    None = 0,
+    Overdue = 1,
+    DueToday = 2,
+    DueThisWeek = 3
+}
