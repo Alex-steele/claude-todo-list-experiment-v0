@@ -67,4 +67,52 @@ public class CompleteTodoHandlerTests
         Assert.True(todo1.IsCompleted);
         Assert.False(todo2.IsCompleted);
     }
+
+    [Fact]
+    public async Task HandleAsync_Completing_SetsCompletedAt()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var getHandler = new GetTodosHandler(db);
+
+        var before = DateTime.UtcNow.AddSeconds(-1);
+        var id = await addHandler.HandleAsync("Task");
+        await completeHandler.HandleAsync(id);
+        var after = DateTime.UtcNow.AddSeconds(1);
+
+        var todo = (await getHandler.HandleAsync()).Single(t => t.Id == id);
+        Assert.NotNull(todo.CompletedAt);
+        Assert.InRange(todo.CompletedAt!.Value.ToUniversalTime(), before, after);
+    }
+
+    [Fact]
+    public async Task HandleAsync_Uncompleting_ClearsCompletedAt()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var getHandler = new GetTodosHandler(db);
+
+        var id = await addHandler.HandleAsync("Task");
+        await completeHandler.HandleAsync(id); // complete
+        await completeHandler.HandleAsync(id); // un-complete
+
+        var todo = (await getHandler.HandleAsync()).Single(t => t.Id == id);
+        Assert.False(todo.IsCompleted);
+        Assert.Null(todo.CompletedAt);
+    }
+
+    [Fact]
+    public async Task HandleAsync_NewTodo_HasNullCompletedAt()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var getHandler = new GetTodosHandler(db);
+
+        var id = await addHandler.HandleAsync("Brand new task");
+
+        var todo = (await getHandler.HandleAsync()).Single(t => t.Id == id);
+        Assert.Null(todo.CompletedAt);
+    }
 }
