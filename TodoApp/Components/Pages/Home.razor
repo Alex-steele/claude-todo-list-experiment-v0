@@ -611,6 +611,12 @@ else
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">
                                     Added @todo.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
                                 </MudText>
+                                @if (todo.IsCompleted && todo.CompletedAt.HasValue)
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Success" Class="completed-at-text">
+                                        ✓ @FormatCompletedAt(todo.CompletedAt.Value)
+                                    </MudText>
+                                }
                                 @if (todo.DueDate.HasValue)
                                 {
                                     var dueDateStatus = GetDueDateStatus(todo);
@@ -1495,6 +1501,19 @@ else
         var target = DateTime.Today.AddDays(daysFromToday);
         // Toggle: clicking the active shortcut clears the date
         _newDueDate = _newDueDate?.Date == target.Date ? null : target;
+    }
+
+    private static string FormatCompletedAt(DateTime completedAt)
+    {
+        var local = completedAt.ToLocalTime();
+        var diff = (DateTime.Today - local.Date).Days;
+        return diff switch
+        {
+            0    => $"Completed today at {local:h:mm tt}",
+            1    => "Completed yesterday",
+            <= 7 => $"Completed {diff} days ago",
+            _    => $"Completed {local:MMM d, yyyy}"
+        };
     }
 
     private static string FormatDueDateDisplay(DateTime dueDate)

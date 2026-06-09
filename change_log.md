@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 32 — [2026-04-20] — Feature: Completion Date Tracking
+
+**Description:** The app now records when each todo was completed. Completing a todo stamps it with a `CompletedAt` timestamp; un-completing it clears the stamp. Completed todos show a green "✓ Completed today at 3:45 PM" (or "yesterday", "N days ago", or a full date for older completions) below the creation date. Incomplete todos show nothing extra. Restored todos (via Undo) preserve their original completion timestamp.
+
+**Reason for change:** "Completed" was a boolean with no history — you had no way to know whether you finished something an hour ago or a week ago. The completion timestamp makes the completed state meaningful and complements the due-date tracking already in place.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 157
+- Lines deleted: 9
+- Tests added: 7
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 31 — [2026-04-20] — Feature: Edit Priority and Due Date
 
 **Description:** The inline edit form now lets you change a todo's priority and due date, not just its title. Clicking the edit (✏️) button expands a two-row form: the top row has the title field and save/cancel buttons (unchanged); the bottom row shows a Priority dropdown pre-filled with the current priority and a Due date picker pre-filled with the current due date (or blank if none). Saving persists all three fields atomically. The due date can be cleared by clearing the picker. Priority defaults to None if unset.

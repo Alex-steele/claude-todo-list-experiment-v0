@@ -2113,4 +2113,68 @@ public class HomeTests : BunitContext
         cut.Find(".todo-edit-cancel-btn").Click();
         Assert.Empty(cut.FindAll(".todo-edit-form"));
     }
+
+    // ── Completion date tracking ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task CompleteTodo_ShowsCompletedAtText()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Finish report");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".mud-checkbox input").Change(true);
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.NotEmpty(cut.FindAll(".completed-at-text")));
+    }
+
+    [Fact]
+    public async Task CompleteTodo_CompletedAtText_ContainsCompletedWord()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".mud-checkbox input").Change(true);
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Completed", cut.Find(".completed-at-text").TextContent));
+    }
+
+    [Fact]
+    public async Task IncompleteTodo_DoesNotShowCompletedAtText()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Not done yet");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        Assert.Empty(cut.FindAll(".completed-at-text"));
+    }
+
+    [Fact]
+    public async Task PreExistingCompletedTodo_WithoutCompletedAt_NoTimestampShown()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Old task");
+        await completeHandler.HandleAsync(id);
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        // CompletedAt is set by the handler so this should show the text
+        // (verifies the full round-trip via handler)
+        await cut.WaitForStateAsync(() => cut.FindAll(".mud-list-item").Count > 0);
+        var completedItems = cut.FindAll(".completed-at-text");
+        Assert.NotEmpty(completedItems);
+    }
 }

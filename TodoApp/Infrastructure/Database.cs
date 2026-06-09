@@ -117,6 +117,16 @@ public class Database(string connectionString)
             // Column already exists — ignore
         }
 
+        // Migration: add CompletedAt column for completion date tracking
+        try
+        {
+            await conn.ExecuteAsync("ALTER TABLE Todos ADD COLUMN CompletedAt TEXT NULL");
+        }
+        catch (SqliteException)
+        {
+            // Column already exists — ignore
+        }
+
         await conn.ExecuteAsync("""
             CREATE TABLE IF NOT EXISTS TodoTags (
                 Id      INTEGER PRIMARY KEY AUTOINCREMENT,
