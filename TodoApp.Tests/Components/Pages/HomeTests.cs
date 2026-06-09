@@ -26,6 +26,7 @@ using TodoApp.Features.Todos.QuickAdd;
 using TodoApp.Features.Todos.RecurringTodos;
 using TodoApp.Features.Todos.UndoRedo;
 using TodoApp.Features.Todos.MoveTodo;
+using TodoApp.Features.Todos.SnoozeTodo;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -67,6 +68,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<RenameListHandler>();
         ctx.Services.AddScoped<ReorderTodosHandler>();
         ctx.Services.AddScoped<MoveTodoHandler>();
+        ctx.Services.AddScoped<SnoozeTodoHandler>();
         return ctx;
     }
 
@@ -2176,5 +2178,128 @@ public class HomeTests : BunitContext
         await cut.WaitForStateAsync(() => cut.FindAll(".mud-list-item").Count > 0);
         var completedItems = cut.FindAll(".completed-at-text");
         Assert.NotEmpty(completedItems);
+    }
+
+    // ── Snooze / defer ────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task SnoozeButton_IsRendered_ForEachTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task to snooze");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        Assert.NotEmpty(cut.FindAll(".todo-snooze-btn"));
+    }
+
+    [Fact]
+    public async Task ClickingSnoozeButton_ShowsSnoozeOptions()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task to snooze");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-snooze-btn").Click();
+
+        Assert.NotEmpty(cut.FindAll(".snooze-options"));
+        Assert.NotEmpty(cut.FindAll(".snooze-tomorrow-btn"));
+        Assert.NotEmpty(cut.FindAll(".snooze-week-btn"));
+        Assert.NotEmpty(cut.FindAll(".snooze-two-weeks-btn"));
+    }
+
+    [Fact]
+    public async Task ClickingSnoozeButton_HidesSnoozeButtonAndShowsOptions()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task to snooze");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-snooze-btn").Click();
+
+        // Snooze button is replaced by the options panel
+        Assert.Empty(cut.FindAll(".todo-snooze-btn"));
+    }
+
+    [Fact]
+    public async Task ClickingCancelSnooze_HidesOptions()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task to snooze");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-snooze-btn").Click();
+        Assert.NotEmpty(cut.FindAll(".snooze-options"));
+
+        cut.Find(".snooze-cancel-btn").Click();
+        Assert.Empty(cut.FindAll(".snooze-options"));
+        Assert.NotEmpty(cut.FindAll(".todo-snooze-btn"));
+    }
+
+    [Fact]
+    public async Task SnoozeTomorrow_SetsDueDateToTomorrow()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task to snooze");
+        var getHandler = new GetTodosHandler(db);
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-snooze-btn").Click();
+        cut.Find(".snooze-tomorrow-btn").Click();
+
+        var tomorrow = DateTime.Today.AddDays(1);
+        await cut.WaitForAssertionAsync(async () =>
+        {
+            var todos = await getHandler.HandleAsync();
+            Assert.Equal(tomorrow.Date, todos[0].DueDate!.Value.Date);
+        });
+    }
+
+    [Fact]
+    public async Task SnoozeWeek_SetsDueDateToNextWeek()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task to snooze");
+        var getHandler = new GetTodosHandler(db);
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-snooze-btn").Click();
+        cut.Find(".snooze-week-btn").Click();
+
+        var nextWeek = DateTime.Today.AddDays(7);
+        await cut.WaitForAssertionAsync(async () =>
+        {
+            var todos = await getHandler.HandleAsync();
+            Assert.Equal(nextWeek.Date, todos[0].DueDate!.Value.Date);
+        });
+    }
+
+    [Fact]
+    public async Task SnoozeShowsSnackbar()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task to snooze");
+        var ctx = CreateBunitContext(db);
+        var snackbarProvider = ctx.Render<MudSnackbarProvider>();
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-snooze-btn").Click();
+        cut.Find(".snooze-tomorrow-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Snoozed to", snackbarProvider.Markup));
     }
 }

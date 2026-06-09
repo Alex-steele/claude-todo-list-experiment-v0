@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 33 — [2026-06-09] — Feature: Snooze / Defer Todo
+
+**Description:** Each todo now has a snooze button (clock icon) in its action row. Clicking it replaces the button with three one-click options — **Tomorrow**, **+1 week**, and **+2 weeks** — plus a cancel (✕) button. Selecting an option sets (or updates) the todo's due date to the chosen offset from today, closes the options panel, and shows a confirmation snackbar ("Snoozed to Jun 10"). The feature works on todos that have no existing due date as well as on those that do.
+
+**Reason for change:** Users frequently need to defer a task without going through the full edit form — snoozing is the fastest way to say "I'll deal with this later." The three preset options cover the most common deferral intervals, and the feature composes naturally with the due-date quick filters and relative-date labels already in place.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 250
+- Lines deleted: 0
+- Tests added: 11
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 32 — [2026-04-20] — Feature: Completion Date Tracking
 
 **Description:** The app now records when each todo was completed. Completing a todo stamps it with a `CompletedAt` timestamp; un-completing it clears the stamp. Completed todos show a green "✓ Completed today at 3:45 PM" (or "yesterday", "N days ago", or a full date for older completions) below the creation date. Incomplete todos show nothing extra. Restored todos (via Undo) preserve their original completion timestamp.

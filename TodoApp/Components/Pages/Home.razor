@@ -22,6 +22,7 @@
 @using TodoApp.Features.Todos.QuickAdd
 @using TodoApp.Features.Todos.RecurringTodos
 @using TodoApp.Features.Todos.UndoRedo
+@using TodoApp.Features.Todos.SnoozeTodo
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject AddTagHandler AddTagHandler
 @inject AddTodoHandler AddTodoHandler
@@ -50,6 +51,7 @@
 @inject ReorderTodosHandler ReorderTodosHandler
 @inject MoveTodoHandler MoveTodoHandler
 @inject RestoreTodosHandler RestoreTodosHandler
+@inject SnoozeTodoHandler SnoozeTodoHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -801,6 +803,40 @@ else
                                 OnClick="@(async () => await HandleTogglePin(todo.Id))"
                                 title="@(todo.IsPinned ? "Unpin" : "Pin to top")"
                                 Class="todo-pin-btn" />
+                            @{
+                                var snoozeTodoId = todo.Id;
+                            }
+                            @if (_snoozingTodoId == todo.Id)
+                            {
+                                <div class="d-flex gap-1 align-center snooze-options">
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info"
+                                               OnClick="@(async () => await HandleSnooze(snoozeTodoId, 1))"
+                                               Class="snooze-tomorrow-btn">Tomorrow</MudButton>
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info"
+                                               OnClick="@(async () => await HandleSnooze(snoozeTodoId, 7))"
+                                               Class="snooze-week-btn">+1 week</MudButton>
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info"
+                                               OnClick="@(async () => await HandleSnooze(snoozeTodoId, 14))"
+                                               Class="snooze-two-weeks-btn">+2 weeks</MudButton>
+                                    <MudIconButton
+                                        Icon="@Icons.Material.Filled.Close"
+                                        Color="Color.Default"
+                                        Size="Size.Small"
+                                        OnClick="@(() => _snoozingTodoId = null)"
+                                        title="Cancel snooze"
+                                        Class="snooze-cancel-btn" />
+                                </div>
+                            }
+                            else
+                            {
+                                <MudIconButton
+                                    Icon="@Icons.Material.Filled.Snooze"
+                                    Color="Color.Default"
+                                    Size="Size.Small"
+                                    OnClick="@(() => _snoozingTodoId = snoozeTodoId)"
+                                    title="Snooze"
+                                    Class="todo-snooze-btn" />
+                            }
                             @if (_lists is { Count: > 1 })
                             {
                                 var currentTodoId = todo.Id;
@@ -875,6 +911,7 @@ else
     private string? _errorMessage;
 
     private int? _movingTodoId;
+    private int? _snoozingTodoId;
 
     private TodoStatusFilter _statusFilter = TodoStatusFilter.All;
     private TodoSortOrder _sortOrder = TodoSortOrder.Newest;
@@ -1409,6 +1446,15 @@ else
         await MoveTodoHandler.HandleAsync(todoId, targetListId);
         _movingTodoId = null;
         await LoadTodosAsync();
+    }
+
+    private async Task HandleSnooze(int todoId, int daysFromToday)
+    {
+        var newDate = DateTime.Today.AddDays(daysFromToday);
+        await SnoozeTodoHandler.HandleAsync(todoId, newDate);
+        _snoozingTodoId = null;
+        await LoadTodosAsync();
+        Snackbar.Add($"Snoozed to {newDate:MMM d}", Severity.Info);
     }
 
     private void HandleSwitchList(int listId)
