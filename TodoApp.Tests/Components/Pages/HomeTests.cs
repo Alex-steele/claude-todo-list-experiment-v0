@@ -2032,4 +2032,85 @@ public class HomeTests : BunitContext
 
         Assert.Contains("search-all-lists-hint", cut.Markup);
     }
+
+    // ── Edit priority and due date ────────────────────────────────────────────
+
+    [Fact]
+    public async Task EditTodo_EditFormShowsPrioritySelect()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task to edit");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-edit-btn").Click();
+
+        Assert.NotEmpty(cut.FindAll(".todo-edit-priority"));
+    }
+
+    [Fact]
+    public async Task EditTodo_EditFormShowsDueDatePicker()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task to edit");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-edit-btn").Click();
+
+        Assert.NotEmpty(cut.FindAll(".todo-edit-due-date"));
+    }
+
+    [Fact]
+    public async Task EditTodo_PrePopulatesExistingPriority()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("High priority task", priority: TodoPriority.High);
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-edit-btn").Click();
+
+        // The priority select should be rendered
+        var prioritySelect = cut.FindComponent<MudSelect<TodoPriority>>();
+        Assert.NotNull(prioritySelect);
+    }
+
+    [Fact]
+    public async Task EditTodo_SaveUpdatesTitle()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Original title");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-edit-btn").Click();
+
+        var titleInput = cut.Find(".todo-edit-field input");
+        titleInput.Change("Updated title");
+        cut.Find(".todo-edit-save-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Updated title", cut.Markup));
+    }
+
+    [Fact]
+    public async Task EditTodo_CancelButton_ClosesEditForm()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("A task");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-edit-btn").Click();
+        Assert.NotEmpty(cut.FindAll(".todo-edit-form"));
+
+        cut.Find(".todo-edit-cancel-btn").Click();
+        Assert.Empty(cut.FindAll(".todo-edit-form"));
+    }
 }

@@ -525,25 +525,51 @@ else
                             <div class="flex-grow-1">
                                 @if (_editingTodoId == todo.Id)
                                 {
-                                    <div class="d-flex align-center gap-2">
-                                        <MudTextField
-                                            @bind-Value="_editValue"
-                                            Variant="Variant.Outlined"
-                                            FullWidth="true"
-                                            OnKeyUp="HandleEditKeyUp"
-                                            Class="todo-edit-field" />
-                                        <MudIconButton
-                                            Icon="@Icons.Material.Filled.Check"
-                                            Color="Color.Success"
-                                            Size="Size.Small"
-                                            OnClick="HandleSaveEdit"
-                                            title="Save" />
-                                        <MudIconButton
-                                            Icon="@Icons.Material.Filled.Close"
-                                            Color="Color.Default"
-                                            Size="Size.Small"
-                                            OnClick="HandleCancelEdit"
-                                            title="Cancel" />
+                                    <div class="d-flex flex-column gap-2 todo-edit-form">
+                                        <div class="d-flex align-center gap-2">
+                                            <MudTextField
+                                                @bind-Value="_editValue"
+                                                Variant="Variant.Outlined"
+                                                FullWidth="true"
+                                                OnKeyUp="HandleEditKeyUp"
+                                                Class="todo-edit-field" />
+                                            <MudIconButton
+                                                Icon="@Icons.Material.Filled.Check"
+                                                Color="Color.Success"
+                                                Size="Size.Small"
+                                                OnClick="HandleSaveEdit"
+                                                title="Save"
+                                                Class="todo-edit-save-btn" />
+                                            <MudIconButton
+                                                Icon="@Icons.Material.Filled.Close"
+                                                Color="Color.Default"
+                                                Size="Size.Small"
+                                                OnClick="HandleCancelEdit"
+                                                title="Cancel"
+                                                Class="todo-edit-cancel-btn" />
+                                        </div>
+                                        <div class="d-flex align-center gap-2 flex-wrap">
+                                            <MudSelect
+                                                T="TodoPriority"
+                                                @bind-Value="_editPriority"
+                                                Label="Priority"
+                                                Variant="Variant.Outlined"
+                                                Dense="true"
+                                                Style="min-width: 130px;"
+                                                Class="todo-edit-priority">
+                                                <MudSelectItem Value="@TodoPriority.None">None</MudSelectItem>
+                                                <MudSelectItem Value="@TodoPriority.Low">Low</MudSelectItem>
+                                                <MudSelectItem Value="@TodoPriority.Medium">Medium</MudSelectItem>
+                                                <MudSelectItem Value="@TodoPriority.High">High</MudSelectItem>
+                                            </MudSelect>
+                                            <MudDatePicker
+                                                @bind-Date="_editDueDate"
+                                                Label="Due date"
+                                                Variant="Variant.Outlined"
+                                                Clearable="true"
+                                                Style="min-width: 160px;"
+                                                Class="todo-edit-due-date" />
+                                        </div>
                                     </div>
                                 }
                                 else
@@ -577,7 +603,7 @@ else
                                             Icon="@Icons.Material.Filled.Edit"
                                             Color="Color.Default"
                                             Size="Size.Small"
-                                            OnClick="@(() => HandleStartEdit(todo.Id, todo.Title))"
+                                            OnClick="@(() => HandleStartEdit(todo.Id, todo.Title, todo.Priority, todo.DueDate))"
                                             title="Edit"
                                             Class="todo-edit-btn" />
                                     </div>
@@ -851,6 +877,8 @@ else
 
     private int? _editingTodoId;
     private string _editValue = string.Empty;
+    private TodoPriority _editPriority = TodoPriority.None;
+    private DateTime? _editDueDate;
 
     private bool _isSelectMode;
     private HashSet<int> _selectedIds = new();
@@ -1040,10 +1068,12 @@ else
         }
     }
 
-    private void HandleStartEdit(int id, string currentTitle)
+    private void HandleStartEdit(int id, string currentTitle, TodoPriority priority, DateTime? dueDate)
     {
         _editingTodoId = id;
         _editValue = currentTitle;
+        _editPriority = priority;
+        _editDueDate = dueDate;
     }
 
     private async Task HandleSaveEdit()
@@ -1052,7 +1082,7 @@ else
 
         try
         {
-            await EditTodoHandler.HandleAsync(_editingTodoId.Value, _editValue);
+            await EditTodoHandler.HandleAsync(_editingTodoId.Value, _editValue, _editPriority, _editDueDate);
             _editingTodoId = null;
             await LoadTodosAsync();
         }

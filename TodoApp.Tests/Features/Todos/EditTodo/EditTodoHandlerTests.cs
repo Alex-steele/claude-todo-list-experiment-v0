@@ -1,3 +1,4 @@
+using TodoApp.Features.Todos;
 using TodoApp.Features.Todos.AddTodo;
 using TodoApp.Features.Todos.EditTodo;
 using TodoApp.Features.Todos.GetTodos;
@@ -75,5 +76,65 @@ public class EditTodoHandlerTests
         var todos = await _getHandler.HandleAsync();
         Assert.Equal("Todo one edited", todos.Single(t => t.Id == id1).Title);
         Assert.Equal("Todo two", todos.Single(t => t.Id == id2).Title);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithPriority_UpdatesPriority()
+    {
+        var id = await _addHandler.HandleAsync("Task", priority: TodoPriority.Low);
+
+        await _editHandler.HandleAsync(id, "Task", priority: TodoPriority.High);
+
+        var todos = await _getHandler.HandleAsync();
+        Assert.Equal(TodoPriority.High, todos.Single(t => t.Id == id).Priority);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithDueDate_UpdatesDueDate()
+    {
+        var id = await _addHandler.HandleAsync("Task");
+        var newDue = DateTime.Today.AddDays(5);
+
+        await _editHandler.HandleAsync(id, "Task", dueDate: newDue);
+
+        var todos = await _getHandler.HandleAsync();
+        Assert.Equal(newDue.Date, todos.Single(t => t.Id == id).DueDate!.Value.Date);
+    }
+
+    [Fact]
+    public async Task HandleAsync_ClearDueDate_SetsDueDateToNull()
+    {
+        var id = await _addHandler.HandleAsync("Task", dueDate: DateTime.Today.AddDays(3));
+
+        await _editHandler.HandleAsync(id, "Task", dueDate: null);
+
+        var todos = await _getHandler.HandleAsync();
+        Assert.Null(todos.Single(t => t.Id == id).DueDate);
+    }
+
+    [Fact]
+    public async Task HandleAsync_NullPriority_DefaultsToNone()
+    {
+        var id = await _addHandler.HandleAsync("Task", priority: TodoPriority.High);
+
+        await _editHandler.HandleAsync(id, "Task", priority: null);
+
+        var todos = await _getHandler.HandleAsync();
+        Assert.Equal(TodoPriority.None, todos.Single(t => t.Id == id).Priority);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AllFieldsTogether_UpdatesAll()
+    {
+        var id = await _addHandler.HandleAsync("Original");
+        var newDue = DateTime.Today.AddDays(10);
+
+        await _editHandler.HandleAsync(id, "Updated", TodoPriority.Medium, newDue);
+
+        var todos = await _getHandler.HandleAsync();
+        var todo = todos.Single(t => t.Id == id);
+        Assert.Equal("Updated", todo.Title);
+        Assert.Equal(TodoPriority.Medium, todo.Priority);
+        Assert.Equal(newDue.Date, todo.DueDate!.Value.Date);
     }
 }

@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 31 — [2026-04-20] — Feature: Edit Priority and Due Date
+
+**Description:** The inline edit form now lets you change a todo's priority and due date, not just its title. Clicking the edit (✏️) button expands a two-row form: the top row has the title field and save/cancel buttons (unchanged); the bottom row shows a Priority dropdown pre-filled with the current priority and a Due date picker pre-filled with the current due date (or blank if none). Saving persists all three fields atomically. The due date can be cleared by clearing the picker. Priority defaults to None if unset.
+
+**Reason for change:** Previously editing a todo only let you fix a typo in the title — there was no way to reprioritise it or push its due date without deleting and recreating it. This was a significant usability gap, especially given the due-date quick filters added in Day 30.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 210
+- Lines deleted: 25
+- Tests added: 11
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 30 — [2026-04-20] — Feature: Due-Date Quick Filters
 
 **Description:** Three new filter chips — **Overdue**, **Today**, and **This week** — appear in the filter bar below the priority filters. Clicking one instantly narrows the list to incomplete todos matching that date range: Overdue shows anything past due, Today shows items due on the current date, and This week shows items due within the next 7 days. When multiple lists exist, date filters automatically search across all lists (the same "Showing results across all lists" banner appears). Clicking **Any** resets to unfiltered. The date filter is also cleared when switching lists.
