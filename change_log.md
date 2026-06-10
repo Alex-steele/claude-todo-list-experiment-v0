@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 34 — [2026-06-10] — Feature: Time Estimates
+
+**Description:** Todos now support a time estimate field (No estimate, 15 min, 30 min, 1 hour, 2 hours, 4 hours, 1 day). A dropdown appears in both the "Add Todo" form and the inline edit form. Todos with an estimate display a small badge (e.g., "~1 h") next to the title. The stats panel gains a new "~X h Y min remaining" chip that sums the estimates of all active (incomplete) todos, giving users a quick sense of their total workload at a glance.
+
+**Reason for change:** Knowing what's on your plate is core to any useful todo system, but the app had no way to express how long things take. Time estimates are the simplest bridge between a task list and a capacity plan — they let users quickly answer "how long will all of this take me?"
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 409
+- Lines deleted: 24
+- Tests added: 19
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 33 — [2026-06-09] — Feature: Snooze / Defer Todo
 
 **Description:** Each todo now has a snooze button (clock icon) in its action row. Clicking it replaces the button with three one-click options — **Tomorrow**, **+1 week**, and **+2 weeks** — plus a cancel (✕) button. Selecting an option sets (or updates) the todo's due date to the chosen offset from today, closes the options panel, and shows a confirmation snackbar ("Snoozed to Jun 10"). The feature works on todos that have no existing due date as well as on those that do.

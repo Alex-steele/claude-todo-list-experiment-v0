@@ -14,8 +14,8 @@ public class RestoreTodosHandler(Database db)
         foreach (var todo in todos)
         {
             await conn.ExecuteAsync("""
-                INSERT INTO Todos (Id, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt)
-                VALUES (@Id, @Title, @IsCompleted, @CreatedAt, @Priority, @DueDate, @IsPinned, @Notes, @Recurrence, @ListId, @CompletedAt)
+                INSERT INTO Todos (Id, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate)
+                VALUES (@Id, @Title, @IsCompleted, @CreatedAt, @Priority, @DueDate, @IsPinned, @Notes, @Recurrence, @ListId, @CompletedAt, @TimeEstimate)
                 ON CONFLICT(Id) DO NOTHING
                 """, new
             {
@@ -29,7 +29,8 @@ public class RestoreTodosHandler(Database db)
                 todo.Notes,
                 Recurrence = (int)todo.Recurrence,
                 todo.ListId,
-                CompletedAt = todo.CompletedAt.HasValue ? todo.CompletedAt.Value.ToString("O") : (string?)null
+                CompletedAt = todo.CompletedAt.HasValue ? todo.CompletedAt.Value.ToString("O") : (string?)null,
+                TimeEstimate = (int)todo.TimeEstimate
             });
         }
     }

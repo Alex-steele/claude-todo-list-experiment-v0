@@ -2302,4 +2302,132 @@ public class HomeTests : BunitContext
         await cut.WaitForAssertionAsync(() =>
             Assert.Contains("Snoozed to", snackbarProvider.Markup));
     }
+
+    // ── Time estimate ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task TimeEstimateSelect_IsRendered_InAddForm()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("time-estimate-select", cut.Markup);
+    }
+
+    [Fact]
+    public async Task AddTodo_WithTimeEstimate_ShowsBadgeOnTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Estimate task", timeEstimate: TodoApp.Features.Todos.TimeEstimates.TimeEstimate.OneHour);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("time-estimate-badge", cut.Markup);
+        Assert.Contains("1 h", cut.Markup);
+    }
+
+    [Fact]
+    public async Task AddTodo_WithNoEstimate_NoBadgeShown()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("No estimate task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Empty(cut.FindAll(".time-estimate-badge"));
+    }
+
+    [Fact]
+    public async Task StatsPanel_ShowsEstimatedTimeChip_WhenEstimatesExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Short task", timeEstimate: TodoApp.Features.Todos.TimeEstimates.TimeEstimate.ThirtyMinutes);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("stats-estimated-time", cut.Markup);
+        Assert.Contains("remaining", cut.Markup);
+    }
+
+    [Fact]
+    public async Task StatsPanel_NoEstimatedTimeChip_WhenNoEstimates()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("No estimate");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Empty(cut.FindAll(".stats-estimated-time"));
+    }
+
+    [Fact]
+    public async Task EditForm_ShowsTimeEstimateSelect()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task to edit");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-edit-btn").Click();
+
+        Assert.NotEmpty(cut.FindAll(".todo-edit-time-estimate"));
+    }
+
+    [Fact]
+    public async Task TimeEstimateBadge_ShowsCorrectLabel_ForThirtyMinutes()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Quick task", timeEstimate: TodoApp.Features.Todos.TimeEstimates.TimeEstimate.ThirtyMinutes);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var badge = cut.Find(".time-estimate-badge");
+        Assert.Contains("30 min", badge.TextContent);
+    }
+
+    [Fact]
+    public async Task StatsPanel_EstimatedTimeChip_AggregatesMultipleTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        // 60 min + 120 min = 180 min = 3 h
+        await addHandler.HandleAsync("Task A", timeEstimate: TodoApp.Features.Todos.TimeEstimates.TimeEstimate.OneHour);
+        await addHandler.HandleAsync("Task B", timeEstimate: TodoApp.Features.Todos.TimeEstimates.TimeEstimate.TwoHours);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("3 h", cut.Markup);
+        Assert.Contains("remaining", cut.Markup);
+    }
+
+    [Fact]
+    public async Task CompletedTodo_TimeEstimate_NotIncluded_InStatsTotal()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+
+        var id = await addHandler.HandleAsync("Done task", timeEstimate: TodoApp.Features.Todos.TimeEstimates.TimeEstimate.FourHours);
+        await completeHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // No remaining estimate since only todo is completed
+        Assert.Empty(cut.FindAll(".stats-estimated-time"));
+    }
 }
