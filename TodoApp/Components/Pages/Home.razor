@@ -23,6 +23,7 @@
 @using TodoApp.Features.Todos.RecurringTodos
 @using TodoApp.Features.Todos.UndoRedo
 @using TodoApp.Features.Todos.SnoozeTodo
+@using TodoApp.Features.Todos.TimeEstimates
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject AddTagHandler AddTagHandler
 @inject AddTodoHandler AddTodoHandler
@@ -234,6 +235,21 @@
             <MudSelectItem Value="@RecurrenceRule.Weekly">Weekly</MudSelectItem>
             <MudSelectItem Value="@RecurrenceRule.Monthly">Monthly</MudSelectItem>
         </MudSelect>
+        <MudSelect
+            T="TimeEstimate"
+            @bind-Value="_newTimeEstimate"
+            Label="Time estimate"
+            Variant="Variant.Outlined"
+            Class="mb-3 time-estimate-select"
+            Disabled="_isSubmitting">
+            <MudSelectItem Value="@TimeEstimate.None">No estimate</MudSelectItem>
+            <MudSelectItem Value="@TimeEstimate.FifteenMinutes">15 min</MudSelectItem>
+            <MudSelectItem Value="@TimeEstimate.ThirtyMinutes">30 min</MudSelectItem>
+            <MudSelectItem Value="@TimeEstimate.OneHour">1 hour</MudSelectItem>
+            <MudSelectItem Value="@TimeEstimate.TwoHours">2 hours</MudSelectItem>
+            <MudSelectItem Value="@TimeEstimate.FourHours">4 hours</MudSelectItem>
+            <MudSelectItem Value="@TimeEstimate.OneDay">1 day</MudSelectItem>
+        </MudSelect>
         <MudButton
             Variant="Variant.Filled"
             Color="Color.Primary"
@@ -273,6 +289,12 @@
             {
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Class="stats-overdue">
                     Overdue: @stats.Overdue
+                </MudChip>
+            }
+            @if (stats.TotalEstimatedMinutes > 0)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Tertiary" Class="stats-estimated-time">
+                    ~@FormatEstimatedTime(stats.TotalEstimatedMinutes) remaining
                 </MudChip>
             }
         </div>
@@ -571,6 +593,22 @@ else
                                                 Clearable="true"
                                                 Style="min-width: 160px;"
                                                 Class="todo-edit-due-date" />
+                                            <MudSelect
+                                                T="TimeEstimate"
+                                                @bind-Value="_editTimeEstimate"
+                                                Label="Time estimate"
+                                                Variant="Variant.Outlined"
+                                                Dense="true"
+                                                Style="min-width: 130px;"
+                                                Class="todo-edit-time-estimate">
+                                                <MudSelectItem Value="@TimeEstimate.None">No estimate</MudSelectItem>
+                                                <MudSelectItem Value="@TimeEstimate.FifteenMinutes">15 min</MudSelectItem>
+                                                <MudSelectItem Value="@TimeEstimate.ThirtyMinutes">30 min</MudSelectItem>
+                                                <MudSelectItem Value="@TimeEstimate.OneHour">1 hour</MudSelectItem>
+                                                <MudSelectItem Value="@TimeEstimate.TwoHours">2 hours</MudSelectItem>
+                                                <MudSelectItem Value="@TimeEstimate.FourHours">4 hours</MudSelectItem>
+                                                <MudSelectItem Value="@TimeEstimate.OneDay">1 day</MudSelectItem>
+                                            </MudSelect>
                                         </div>
                                     </div>
                                 }
@@ -593,6 +631,12 @@ else
                                                 @GetRecurrenceLabel(todo.Recurrence)
                                             </MudChip>
                                         }
+                                        @if (todo.TimeEstimate != TimeEstimate.None)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined" Class="time-estimate-badge">
+                                                ~@GetTimeEstimateLabel(todo.TimeEstimate)
+                                            </MudChip>
+                                        }
                                         @if (IsGlobalSearch && todo.ListId != _activeListId)
                                         {
                                             var listName = _lists?.FirstOrDefault(l => l.Id == todo.ListId)?.Name;
@@ -605,7 +649,7 @@ else
                                             Icon="@Icons.Material.Filled.Edit"
                                             Color="Color.Default"
                                             Size="Size.Small"
-                                            OnClick="@(() => HandleStartEdit(todo.Id, todo.Title, todo.Priority, todo.DueDate))"
+                                            OnClick="@(() => HandleStartEdit(todo.Id, todo.Title, todo.Priority, todo.DueDate, todo.TimeEstimate))"
                                             title="Edit"
                                             Class="todo-edit-btn" />
                                     </div>
@@ -896,6 +940,7 @@ else
     private TodoPriority _newPriority = TodoPriority.None;
     private DateTime? _newDueDate;
     private RecurrenceRule _newRecurrence = RecurrenceRule.None;
+    private TimeEstimate _newTimeEstimate = TimeEstimate.None;
 
     private IReadOnlyList<TodoList>? _lists;
     private int _activeListId = 1;
@@ -922,6 +967,7 @@ else
     private string _editValue = string.Empty;
     private TodoPriority _editPriority = TodoPriority.None;
     private DateTime? _editDueDate;
+    private TimeEstimate _editTimeEstimate = TimeEstimate.None;
 
     private bool _isSelectMode;
     private HashSet<int> _selectedIds = new();
@@ -1050,11 +1096,12 @@ else
             var effectivePriority = _newPriority != TodoPriority.None ? _newPriority : (parsed.Priority ?? TodoPriority.None);
             var effectiveDueDate  = _newDueDate ?? parsed.DueDate;
 
-            await AddTodoHandler.HandleAsync(effectiveTitle, effectivePriority, effectiveDueDate, _newRecurrence, _activeListId);
+            await AddTodoHandler.HandleAsync(effectiveTitle, effectivePriority, effectiveDueDate, _newRecurrence, _activeListId, _newTimeEstimate);
             _newTitle = string.Empty;
             _newPriority = TodoPriority.None;
             _newDueDate = null;
             _newRecurrence = RecurrenceRule.None;
+            _newTimeEstimate = TimeEstimate.None;
             await LoadTodosAsync();
         }
         catch (ArgumentException ex)
@@ -1111,12 +1158,13 @@ else
         }
     }
 
-    private void HandleStartEdit(int id, string currentTitle, TodoPriority priority, DateTime? dueDate)
+    private void HandleStartEdit(int id, string currentTitle, TodoPriority priority, DateTime? dueDate, TimeEstimate timeEstimate)
     {
         _editingTodoId = id;
         _editValue = currentTitle;
         _editPriority = priority;
         _editDueDate = dueDate;
+        _editTimeEstimate = timeEstimate;
     }
 
     private async Task HandleSaveEdit()
@@ -1125,7 +1173,7 @@ else
 
         try
         {
-            await EditTodoHandler.HandleAsync(_editingTodoId.Value, _editValue, _editPriority, _editDueDate);
+            await EditTodoHandler.HandleAsync(_editingTodoId.Value, _editValue, _editPriority, _editDueDate, _editTimeEstimate);
             _editingTodoId = null;
             await LoadTodosAsync();
         }
@@ -1589,5 +1637,25 @@ else
         if (dueDate == today)
             return DueDateStatus.DueToday;
         return DueDateStatus.Future;
+    }
+
+    private static string GetTimeEstimateLabel(TimeEstimate estimate) => estimate switch
+    {
+        TimeEstimate.FifteenMinutes => "15 min",
+        TimeEstimate.ThirtyMinutes  => "30 min",
+        TimeEstimate.OneHour        => "1 h",
+        TimeEstimate.TwoHours       => "2 h",
+        TimeEstimate.FourHours      => "4 h",
+        TimeEstimate.OneDay         => "1 day",
+        _                           => string.Empty
+    };
+
+    private static string FormatEstimatedTime(int minutes)
+    {
+        if (minutes < 60)
+            return $"{minutes} min";
+        var hours = minutes / 60;
+        var remainder = minutes % 60;
+        return remainder == 0 ? $"{hours} h" : $"{hours} h {remainder} min";
     }
 }
