@@ -24,6 +24,7 @@
 @using TodoApp.Features.Todos.UndoRedo
 @using TodoApp.Features.Todos.SnoozeTodo
 @using TodoApp.Features.Todos.TimeEstimates
+@using TodoApp.Features.Todos.FocusMode
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject AddTagHandler AddTagHandler
 @inject AddTodoHandler AddTodoHandler
@@ -53,6 +54,7 @@
 @inject MoveTodoHandler MoveTodoHandler
 @inject RestoreTodosHandler RestoreTodosHandler
 @inject SnoozeTodoHandler SnoozeTodoHandler
+@inject FocusModeHandler FocusModeHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -377,6 +379,16 @@ else
                         Class="select-mode-btn">
                         @(_isSelectMode ? "Cancel" : "Select")
                     </MudButton>
+                    <MudButton
+                        Variant="@(_isFocusMode ? Variant.Filled : Variant.Outlined)"
+                        Color="@(_isFocusMode ? Color.Success : Color.Default)"
+                        Size="Size.Small"
+                        StartIcon="@Icons.Material.Filled.FilterCenterFocus"
+                        OnClick="HandleToggleFocusMode"
+                        title="Focus mode — show only urgent and important todos"
+                        Class="focus-mode-btn">
+                        Focus
+                    </MudButton>
                 </div>
                 <div class="d-flex align-center gap-1">
                     <MudSelect
@@ -479,6 +491,27 @@ else
             }
         </MudCardContent>
     </MudCard>
+
+    @if (_isFocusMode)
+    {
+        var focusTodos = FocusModeHandler.Handle(_todos!.Where(t => t.ListId == _activeListId).ToList());
+        var focusMinutes = focusTodos
+            .Where(t => t.TimeEstimate != TimeEstimate.None)
+            .Sum(t => (int)t.TimeEstimate);
+        <MudPaper Elevation="0" Class="pa-3 mb-3 d-flex align-center gap-2 focus-mode-banner"
+                  Style="background: var(--mud-palette-success-lighten); border: 1px solid var(--mud-palette-success); border-radius: 8px;">
+            <MudIcon Icon="@Icons.Material.Filled.FilterCenterFocus" Color="Color.Success" Size="Size.Small" />
+            <MudText Typo="Typo.body2" Color="Color.Success">
+                <strong>Focus mode</strong> — @(focusTodos.Count == 0 ? "nothing urgent right now" : $"{focusTodos.Count} todo{(focusTodos.Count == 1 ? "" : "s")} need attention")
+                @if (focusMinutes > 0)
+                {
+                    <span> · ~@FormatEstimatedTime(focusMinutes)</span>
+                }
+            </MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Text" Color="Color.Success" Size="Size.Small" OnClick="HandleToggleFocusMode" Class="focus-mode-exit-btn">Exit focus</MudButton>
+        </MudPaper>
+    }
 
     @if (_isSelectMode && _selectedIds.Count > 0)
     {
@@ -972,6 +1005,8 @@ else
     private bool _isSelectMode;
     private HashSet<int> _selectedIds = new();
 
+    private bool _isFocusMode;
+
     private bool _showShortcutsHelp;
     private DotNetObjectReference<Home>? _dotNetRef;
     private bool _shortcutsRegistered;
@@ -1004,6 +1039,11 @@ else
         get
         {
             if (_todos is null) return [];
+            if (_isFocusMode)
+            {
+                var listSource = _todos.Where(t => t.ListId == _activeListId).ToList();
+                return FocusModeHandler.Handle(listSource);
+            }
             var source = IsGlobalSearch
                 ? _todos.ToList()
                 : _todos.Where(t => t.ListId == _activeListId).ToList();
@@ -1201,6 +1241,13 @@ else
         _isSelectMode = !_isSelectMode;
         if (!_isSelectMode)
             _selectedIds.Clear();
+    }
+
+    private void HandleToggleFocusMode()
+    {
+        _isFocusMode = !_isFocusMode;
+        if (_isFocusMode)
+            _isSelectMode = false;
     }
 
     private void HandleToggleTodoSelection(int id, bool selected)
@@ -1514,6 +1561,7 @@ else
         _priorityFilter = null;
         _tagFilter = null;
         _dateFilter = TodoDateFilter.None;
+        _isFocusMode = false;
     }
 
     private async Task HandleNewListKeyUp(KeyboardEventArgs e)

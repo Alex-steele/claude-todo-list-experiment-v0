@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 35 — [2026-06-11] — Feature: Focus Mode
+
+**Description:** A "Focus" toggle button now appears in the filter toolbar. Clicking it activates Focus Mode: the list instantly narrows to only the todos that need attention right now — pinned items, high- and medium-priority tasks, overdue todos, and todos due today. A green banner appears above the filtered list showing how many todos need attention and their combined time estimate (e.g., "3 todos need attention · ~2 h 30 min"). Clicking "Exit focus" or clicking Focus again returns to the normal view. Focus Mode is automatically deactivated when switching lists.
+
+**Reason for change:** With time estimates (Day 34), due dates, priorities, and snooze all in place, the app has everything needed to answer "what should I work on right now?" — but users still had to manually apply multiple filters to find out. Focus Mode surfaces that curated view in a single click, making the answer instant.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 408
+- Lines deleted: 0
+- Tests added: 22
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 34 — [2026-06-10] — Feature: Time Estimates
 
 **Description:** Todos now support a time estimate field (No estimate, 15 min, 30 min, 1 hour, 2 hours, 4 hours, 1 day). A dropdown appears in both the "Add Todo" form and the inline edit form. Todos with an estimate display a small badge (e.g., "~1 h") next to the title. The stats panel gains a new "~X h Y min remaining" chip that sums the estimates of all active (incomplete) todos, giving users a quick sense of their total workload at a glance.
