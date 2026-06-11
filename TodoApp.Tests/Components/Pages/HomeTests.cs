@@ -27,6 +27,7 @@ using TodoApp.Features.Todos.RecurringTodos;
 using TodoApp.Features.Todos.UndoRedo;
 using TodoApp.Features.Todos.MoveTodo;
 using TodoApp.Features.Todos.SnoozeTodo;
+using TodoApp.Features.Todos.FocusMode;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -69,6 +70,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<ReorderTodosHandler>();
         ctx.Services.AddScoped<MoveTodoHandler>();
         ctx.Services.AddScoped<SnoozeTodoHandler>();
+        ctx.Services.AddScoped<FocusModeHandler>();
         return ctx;
     }
 
@@ -2429,5 +2431,126 @@ public class HomeTests : BunitContext
 
         // No remaining estimate since only todo is completed
         Assert.Empty(cut.FindAll(".stats-estimated-time"));
+    }
+
+    // ── Focus Mode bUnit tests ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task FocusModeButton_IsRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Something");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.NotEmpty(cut.FindAll(".focus-mode-btn"));
+    }
+
+    [Fact]
+    public async Task FocusModeButton_IsNotRendered_WhenNoTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Empty(cut.FindAll(".focus-mode-btn"));
+    }
+
+    [Fact]
+    public async Task FocusMode_Click_ShowsFocusBanner()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Urgent", priority: TodoPriority.High);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".focus-mode-btn").Click();
+
+        Assert.NotEmpty(cut.FindAll(".focus-mode-banner"));
+    }
+
+    [Fact]
+    public async Task FocusMode_ExitButton_HidesBanner()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Urgent", priority: TodoPriority.High);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".focus-mode-btn").Click();
+        cut.Find(".focus-mode-exit-btn").Click();
+
+        Assert.Empty(cut.FindAll(".focus-mode-banner"));
+    }
+
+    [Fact]
+    public async Task FocusMode_FiltersOutLowPriorityNoDateTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Urgent", priority: TodoPriority.High);
+        await addHandler.HandleAsync("Someday", priority: TodoPriority.None);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".focus-mode-btn").Click();
+
+        Assert.Contains("Urgent", cut.Markup);
+        Assert.DoesNotContain("Someday", cut.Markup);
+    }
+
+    [Fact]
+    public async Task FocusMode_IncludesOverdueTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-2));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".focus-mode-btn").Click();
+
+        Assert.Contains("Overdue task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task FocusMode_ExcludesCompletedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+
+        var id = await addHandler.HandleAsync("Done high priority", priority: TodoPriority.High);
+        await completeHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".focus-mode-btn").Click();
+
+        // Banner should say "nothing urgent" since the only high-priority todo is completed
+        Assert.Contains("nothing urgent", cut.Markup);
+    }
+
+    [Fact]
+    public async Task FocusMode_Banner_ShowsEstimatedTime_WhenTodosHaveEstimates()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("High with estimate", priority: TodoPriority.High,
+            timeEstimate: TodoApp.Features.Todos.TimeEstimates.TimeEstimate.OneHour);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".focus-mode-btn").Click();
+
+        var banner = cut.Find(".focus-mode-banner");
+        Assert.Contains("1 h", banner.TextContent);
     }
 }
