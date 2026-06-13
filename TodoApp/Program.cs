@@ -22,6 +22,7 @@ using TodoApp.Features.Todos.UndoRedo;
 using TodoApp.Features.Todos.MoveTodo;
 using TodoApp.Features.Todos.SnoozeTodo;
 using TodoApp.Features.Todos.FocusMode;
+using TodoApp.Features.Todos.DuplicateTodo;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -71,6 +72,7 @@ builder.Services.AddScoped<ReorderTodosHandler>();
 builder.Services.AddScoped<MoveTodoHandler>();
 builder.Services.AddScoped<SnoozeTodoHandler>();
 builder.Services.AddScoped<FocusModeHandler>();
+builder.Services.AddScoped<DuplicateTodoHandler>();
 
 var app = builder.Build();
 

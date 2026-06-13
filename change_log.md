@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 36 — [2026-06-13] — Feature: Duplicate Todo
+
+**Description:** Every todo now has a duplicate button (⧉ copy icon) in its action row. Clicking it instantly creates a copy of the todo with all user-authored attributes preserved — title (suffixed with " (copy)"), priority, due date, time estimate, notes, recurrence rule, and list. The copy starts with a clean slate: not completed, not pinned, no completion timestamp. A snackbar appears with an Undo button that deletes the copy if clicked. The duplicate button appears alongside the existing pin, notes, move, and delete buttons.
+
+**Reason for change:** Users frequently want to create a new task that is similar to an existing one — the same recurring task with a different due date, or the same task for a different project. Manually re-entering all fields is tedious. Duplicate-and-edit is the fastest path for this common pattern.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 320
+- Lines deleted: 0
+- Tests added: 14
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 35 — [2026-06-11] — Feature: Focus Mode
 
 **Description:** A "Focus" toggle button now appears in the filter toolbar. Clicking it activates Focus Mode: the list instantly narrows to only the todos that need attention right now — pinned items, high- and medium-priority tasks, overdue todos, and todos due today. A green banner appears above the filtered list showing how many todos need attention and their combined time estimate (e.g., "3 todos need attention · ~2 h 30 min"). Clicking "Exit focus" or clicking Focus again returns to the normal view. Focus Mode is automatically deactivated when switching lists.

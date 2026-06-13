@@ -25,6 +25,7 @@
 @using TodoApp.Features.Todos.SnoozeTodo
 @using TodoApp.Features.Todos.TimeEstimates
 @using TodoApp.Features.Todos.FocusMode
+@using TodoApp.Features.Todos.DuplicateTodo
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject AddTagHandler AddTagHandler
 @inject AddTodoHandler AddTodoHandler
@@ -55,6 +56,7 @@
 @inject RestoreTodosHandler RestoreTodosHandler
 @inject SnoozeTodoHandler SnoozeTodoHandler
 @inject FocusModeHandler FocusModeHandler
+@inject DuplicateTodoHandler DuplicateTodoHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -958,6 +960,13 @@ else
                                 Size="Size.Small"
                                 OnClick="@(async () => await HandleDeleteTodo(todo.Id))"
                                 Class="todo-delete-btn" />
+                            <MudIconButton
+                                Icon="@Icons.Material.Filled.ContentCopy"
+                                Color="Color.Default"
+                                Size="Size.Small"
+                                OnClick="@(async () => await HandleDuplicateTodo(todo.Id))"
+                                title="Duplicate"
+                                Class="todo-duplicate-btn" />
                         </div>
                     </MudListItem>
                     </div>
@@ -1173,6 +1182,24 @@ else
         }
 
         await LoadTodosAsync();
+    }
+
+    private async Task HandleDuplicateTodo(int id)
+    {
+        var newId = await DuplicateTodoHandler.HandleAsync(id);
+        await LoadTodosAsync();
+
+        Snackbar.Add("Todo duplicated", Severity.Normal, config =>
+        {
+            config.Action = "Undo";
+            config.ActionColor = Color.Primary;
+            config.Onclick = async _ =>
+            {
+                await DeleteTodoHandler.HandleAsync(newId);
+                await LoadTodosAsync();
+                StateHasChanged();
+            };
+        });
     }
 
     private async Task HandleDeleteTodo(int id)

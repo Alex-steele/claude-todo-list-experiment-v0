@@ -28,6 +28,7 @@ using TodoApp.Features.Todos.UndoRedo;
 using TodoApp.Features.Todos.MoveTodo;
 using TodoApp.Features.Todos.SnoozeTodo;
 using TodoApp.Features.Todos.FocusMode;
+using TodoApp.Features.Todos.DuplicateTodo;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -71,6 +72,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<MoveTodoHandler>();
         ctx.Services.AddScoped<SnoozeTodoHandler>();
         ctx.Services.AddScoped<FocusModeHandler>();
+        ctx.Services.AddScoped<DuplicateTodoHandler>();
         return ctx;
     }
 
@@ -2552,5 +2554,72 @@ public class HomeTests : BunitContext
 
         var banner = cut.Find(".focus-mode-banner");
         Assert.Contains("1 h", banner.TextContent);
+    }
+
+    // ── Duplicate todo ────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DuplicateButton_IsRendered_ForEachTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task one");
+        await addHandler.HandleAsync("Task two");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        var dupBtns = cut.FindAll(".todo-duplicate-btn");
+        Assert.Equal(2, dupBtns.Count);
+    }
+
+    [Fact]
+    public async Task DuplicateButton_Click_AddsCopyToList()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Buy milk");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        Assert.Single(cut.FindAll(".mud-list-item"));
+
+        cut.Find(".todo-duplicate-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Equal(2, cut.FindAll(".mud-list-item").Count));
+    }
+
+    [Fact]
+    public async Task DuplicateButton_Click_ShowsCopyTitle()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Write report");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-duplicate-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Write report (copy)", cut.Markup));
+    }
+
+    [Fact]
+    public async Task DuplicateButton_Click_OriginalStillPresent()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Original task");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-duplicate-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            Assert.Contains("Original task", cut.Markup);
+            Assert.Contains("Original task (copy)", cut.Markup);
+        });
     }
 }
