@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 39 — [2026-06-13] — Feature: Color Labels
+
+**Description:** Todos can now be assigned a color label — Red, Orange, Yellow, Green, Blue, or Purple. A 🎨 palette button in each todo's action row opens an inline color picker; selecting a color immediately applies a colored left-border stripe to the todo row. A color filter row in the filter panel lets users narrow the list to todos of a specific color (or clear it to show all). The duplicate action copies the color label. Colors default to None (no border) for all existing and new todos.
+
+**Reason for change:** Tags and priority give textual/ordinal organization, but many users think visually. Color labels provide a fast, at-a-glance organizational layer — you can color-code by project, urgency, context, or any personal scheme without naming it.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 301
+- Lines deleted: 11
+- Tests added: 16
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 38 — [2026-06-13] — Feature: Markdown Notes
 
 **Description:** Todo notes now render as Markdown. When not editing, notes are displayed as formatted HTML — **bold**, *italic*, bullet lists, headings, and auto-linked URLs all work. A small "Markdown supported" hint appears in the notes editor so users know the syntax is available. Raw HTML tags in notes are stripped to prevent injection. The editing experience is unchanged — users write plain text and see the formatted result when they save.

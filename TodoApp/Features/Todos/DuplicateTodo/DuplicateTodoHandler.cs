@@ -20,7 +20,7 @@ public class DuplicateTodoHandler(Database db)
         var newId = await conn.ExecuteScalarAsync<int>("""
             INSERT INTO Todos
                 (Title, CreatedAt, Priority, DueDate, Recurrence, ListId,
-                 SortOrder, TimeEstimate, Notes)
+                 SortOrder, TimeEstimate, Notes, ColorLabel)
             SELECT
                 Title || ' (copy)',
                 @now,
@@ -30,7 +30,8 @@ public class DuplicateTodoHandler(Database db)
                 ListId,
                 (SELECT COALESCE(MAX(SortOrder), 0) + 1 FROM Todos),
                 TimeEstimate,
-                Notes
+                Notes,
+                ColorLabel
             FROM Todos
             WHERE Id = @sourceId;
             SELECT last_insert_rowid();

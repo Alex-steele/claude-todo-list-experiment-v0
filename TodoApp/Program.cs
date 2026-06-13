@@ -24,6 +24,7 @@ using TodoApp.Features.Todos.SnoozeTodo;
 using TodoApp.Features.Todos.FocusMode;
 using TodoApp.Features.Todos.DuplicateTodo;
 using TodoApp.Features.Todos.ActivityStats;
+using TodoApp.Features.Todos.ColorLabel;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -75,6 +76,7 @@ builder.Services.AddScoped<SnoozeTodoHandler>();
 builder.Services.AddScoped<FocusModeHandler>();
 builder.Services.AddScoped<DuplicateTodoHandler>();
 builder.Services.AddScoped<ActivityStatsHandler>();
+builder.Services.AddScoped<SetColorLabelHandler>();
 
 var app = builder.Build();
 

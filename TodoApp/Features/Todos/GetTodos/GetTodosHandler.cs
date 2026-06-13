@@ -1,19 +1,20 @@
 using Dapper;
+using TodoApp.Features.Todos.ColorLabel;
 using TodoApp.Features.Todos.RecurringTodos;
 using TodoApp.Features.Todos.TimeEstimates;
 using TodoApp.Infrastructure;
 
 namespace TodoApp.Features.Todos.GetTodos;
 
-public record TodoSummary(int Id, string Title, bool IsCompleted, DateTime CreatedAt, TodoPriority Priority, DateTime? DueDate, bool IsPinned = false, string? Notes = null, RecurrenceRule Recurrence = RecurrenceRule.None, int ListId = 1, DateTime? CompletedAt = null, TimeEstimate TimeEstimate = TimeEstimate.None);
+public record TodoSummary(int Id, string Title, bool IsCompleted, DateTime CreatedAt, TodoPriority Priority, DateTime? DueDate, bool IsPinned = false, string? Notes = null, RecurrenceRule Recurrence = RecurrenceRule.None, int ListId = 1, DateTime? CompletedAt = null, TimeEstimate TimeEstimate = TimeEstimate.None, TodoColorLabel ColorLabel = TodoColorLabel.None);
 
 public class GetTodosHandler(Database db)
 {
     public async Task<IReadOnlyList<TodoSummary>> HandleAsync()
     {
         using var conn = db.CreateConnection();
-        var rows = await conn.QueryAsync<(int Id, string Title, int IsCompleted, string CreatedAt, int Priority, string? DueDate, int IsPinned, string? Notes, int Recurrence, int ListId, string? CompletedAt, int TimeEstimate)>(
-            "SELECT Id, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate FROM Todos ORDER BY SortOrder ASC, Id DESC");
+        var rows = await conn.QueryAsync<(int Id, string Title, int IsCompleted, string CreatedAt, int Priority, string? DueDate, int IsPinned, string? Notes, int Recurrence, int ListId, string? CompletedAt, int TimeEstimate, int ColorLabel)>(
+            "SELECT Id, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate, ColorLabel FROM Todos ORDER BY SortOrder ASC, Id DESC");
 
         return rows
             .Select(r => new TodoSummary(
@@ -28,7 +29,8 @@ public class GetTodosHandler(Database db)
                 (RecurrenceRule)r.Recurrence,
                 r.ListId,
                 r.CompletedAt is not null ? DateTime.Parse(r.CompletedAt) : (DateTime?)null,
-                (TimeEstimate)r.TimeEstimate))
+                (TimeEstimate)r.TimeEstimate,
+                (TodoColorLabel)r.ColorLabel))
             .ToList();
     }
 }

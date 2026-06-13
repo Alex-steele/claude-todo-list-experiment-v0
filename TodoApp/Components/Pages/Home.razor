@@ -28,6 +28,7 @@
 @using TodoApp.Features.Todos.DuplicateTodo
 @using TodoApp.Features.Todos.ActivityStats
 @using TodoApp.Features.Todos.Notes
+@using TodoApp.Features.Todos.ColorLabel
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject AddTagHandler AddTagHandler
 @inject AddTodoHandler AddTodoHandler
@@ -60,6 +61,7 @@
 @inject FocusModeHandler FocusModeHandler
 @inject DuplicateTodoHandler DuplicateTodoHandler
 @inject ActivityStatsHandler ActivityStatsHandler
+@inject SetColorLabelHandler SetColorLabelHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -521,6 +523,21 @@ else
                     }
                 </div>
             }
+            <div class="d-flex align-center gap-1 flex-wrap mt-2 color-filter-row">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1">Color:</MudText>
+                <span class="color-filter-dot color-filter-all @(_colorFilter is null ? "color-dot-selected" : "")"
+                      style="display:inline-block;width:18px;height:18px;border-radius:50%;background:#9e9e9e;border:2px solid @(_colorFilter is null ? "var(--mud-palette-primary)" : "transparent");cursor:pointer;vertical-align:middle;"
+                      title="Any color"
+                      @onclick="@(() => _colorFilter = null)"></span>
+                @foreach (var cl in new[] { TodoColorLabel.Red, TodoColorLabel.Orange, TodoColorLabel.Yellow, TodoColorLabel.Green, TodoColorLabel.Blue, TodoColorLabel.Purple })
+                {
+                    var label = cl;
+                    <span class="color-filter-dot color-filter-@(label.ToString().ToLower())"
+                          style="display:inline-block;width:18px;height:18px;border-radius:50%;background:@GetColorCss(label);border:2px solid @(_colorFilter == label ? "var(--mud-palette-primary)" : "transparent");cursor:pointer;vertical-align:middle;"
+                          title="@label"
+                          @onclick="@(() => _colorFilter = label)"></span>
+                }
+            </div>
         </MudCardContent>
     </MudCard>
 
@@ -588,7 +605,9 @@ else
                          @ondragover:preventDefault
                          @ondragover="@(() => _dragOverId = todoId)"
                          @ondrop="@(async () => await HandleDrop(todoId))"
-                         class="@(_dragOverId == todo.Id && _sortOrder == TodoSortOrder.Manual ? "drag-over" : "")">
+                         class="@(_dragOverId == todo.Id && _sortOrder == TodoSortOrder.Manual ? "drag-over" : "")"
+                         style="@(todo.ColorLabel != TodoColorLabel.None ? $"border-left: 4px solid {GetColorCss(todo.ColorLabel)};" : "")"
+                         >
                     <MudListItem>
                         <div class="d-flex align-center gap-3 flex-grow-1">
                             @if (_sortOrder == TodoSortOrder.Manual)
@@ -1000,6 +1019,44 @@ else
                                 OnClick="@(async () => await HandleDuplicateTodo(todo.Id))"
                                 title="Duplicate"
                                 Class="todo-duplicate-btn" />
+                            @{
+                                var colorTodoId = todo.Id;
+                            }
+                            @if (_colorPickingTodoId == todo.Id)
+                            {
+                                <div class="d-flex gap-1 align-center color-picker-palette">
+                                    <span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:#9e9e9e;cursor:pointer;border:2px solid transparent;"
+                                          title="Clear color"
+                                          class="color-picker-none"
+                                          @onclick="@(async () => await HandleSetColor(colorTodoId, TodoColorLabel.None))"></span>
+                                    @foreach (var cl in new[] { TodoColorLabel.Red, TodoColorLabel.Orange, TodoColorLabel.Yellow, TodoColorLabel.Green, TodoColorLabel.Blue, TodoColorLabel.Purple })
+                                    {
+                                        var pickerLabel = cl;
+                                        <span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:@GetColorCss(pickerLabel);cursor:pointer;border:2px solid @(todo.ColorLabel == pickerLabel ? "var(--mud-palette-primary)" : "transparent");"
+                                              title="@pickerLabel"
+                                              class="color-picker-dot color-picker-@(pickerLabel.ToString().ToLower())"
+                                              @onclick="@(async () => await HandleSetColor(colorTodoId, pickerLabel))"></span>
+                                    }
+                                    <MudIconButton
+                                        Icon="@Icons.Material.Filled.Close"
+                                        Color="Color.Default"
+                                        Size="Size.Small"
+                                        OnClick="@(() => _colorPickingTodoId = null)"
+                                        title="Cancel"
+                                        Class="color-picker-cancel-btn" />
+                                </div>
+                            }
+                            else
+                            {
+                                <MudIconButton
+                                    Icon="@Icons.Material.Filled.Palette"
+                                    Color="@(todo.ColorLabel != TodoColorLabel.None ? Color.Primary : Color.Default)"
+                                    Size="Size.Small"
+                                    OnClick="@(() => _colorPickingTodoId = colorTodoId)"
+                                    title="Set color label"
+                                    Style="@(todo.ColorLabel != TodoColorLabel.None ? $"color:{GetColorCss(todo.ColorLabel)}!important;" : "")"
+                                    Class="todo-color-btn" />
+                            }
                         </div>
                     </MudListItem>
                     </div>
@@ -1049,6 +1106,9 @@ else
 
     private bool _isFocusMode;
 
+    private TodoColorLabel? _colorFilter;
+    private int? _colorPickingTodoId;
+
     private ActivityStats? _activityStats;
 
     private bool _showShortcutsHelp;
@@ -1092,10 +1152,11 @@ else
                 ? _todos.ToList()
                 : _todos.Where(t => t.ListId == _activeListId).ToList();
             var filtered = FilterSortTodosHandler.Handle(source, _statusFilter, _sortOrder, _searchQuery, _priorityFilter, _dateFilter);
-            if (_tagFilter is null) return filtered;
-            return filtered
-                .Where(t => _todoTags.TryGetValue(t.Id, out var tags) && tags.Any(tag => tag.Name == _tagFilter))
-                .ToList();
+            var tagFiltered = _tagFilter is null
+                ? filtered
+                : filtered.Where(t => _todoTags.TryGetValue(t.Id, out var tags) && tags.Any(tag => tag.Name == _tagFilter)).ToList();
+            if (_colorFilter is null) return tagFiltered;
+            return tagFiltered.Where(t => t.ColorLabel == _colorFilter.Value).ToList();
         }
     }
 
@@ -1219,6 +1280,24 @@ else
 
         await LoadTodosAsync();
     }
+
+    private async Task HandleSetColor(int id, TodoColorLabel label)
+    {
+        await SetColorLabelHandler.HandleAsync(id, label);
+        _colorPickingTodoId = null;
+        await LoadTodosAsync();
+    }
+
+    private static string GetColorCss(TodoColorLabel label) => label switch
+    {
+        TodoColorLabel.Red    => "#ef5350",
+        TodoColorLabel.Orange => "#ff9800",
+        TodoColorLabel.Yellow => "#ffc107",
+        TodoColorLabel.Green  => "#4caf50",
+        TodoColorLabel.Blue   => "#2196f3",
+        TodoColorLabel.Purple => "#9c27b0",
+        _                 => "transparent"
+    };
 
     private async Task HandleDuplicateTodo(int id)
     {
@@ -1624,6 +1703,7 @@ else
         _priorityFilter = null;
         _tagFilter = null;
         _dateFilter = TodoDateFilter.None;
+        _colorFilter = null;
         _isFocusMode = false;
     }
 

@@ -30,6 +30,7 @@ using TodoApp.Features.Todos.SnoozeTodo;
 using TodoApp.Features.Todos.FocusMode;
 using TodoApp.Features.Todos.DuplicateTodo;
 using TodoApp.Features.Todos.ActivityStats;
+using TodoApp.Features.Todos.ColorLabel;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -75,6 +76,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<FocusModeHandler>();
         ctx.Services.AddScoped<DuplicateTodoHandler>();
         ctx.Services.AddScoped<ActivityStatsHandler>();
+        ctx.Services.AddScoped<SetColorLabelHandler>();
         return ctx;
     }
 
@@ -2813,5 +2815,94 @@ public class HomeTests : BunitContext
         Assert.DoesNotContain("<b>bold via html</b>", cut.Markup);
         // The text content itself is still present (escaped)
         Assert.Contains("bold via html", cut.Markup);
+    }
+
+    // Color label tests
+
+    [Fact]
+    public async Task ColorButton_IsRendered_ForEachTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Colorable task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("todo-color-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ColorFilterRow_IsRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("A task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("color-filter-row", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingColorButton_ShowsColorPalette()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task to color");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-color-btn").Click();
+
+        Assert.Contains("color-picker-palette", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SettingColor_ShowsLeftBorder()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id = await new AddTodoHandler(db).HandleAsync("Red task");
+        await new SetColorLabelHandler(db).HandleAsync(id, TodoColorLabel.Red);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // The colored border is applied via inline style on the outer div
+        Assert.Contains("#ef5350", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SettingColor_ThenFilteringByColor_ShowsOnlyMatchingTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id1 = await addHandler.HandleAsync("Red task");
+        var id2 = await addHandler.HandleAsync("No color task");
+        await new SetColorLabelHandler(db).HandleAsync(id1, TodoColorLabel.Green);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Click the green color filter dot
+        cut.Find(".color-filter-green").Click();
+
+        Assert.Contains("Red task", cut.Markup);
+        Assert.DoesNotContain("No color task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task CancelColorPicker_HidesPalette()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-color-btn").Click();
+        Assert.Contains("color-picker-palette", cut.Markup);
+
+        cut.Find(".color-picker-cancel-btn").Click();
+        Assert.DoesNotContain("color-picker-palette", cut.Markup);
     }
 }
