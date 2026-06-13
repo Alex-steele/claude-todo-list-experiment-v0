@@ -27,6 +27,7 @@
 @using TodoApp.Features.Todos.FocusMode
 @using TodoApp.Features.Todos.DuplicateTodo
 @using TodoApp.Features.Todos.ActivityStats
+@using TodoApp.Features.Todos.Notes
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject AddTagHandler AddTagHandler
 @inject AddTodoHandler AddTodoHandler
@@ -764,7 +765,7 @@ else
                                             Lines="3"
                                             FullWidth="true"
                                             Class="todo-notes-input" />
-                                        <div class="d-flex gap-2 mt-1">
+                                        <div class="d-flex align-center gap-2 mt-1">
                                             <MudButton
                                                 Variant="Variant.Filled"
                                                 Color="Color.Primary"
@@ -777,13 +778,16 @@ else
                                                 Size="Size.Small"
                                                 OnClick="HandleCancelNotes"
                                                 Class="todo-notes-cancel-btn">Cancel</MudButton>
+                                            <MudText Typo="Typo.caption" Color="Color.Tertiary" Class="notes-markdown-hint">Markdown supported</MudText>
                                         </div>
                                     </div>
                                 }
                                 else if (!string.IsNullOrEmpty(todo.Notes))
                                 {
-                                    <div class="mt-1 todo-notes-display" @onclick="@(() => HandleStartEditNotes(todo.Id, todo.Notes!))">
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="cursor:pointer; white-space:pre-wrap;">@todo.Notes</MudText>
+                                    <div class="mt-1 todo-notes-display mud-typography mud-typography-caption"
+                                         style="cursor:pointer; color: var(--mud-palette-text-secondary);"
+                                         @onclick="@(() => HandleStartEditNotes(todo.Id, todo.Notes!))">
+                                        @((MarkupString)MarkdownRenderer.Render(todo.Notes))
                                     </div>
                                 }
                                 <div class="d-flex align-center gap-1 mt-1 flex-wrap todo-tags-row">

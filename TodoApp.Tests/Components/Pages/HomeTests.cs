@@ -2726,4 +2726,92 @@ public class HomeTests : BunitContext
         // Stats panel is not rendered when there are no todos
         Assert.DoesNotContain("activity-stats-row", cut.Markup);
     }
+
+    // Markdown notes tests
+
+    [Fact]
+    public async Task Notes_WithMarkdownBold_RendersStrongTag()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var notesHandler = new UpdateNotesHandler(db);
+
+        var id = await addHandler.HandleAsync("Task with bold note");
+        await notesHandler.HandleAsync(id, "**important**");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("<strong>important</strong>", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Notes_WithMarkdownList_RendersListItems()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var notesHandler = new UpdateNotesHandler(db);
+
+        var id = await addHandler.HandleAsync("Task with list note");
+        await notesHandler.HandleAsync(id, "- step one\n- step two");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("<ul>", cut.Markup);
+        Assert.Contains("step one", cut.Markup);
+        Assert.Contains("step two", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Notes_PlainText_IsRendered()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var notesHandler = new UpdateNotesHandler(db);
+
+        var id = await addHandler.HandleAsync("Task with plain note");
+        await notesHandler.HandleAsync(id, "Just plain text here");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("Just plain text here", cut.Markup);
+        Assert.Contains("todo-notes-display", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Notes_MarkdownHint_ShownWhenEditing()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task for notes edit");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Open notes editor
+        cut.Find(".todo-notes-btn").Click();
+
+        Assert.Contains("Markdown supported", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Notes_RawHtml_IsNotRendered()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var notesHandler = new UpdateNotesHandler(db);
+
+        var id = await addHandler.HandleAsync("Task with HTML note");
+        await notesHandler.HandleAsync(id, "<b>bold via html</b>");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Raw HTML is stripped by DisableHtml()
+        Assert.DoesNotContain("<b>bold via html</b>", cut.Markup);
+        // The text content itself is still present (escaped)
+        Assert.Contains("bold via html", cut.Markup);
+    }
 }
