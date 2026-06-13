@@ -29,6 +29,7 @@ using TodoApp.Features.Todos.MoveTodo;
 using TodoApp.Features.Todos.SnoozeTodo;
 using TodoApp.Features.Todos.FocusMode;
 using TodoApp.Features.Todos.DuplicateTodo;
+using TodoApp.Features.Todos.ActivityStats;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -73,6 +74,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<SnoozeTodoHandler>();
         ctx.Services.AddScoped<FocusModeHandler>();
         ctx.Services.AddScoped<DuplicateTodoHandler>();
+        ctx.Services.AddScoped<ActivityStatsHandler>();
         return ctx;
     }
 
@@ -2621,5 +2623,107 @@ public class HomeTests : BunitContext
             Assert.Contains("Original task", cut.Markup);
             Assert.Contains("Original task (copy)", cut.Markup);
         });
+    }
+
+    // Activity stats / completion streak tests
+
+    [Fact]
+    public async Task ActivityStats_StreakChip_NotRendered_WhenNoCompletions()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Incomplete task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("streak-chip", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ActivityStats_StreakChip_RenderedAfterCompletion()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+
+        var id = await addHandler.HandleAsync("Daily task");
+        await completeHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("streak-chip", cut.Markup);
+        Assert.Contains("1 day streak", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ActivityStats_CompletedTodayChip_RenderedAfterCompletion()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+
+        var id = await addHandler.HandleAsync("Morning task");
+        await completeHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("completed-today-chip", cut.Markup);
+        Assert.Contains("Today: 1 done", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ActivityStats_CompletedWeekChip_RenderedAfterCompletion()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+
+        var id = await addHandler.HandleAsync("Morning task");
+        await completeHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("completed-week-chip", cut.Markup);
+        Assert.Contains("This week: 1 done", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ActivityStats_CompletingTodo_UpdatesStreakCount()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+
+        var id1 = await addHandler.HandleAsync("Task one");
+        var id2 = await addHandler.HandleAsync("Task two");
+        await completeHandler.HandleAsync(id1);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("Today: 1 done", cut.Markup);
+
+        // Complete the second todo via the UI checkbox
+        var checkboxes = cut.FindAll(".mud-checkbox input[type=checkbox]");
+        // The first checkbox toggles the second todo's completion (newest first)
+        checkboxes[0].Change(true);
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Today: 2 done", cut.Markup));
+    }
+
+    [Fact]
+    public async Task ActivityStats_ActivityStatsRow_NotRendered_WhenNoTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Stats panel is not rendered when there are no todos
+        Assert.DoesNotContain("activity-stats-row", cut.Markup);
     }
 }
