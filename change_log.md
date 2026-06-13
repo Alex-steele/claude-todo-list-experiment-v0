@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 37 — [2026-06-13] — Feature: Completion Streaks
+
+**Description:** The stats panel now shows productivity streak information. Completing any todo starts (or extends) a streak — a count of consecutive calendar days on which at least one todo was completed. A "🔥 N day streak" chip appears in the stats panel when a streak is active; a "Best: N days" chip shows the all-time longest streak when it exceeds the current one. Two additional chips show how many todos were completed today and this week. All stats update live whenever a todo is completed or uncompleted.
+
+**Reason for change:** The app already tracked exact completion timestamps (added Day 32) but never surfaced any productivity patterns derived from them. Streaks are a natural and motivating way to make that data visible — they reward consistency and give users a quick sense of their recent productivity without requiring a full analytics dashboard.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 387
+- Lines deleted: 0
+- Tests added: 17
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 36 — [2026-06-13] — Feature: Duplicate Todo
 
 **Description:** Every todo now has a duplicate button (⧉ copy icon) in its action row. Clicking it instantly creates a copy of the todo with all user-authored attributes preserved — title (suffixed with " (copy)"), priority, due date, time estimate, notes, recurrence rule, and list. The copy starts with a clean slate: not completed, not pinned, no completion timestamp. A snackbar appears with an Undo button that deletes the copy if clicked. The duplicate button appears alongside the existing pin, notes, move, and delete buttons.

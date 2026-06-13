@@ -26,6 +26,7 @@
 @using TodoApp.Features.Todos.TimeEstimates
 @using TodoApp.Features.Todos.FocusMode
 @using TodoApp.Features.Todos.DuplicateTodo
+@using TodoApp.Features.Todos.ActivityStats
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject AddTagHandler AddTagHandler
 @inject AddTodoHandler AddTodoHandler
@@ -57,6 +58,7 @@
 @inject SnoozeTodoHandler SnoozeTodoHandler
 @inject FocusModeHandler FocusModeHandler
 @inject DuplicateTodoHandler DuplicateTodoHandler
+@inject ActivityStatsHandler ActivityStatsHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -311,6 +313,33 @@
                 Class="flex-grow-1 stats-progress" />
             <MudText Typo="Typo.caption" Color="Color.Secondary" Class="stats-percentage">@stats.CompletionPercentage%</MudText>
         </div>
+        @if (_activityStats is not null && (_activityStats.CurrentStreak > 0 || _activityStats.CompletedToday > 0 || _activityStats.CompletedThisWeek > 0))
+        {
+            <div class="d-flex align-center gap-2 mt-3 flex-wrap activity-stats-row">
+                @if (_activityStats.CurrentStreak > 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning" Class="streak-chip"
+                             title="@($"Longest streak: {_activityStats.LongestStreak} day{(_activityStats.LongestStreak == 1 ? "" : "s")}")">
+                        🔥 @_activityStats.CurrentStreak day streak
+                    </MudChip>
+                }
+                @if (_activityStats.LongestStreak > _activityStats.CurrentStreak && _activityStats.LongestStreak > 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" Class="longest-streak-chip">
+                        Best: @_activityStats.LongestStreak days
+                    </MudChip>
+                }
+                @if (_activityStats.CompletedToday > 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success" Class="completed-today-chip">
+                        Today: @_activityStats.CompletedToday done
+                    </MudChip>
+                }
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info" Class="completed-week-chip">
+                    This week: @_activityStats.CompletedThisWeek done
+                </MudChip>
+            </div>
+        }
         @if (stats.Completed > 0)
         {
             <div class="d-flex justify-end mt-2">
@@ -1016,6 +1045,8 @@ else
 
     private bool _isFocusMode;
 
+    private ActivityStats? _activityStats;
+
     private bool _showShortcutsHelp;
     private DotNetObjectReference<Home>? _dotNetRef;
     private bool _shortcutsRegistered;
@@ -1114,6 +1145,7 @@ else
     {
         _lists = await GetListsHandler.HandleAsync();
         _todos = await GetTodosHandler.HandleAsync();
+        _activityStats = await ActivityStatsHandler.HandleAsync();
         if (_todos.Count > 0)
         {
             var ids = _todos.Select(t => t.Id).ToList();
