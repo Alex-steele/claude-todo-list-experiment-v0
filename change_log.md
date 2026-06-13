@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 38 — [2026-06-13] — Feature: Markdown Notes
+
+**Description:** Todo notes now render as Markdown. When not editing, notes are displayed as formatted HTML — **bold**, *italic*, bullet lists, headings, and auto-linked URLs all work. A small "Markdown supported" hint appears in the notes editor so users know the syntax is available. Raw HTML tags in notes are stripped to prevent injection. The editing experience is unchanged — users write plain text and see the formatted result when they save.
+
+**Reason for change:** Notes are currently displayed verbatim as a single text blob, which means any formatting is invisible. Markdown is a natural fit: it's plain text when editing and rich text when reading, which matches exactly how the notes editor already works (type to edit, click away to view).
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 196
+- Lines deleted: 3
+- Tests added: 15
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 37 — [2026-06-13] — Feature: Completion Streaks
 
 **Description:** The stats panel now shows productivity streak information. Completing any todo starts (or extends) a streak — a count of consecutive calendar days on which at least one todo was completed. A "🔥 N day streak" chip appears in the stats panel when a streak is active; a "Best: N days" chip shows the all-time longest streak when it exceeds the current one. Two additional chips show how many todos were completed today and this week. All stats update live whenever a todo is completed or uncompleted.
