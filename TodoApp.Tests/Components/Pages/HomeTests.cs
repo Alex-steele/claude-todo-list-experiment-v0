@@ -2906,6 +2906,80 @@ public class HomeTests : BunitContext
         Assert.DoesNotContain("color-picker-palette", cut.Markup);
     }
 
+    // Activity heatmap tests
+
+    [Fact]
+    public async Task ActivityHeatmap_IsRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task A");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("activity-heatmap-row", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ActivityHeatmap_Contains14DayCells()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task A");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var heatmapCells = cut.FindAll(".heatmap-day");
+        Assert.Equal(14, heatmapCells.Count);
+    }
+
+    [Fact]
+    public async Task ActivityHeatmap_TodayCell_HasTodayCssClass()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task A");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var todayCells = cut.FindAll(".heatmap-today");
+        Assert.Single(todayCells);
+    }
+
+    [Fact]
+    public async Task ActivityHeatmap_CompletedTodayCell_HasLevel1Class()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Done task");
+        await completeHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var todayCell = cut.Find(".heatmap-today");
+        Assert.Contains("heatmap-day-1", todayCell.ClassName);
+    }
+
+    [Fact]
+    public async Task ActivityHeatmap_EmptyDays_HaveLevel0Class()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task A");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // The first cell (13 days ago) should be level 0 (no completions)
+        var firstCell = cut.FindAll(".heatmap-day").First();
+        Assert.Contains("heatmap-day-0", firstCell.ClassName);
+    }
+
     // Bulk move tests
 
     [Fact]
