@@ -2905,4 +2905,102 @@ public class HomeTests : BunitContext
         cut.Find(".color-picker-cancel-btn").Click();
         Assert.DoesNotContain("color-picker-palette", cut.Markup);
     }
+
+    // Bulk move tests
+
+    [Fact]
+    public async Task BulkMoveSelect_IsRendered_InSelectMode_WhenMultipleListsExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var createListHandler = new CreateListHandler(db);
+
+        await createListHandler.HandleAsync("Work");
+        await addHandler.HandleAsync("Task A");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Enter select mode and select the todo
+        cut.Find(".select-mode-btn").Click();
+        cut.Find(".todo-select-checkbox input").Change(true);
+
+        Assert.Contains("bulk-move-select", cut.Markup);
+        Assert.Contains("bulk-move-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task BulkMoveSelect_IsNotRendered_WhenOnlySingleListExists()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task A");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Enter select mode and select the todo
+        cut.Find(".select-mode-btn").Click();
+        cut.Find(".todo-select-checkbox input").Change(true);
+
+        Assert.DoesNotContain("bulk-move-select", cut.Markup);
+        Assert.DoesNotContain("bulk-move-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task BulkMove_MovesTodosToTargetList_AndExitsSelectMode()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var createListHandler = new CreateListHandler(db);
+
+        var workListId = await createListHandler.HandleAsync("Work");
+        await addHandler.HandleAsync("Task to move", listId: 1);
+        await addHandler.HandleAsync("Task to keep", listId: 1);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Enter select mode and select the first (newest) todo
+        cut.Find(".select-mode-btn").Click();
+        cut.FindAll(".todo-select-checkbox input").First().Change(true);
+
+        // Set the bulk-move target list by invoking ValueChanged on the select
+        var moveSelect = cut.FindComponents<MudSelect<int>>().First();
+        await moveSelect.InvokeAsync(() => moveSelect.Instance.ValueChanged.InvokeAsync(workListId));
+
+        // Click Move
+        cut.Find(".bulk-move-btn").Click();
+
+        // After moving, select mode should be exited — no checkboxes visible
+        await cut.WaitForAssertionAsync(() =>
+            Assert.DoesNotContain("todo-select-checkbox", cut.Markup));
+    }
+
+    [Fact]
+    public async Task BulkMove_ShowsSnackbarWithTargetListName()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var createListHandler = new CreateListHandler(db);
+
+        var workListId = await createListHandler.HandleAsync("Work");
+        await addHandler.HandleAsync("Task to move", listId: 1);
+
+        var ctx = CreateBunitContext(db);
+        var snackbarProvider = ctx.Render<MudSnackbarProvider>();
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+        cut.Find(".todo-select-checkbox input").Change(true);
+
+        var moveSelect = cut.FindComponents<MudSelect<int>>().First();
+        await moveSelect.InvokeAsync(() => moveSelect.Instance.ValueChanged.InvokeAsync(workListId));
+
+        cut.Find(".bulk-move-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Work", snackbarProvider.Markup));
+        Assert.Contains("moved to", snackbarProvider.Markup);
+    }
 }

@@ -564,7 +564,7 @@ else
 
     @if (_isSelectMode && _selectedIds.Count > 0)
     {
-        <MudPaper Elevation="1" Class="pa-3 mb-3 d-flex align-center gap-3 bulk-action-bar">
+        <MudPaper Elevation="1" Class="pa-3 mb-3 d-flex align-center gap-3 flex-wrap bulk-action-bar">
             <MudText Typo="Typo.body2">@_selectedIds.Count selected</MudText>
             <MudSpacer />
             <MudButton
@@ -575,6 +575,33 @@ else
                 Class="bulk-complete-btn">
                 Mark Complete
             </MudButton>
+            @if (_lists is { Count: > 1 })
+            {
+                <div class="d-flex align-center gap-1 bulk-move-row">
+                    <MudSelect
+                        T="int"
+                        @bind-Value="_bulkMoveTargetListId"
+                        Label="Move to list"
+                        Variant="Variant.Outlined"
+                        Dense="true"
+                        Style="min-width: 130px; font-size: 0.8rem;"
+                        Class="bulk-move-select">
+                        @foreach (var list in _lists.Where(l => l.Id != _activeListId))
+                        {
+                            <MudSelectItem Value="@list.Id">@list.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudButton
+                        Variant="Variant.Filled"
+                        Color="Color.Info"
+                        Size="Size.Small"
+                        Disabled="@(_bulkMoveTargetListId == 0)"
+                        OnClick="HandleBulkMove"
+                        Class="bulk-move-btn">
+                        Move
+                    </MudButton>
+                </div>
+            }
             <MudButton
                 Variant="Variant.Filled"
                 Color="Color.Error"
@@ -1103,6 +1130,7 @@ else
 
     private bool _isSelectMode;
     private HashSet<int> _selectedIds = new();
+    private int _bulkMoveTargetListId;
 
     private bool _isFocusMode;
 
@@ -1382,7 +1410,10 @@ else
     {
         _isSelectMode = !_isSelectMode;
         if (!_isSelectMode)
+        {
             _selectedIds.Clear();
+            _bulkMoveTargetListId = 0;
+        }
     }
 
     private void HandleToggleFocusMode()
@@ -1455,6 +1486,24 @@ else
                 };
             });
         }
+    }
+
+    private async Task HandleBulkMove()
+    {
+        if (_bulkMoveTargetListId == 0 || _selectedIds.Count == 0) return;
+
+        var ids = _selectedIds.ToList();
+        var count = ids.Count;
+        var targetList = _lists?.FirstOrDefault(l => l.Id == _bulkMoveTargetListId);
+
+        await BulkOperationsHandler.MoveAsync(ids, _bulkMoveTargetListId);
+        _selectedIds.Clear();
+        _bulkMoveTargetListId = 0;
+        _isSelectMode = false;
+        await LoadTodosAsync();
+
+        if (targetList is not null)
+            Snackbar.Add($"{count} todo{(count == 1 ? "" : "s")} moved to \"{targetList.Name}\"", Severity.Normal);
     }
 
     private static string GetRecurrenceLabel(RecurrenceRule rule) => rule switch

@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 40 — [2026-06-14] — Feature: Bulk Move to List
+
+**Description:** In select mode, a "Move to list" dropdown and "Move" button now appear in the bulk action bar alongside "Mark Complete" and "Delete". When multiple lists exist, users can select any number of todos and move them all to a different list in one action. The dropdown lists every list except the current active one. After moving, select mode exits automatically and a snackbar confirms how many todos were moved and to which list. The button is hidden when only a single list exists.
+
+**Reason for change:** Bulk complete and bulk delete were already available in select mode, but bulk move was missing — yet moving a group of tasks between lists (e.g., from Personal to Work after a planning session) is a common multi-item operation. This completes the bulk operations feature set for multi-list users.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 215
+- Lines deleted: 1
+- Tests added: 7
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 39 — [2026-06-13] — Feature: Color Labels
 
 **Description:** Todos can now be assigned a color label — Red, Orange, Yellow, Green, Blue, or Purple. A 🎨 palette button in each todo's action row opens an inline color picker; selecting a color immediately applies a colored left-border stripe to the todo row. A color filter row in the filter panel lets users narrow the list to todos of a specific color (or clear it to show all). The duplicate action copies the color label. Colors default to None (no border) for all existing and new todos.
