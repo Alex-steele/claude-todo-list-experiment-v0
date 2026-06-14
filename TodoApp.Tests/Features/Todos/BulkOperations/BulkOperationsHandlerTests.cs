@@ -1,3 +1,4 @@
+using TodoApp.Features.Lists;
 using TodoApp.Features.Todos.AddTodo;
 using TodoApp.Features.Todos.BulkOperations;
 using TodoApp.Features.Todos.CompleteTodo;
@@ -108,5 +109,62 @@ public class BulkOperationsHandlerTests
         var todos = await getHandler.HandleAsync();
         Assert.True(todos.First(t => t.Id == id1).IsCompleted);
         Assert.False(todos.First(t => t.Id == id2).IsCompleted);
+    }
+
+    [Fact]
+    public async Task MoveAsync_MovesSelectedTodosToTargetList()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var createListHandler = new CreateListHandler(db);
+        var addHandler = new AddTodoHandler(db);
+
+        var workListId = await createListHandler.HandleAsync("Work");
+        var id1 = await addHandler.HandleAsync("Task 1", listId: 1);
+        var id2 = await addHandler.HandleAsync("Task 2", listId: 1);
+        var id3 = await addHandler.HandleAsync("Task 3", listId: 1);
+
+        var bulkHandler = new BulkOperationsHandler(db);
+        await bulkHandler.MoveAsync([id1, id2], workListId);
+
+        var getHandler = new GetTodosHandler(db);
+        var todos = await getHandler.HandleAsync();
+        Assert.Equal(workListId, todos.First(t => t.Id == id1).ListId);
+        Assert.Equal(workListId, todos.First(t => t.Id == id2).ListId);
+        Assert.Equal(1, todos.First(t => t.Id == id3).ListId);
+    }
+
+    [Fact]
+    public async Task MoveAsync_WithEmptyList_DoesNothing()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task 1", listId: 1);
+
+        var bulkHandler = new BulkOperationsHandler(db);
+        await bulkHandler.MoveAsync([], 99); // Should not throw
+
+        var getHandler = new GetTodosHandler(db);
+        var todos = await getHandler.HandleAsync();
+        Assert.Equal(1, todos[0].ListId);
+    }
+
+    [Fact]
+    public async Task MoveAsync_OnlyAffectsSpecifiedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var createListHandler = new CreateListHandler(db);
+        var addHandler = new AddTodoHandler(db);
+
+        var workListId = await createListHandler.HandleAsync("Work");
+        var id1 = await addHandler.HandleAsync("Target", listId: 1);
+        var id2 = await addHandler.HandleAsync("Bystander", listId: 1);
+
+        var bulkHandler = new BulkOperationsHandler(db);
+        await bulkHandler.MoveAsync([id1], workListId);
+
+        var getHandler = new GetTodosHandler(db);
+        var todos = await getHandler.HandleAsync();
+        Assert.Equal(workListId, todos.First(t => t.Id == id1).ListId);
+        Assert.Equal(1, todos.First(t => t.Id == id2).ListId);
     }
 }

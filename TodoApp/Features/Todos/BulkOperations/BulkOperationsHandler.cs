@@ -22,4 +22,13 @@ public class BulkOperationsHandler(Database db)
             "DELETE FROM Todos WHERE Id IN @Ids",
             new { Ids = ids });
     }
+
+    public async Task MoveAsync(IReadOnlyList<int> ids, int targetListId)
+    {
+        if (ids.Count == 0) return;
+        using var conn = db.CreateConnection();
+        await conn.ExecuteAsync(
+            "UPDATE Todos SET ListId = @ListId WHERE Id IN @Ids",
+            new { ListId = targetListId, Ids = ids });
+    }
 }
