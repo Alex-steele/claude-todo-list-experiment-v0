@@ -160,4 +160,73 @@ public class ActivityStatsHandlerTests
         Assert.Equal(0, stats.CompletedThisWeek);
         Assert.Equal(0, stats.CurrentStreak);
     }
+
+    // --- DailyActivity heatmap tests ---
+
+    [Fact]
+    public async Task HandleAsync_DailyActivity_AlwaysContains14Entries()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var handler = new ActivityStatsHandler(db);
+
+        var stats = await handler.HandleAsync();
+
+        Assert.Equal(14, stats.DailyActivity.Count);
+    }
+
+    [Fact]
+    public async Task HandleAsync_DailyActivity_OldestDayIs13DaysAgo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var handler = new ActivityStatsHandler(db);
+
+        var stats = await handler.HandleAsync();
+        var oldest = stats.DailyActivity[0].Date;
+        var expected = DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(-13));
+
+        Assert.Equal(expected, oldest);
+    }
+
+    [Fact]
+    public async Task HandleAsync_DailyActivity_NewestDayIsToday()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var handler = new ActivityStatsHandler(db);
+
+        var stats = await handler.HandleAsync();
+        var newest = stats.DailyActivity[13].Date;
+        var expected = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+
+        Assert.Equal(expected, newest);
+    }
+
+    [Fact]
+    public async Task HandleAsync_DailyActivity_TodayCountMatchesCompletedToday()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+
+        var id1 = await addHandler.HandleAsync("Task A");
+        var id2 = await addHandler.HandleAsync("Task B");
+        await completeHandler.HandleAsync(id1);
+        await completeHandler.HandleAsync(id2);
+
+        var handler = new ActivityStatsHandler(db);
+        var stats = await handler.HandleAsync();
+
+        var todayEntry = stats.DailyActivity.Last();
+        Assert.Equal(stats.CompletedToday, todayEntry.Count);
+    }
+
+    [Fact]
+    public async Task HandleAsync_DailyActivity_NoCompletions_AllCountsAreZero()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var handler = new ActivityStatsHandler(db);
+
+        var stats = await handler.HandleAsync();
+
+        Assert.All(stats.DailyActivity, d => Assert.Equal(0, d.Count));
+    }
 }

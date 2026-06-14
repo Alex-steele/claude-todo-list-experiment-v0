@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 41 — [2026-06-14] — Feature: 14-Day Activity Heatmap
+
+**Description:** The stats panel now shows a 14-day activity heatmap — a row of 14 small squares, one per day, spanning the past two weeks. Each square's color indicates how many todos were completed on that day: gray = 0, light green = 1–2, medium green = 3–4, dark green = 5+. Today's square gets a colored border to make it easy to locate. Hovering any square shows a tooltip with the exact date and count (e.g., "Jun 12: 3 completed"). The heatmap sits below the streak/count chips in the stats panel and gives users an instant visual sense of their recent productivity rhythm.
+
+**Reason for change:** The app already tracked completion timestamps and computed streaks and weekly counts, but only surfaced those as text chips. The heatmap makes the same data visual and spatial — you can see at a glance which days were productive and whether there are gaps in your habit. It's the lightest possible analytics enhancement without requiring a separate dashboard page.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 215
+- Lines deleted: 2
+- Tests added: 10
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 40 — [2026-06-14] — Feature: Bulk Move to List
 
 **Description:** In select mode, a "Move to list" dropdown and "Move" button now appear in the bulk action bar alongside "Mark Complete" and "Delete". When multiple lists exist, users can select any number of todos and move them all to a different list in one action. The dropdown lists every list except the current active one. After moving, select mode exits automatically and a snackbar confirms how many todos were moved and to which list. The button is hidden when only a single list exists.

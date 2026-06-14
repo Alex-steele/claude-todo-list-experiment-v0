@@ -343,6 +343,21 @@
                 </MudChip>
             </div>
         }
+        @if (_activityStats is not null)
+        {
+            <div class="d-flex align-center gap-1 mt-3 activity-heatmap-row" title="Past 14 days — daily completions">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1" Style="white-space:nowrap;">14 days:</MudText>
+                @foreach (var day in _activityStats.DailyActivity)
+                {
+                    var isToday = day.Date == DateOnly.FromDateTime(DateTime.Today);
+                    var tooltip = $"{day.Date:MMM d}: {day.Count} completed";
+                    var cssClass = $"heatmap-day heatmap-day-{GetHeatmapLevel(day.Count)}{(isToday ? " heatmap-today" : "")}";
+                    <span class="@cssClass"
+                          title="@tooltip"
+                          style="@GetHeatmapStyle(day.Count, isToday)"></span>
+                }
+            </div>
+        }
         @if (stats.Completed > 0)
         {
             <div class="d-flex justify-end mt-2">
@@ -1897,5 +1912,26 @@ else
         var hours = minutes / 60;
         var remainder = minutes % 60;
         return remainder == 0 ? $"{hours} h" : $"{hours} h {remainder} min";
+    }
+
+    private static int GetHeatmapLevel(int count) => count switch
+    {
+        0        => 0,
+        <= 2     => 1,
+        <= 4     => 2,
+        _        => 3
+    };
+
+    private static string GetHeatmapStyle(int count, bool isToday)
+    {
+        var bg = count switch
+        {
+            0    => "var(--mud-palette-action-disabled-background)",
+            <= 2 => "#a5d6a7",
+            <= 4 => "#4caf50",
+            _    => "#1b5e20"
+        };
+        var border = isToday ? "2px solid var(--mud-palette-primary)" : "2px solid transparent";
+        return $"display:inline-block;width:14px;height:14px;border-radius:3px;background:{bg};border:{border};";
     }
 }

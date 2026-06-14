@@ -26,7 +26,34 @@ public class ActivityStatsHandler(Database db)
 
         var (currentStreak, longestStreak) = ComputeStreaks(completionDates, today);
 
-        return new ActivityStats(currentStreak, longestStreak, completedToday, completedThisWeek);
+        var dailyActivity = await GetDailyActivity(conn, today);
+
+        return new ActivityStats(currentStreak, longestStreak, completedToday, completedThisWeek, dailyActivity);
+    }
+
+    private static async Task<IReadOnlyList<DailyCount>> GetDailyActivity(
+        Microsoft.Data.Sqlite.SqliteConnection conn, DateTime today)
+    {
+        var windowStart = today.AddDays(-13);
+        var rows = await conn.QueryAsync<(string Day, int Count)>(
+            """
+            SELECT date(CompletedAt) as Day, COUNT(*) as Count
+            FROM Todos
+            WHERE CompletedAt IS NOT NULL
+              AND date(CompletedAt) >= @from
+            GROUP BY date(CompletedAt)
+            """,
+            new { from = windowStart.ToString("yyyy-MM-dd") });
+
+        var byDate = rows.ToDictionary(r => DateOnly.Parse(r.Day), r => r.Count);
+
+        return Enumerable.Range(0, 14)
+            .Select(i =>
+            {
+                var date = DateOnly.FromDateTime(windowStart.AddDays(i));
+                return new DailyCount(date, byDate.GetValueOrDefault(date, 0));
+            })
+            .ToList();
     }
 
     private static async Task<int> CountOnDate(Microsoft.Data.Sqlite.SqliteConnection conn, DateTime date)
