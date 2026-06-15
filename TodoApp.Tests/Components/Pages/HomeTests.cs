@@ -1,3 +1,4 @@
+using System.Reflection;
 using Bunit;
 using TodoApp.Features.Todos;
 using Microsoft.AspNetCore.Components;
@@ -60,6 +61,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<AddTagHandler>();
         ctx.Services.AddScoped<RemoveTagHandler>();
         ctx.Services.AddScoped<GetTodoTagsHandler>();
+        ctx.Services.AddScoped<GetAllTagNamesHandler>();
         ctx.Services.AddScoped<ImportTodosHandler>();
         ctx.Services.AddScoped<AddSubtaskHandler>();
         ctx.Services.AddScoped<EditSubtaskHandler>();
@@ -3191,5 +3193,114 @@ public class HomeTests : BunitContext
 
         Assert.DoesNotContain("subtask-edit-input", cut.Markup);
         Assert.Contains("Original title", cut.Markup);
+    }
+
+    // Tag autocomplete tests
+
+    [Fact]
+    public async Task TagAutocomplete_NoSuggestions_WhenInputIsEmpty()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+
+        var id1 = await addTodo.HandleAsync("Task one");
+        var id2 = await addTodo.HandleAsync("Task two");
+        await addTag.HandleAsync(id1, "work");
+        await addTag.HandleAsync(id2, "personal");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Start adding a tag — empty input should show no suggestions
+        cut.Find(".add-tag-btn").Click();
+
+        Assert.DoesNotContain("tag-autocomplete-dropdown", cut.Markup);
+    }
+
+    // Helper: set a private field on a component and force a re-render.
+    // Needed because MudBlazor's MudTextField relies on JSInterop for value updates,
+    // which bUnit's Loose JSInterop mode does not execute.
+    private static void SetPrivateField<TComponent>(IRenderedComponent<TComponent> cut,
+        string fieldName, object? value) where TComponent : class, IComponent
+    {
+        typeof(TComponent)
+            .GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance)!
+            .SetValue(cut.Instance, value);
+        cut.Render();
+    }
+
+    [Fact]
+    public async Task TagAutocomplete_ShowsSuggestions_MatchingPrefix()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+
+        // id1 has "work" and "workout"; id2 has no tags — type "wo" in id2 to get suggestions
+        var id1 = await addTodo.HandleAsync("Task one");
+        var id2 = await addTodo.HandleAsync("Task two");
+        await addTag.HandleAsync(id1, "work");
+        await addTag.HandleAsync(id1, "workout");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Default sort is newest-first: id2 is displayed at index 0, id1 at index 1
+        // Open tag input for id2 (newest, index 0) which has no existing tags
+        var addTagBtns = cut.FindAll(".add-tag-btn");
+        addTagBtns[0].Click();
+        SetPrivateField(cut, "_newTagInput", "wo");
+
+        Assert.Contains("tag-autocomplete-dropdown", cut.Markup);
+        Assert.Contains("tag-suggestion-item", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TagAutocomplete_DoesNotSuggest_TagsAlreadyOnTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+
+        // "work" is already on this todo — typing "wo" yields no new suggestions
+        var id = await addTodo.HandleAsync("Task one");
+        await addTag.HandleAsync(id, "work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".add-tag-btn").Click();
+        SetPrivateField(cut, "_newTagInput", "wo");
+
+        Assert.DoesNotContain("tag-autocomplete-dropdown", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TagAutocomplete_ClickingSuggestion_AddsTag()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+
+        var id1 = await addTodo.HandleAsync("Task one");
+        var id2 = await addTodo.HandleAsync("Task two");
+        await addTag.HandleAsync(id1, "work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Default sort is newest-first: id2 (no tags) appears at index 0, id1 (has "work") at index 1
+        // Open tag input for id2 to see "work" as a suggestion
+        var addTagBtns = cut.FindAll(".add-tag-btn");
+        addTagBtns[0].Click();
+        SetPrivateField(cut, "_newTagInput", "wo");
+
+        Assert.Contains("tag-suggestion-item", cut.Markup);
+
+        cut.Find(".tag-suggestion-item").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.DoesNotContain("tag-autocomplete-dropdown", cut.Markup));
     }
 }

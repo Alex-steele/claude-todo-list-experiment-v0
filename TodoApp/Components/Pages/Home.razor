@@ -46,6 +46,7 @@
 @inject DeleteSubtaskHandler DeleteSubtaskHandler
 @inject GetSubtasksHandler GetSubtasksHandler
 @inject GetTodoTagsHandler GetTodoTagsHandler
+@inject GetAllTagNamesHandler GetAllTagNamesHandler
 @inject GetTodosHandler GetTodosHandler
 @inject FilterSortTodosHandler FilterSortTodosHandler
 @inject GetTodosStatsHandler GetTodosStatsHandler
@@ -868,13 +869,34 @@ else
                                     @if (_addingTagForTodoId == todo.Id)
                                     {
                                         var currentTodoId = todo.Id;
-                                        <MudTextField
-                                            @bind-Value="_newTagInput"
-                                            Variant="Variant.Outlined"
-                                            Margin="Margin.Dense"
-                                            Style="width: 110px; font-size: 0.75rem;"
-                                            OnKeyUp="@(async (KeyboardEventArgs e) => await HandleTagInputKeyUp(e, currentTodoId))"
-                                            Class="todo-tag-input" />
+                                        <div style="position:relative;">
+                                            <MudTextField
+                                                @bind-Value="_newTagInput"
+                                                Variant="Variant.Outlined"
+                                                Margin="Margin.Dense"
+                                                Style="width: 110px; font-size: 0.75rem;"
+                                                Immediate="true"
+                                                OnKeyUp="@(async (KeyboardEventArgs e) => await HandleTagInputKeyUp(e, currentTodoId))"
+                                                Class="todo-tag-input" />
+                                            @{
+                                                var suggestions = GetTagSuggestions(currentTodoId);
+                                            }
+                                            @if (suggestions.Count > 0)
+                                            {
+                                                <div class="tag-autocomplete-dropdown"
+                                                     style="position:absolute;top:100%;left:0;min-width:110px;background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:4px;z-index:1000;box-shadow:0 2px 6px rgba(0,0,0,0.15);">
+                                                    @foreach (var s in suggestions)
+                                                    {
+                                                        var suggestion = s;
+                                                        <div class="tag-suggestion-item"
+                                                             style="padding:4px 10px;cursor:pointer;font-size:0.75rem;white-space:nowrap;"
+                                                             @onclick="@(async () => await HandleSelectTagSuggestion(currentTodoId, suggestion))">
+                                                            @suggestion
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
                                     }
                                     else
                                     {
@@ -1197,6 +1219,7 @@ else
     private bool _shortcutsRegistered;
 
     private Dictionary<int, List<Tag>> _todoTags = new();
+    private IReadOnlyList<string> _allTagNames = [];
     private int? _addingTagForTodoId;
     private string _newTagInput = string.Empty;
     private string? _tagFilter;
@@ -1294,6 +1317,7 @@ else
         _lists = await GetListsHandler.HandleAsync();
         _todos = await GetTodosHandler.HandleAsync();
         _activityStats = await ActivityStatsHandler.HandleAsync();
+        _allTagNames = await GetAllTagNamesHandler.HandleAsync();
         if (_todos.Count > 0)
         {
             var ids = _todos.Select(t => t.Id).ToList();
@@ -1746,6 +1770,25 @@ else
             await HandleSaveSubtaskEdit(subtaskId);
         else if (e.Key == "Escape")
             _editingSubtaskId = null;
+    }
+
+    private IReadOnlyList<string> GetTagSuggestions(int todoId)
+    {
+        if (string.IsNullOrWhiteSpace(_newTagInput)) return [];
+        var input = _newTagInput.Trim().ToLowerInvariant();
+        var existing = _todoTags.GetValueOrDefault(todoId, []).Select(t => t.Name).ToHashSet();
+        return _allTagNames
+            .Where(n => n.StartsWith(input, StringComparison.OrdinalIgnoreCase)
+                        && !existing.Contains(n)
+                        && n != input)
+            .Take(5)
+            .ToList();
+    }
+
+    private async Task HandleSelectTagSuggestion(int todoId, string tagName)
+    {
+        _newTagInput = tagName;
+        await HandleSaveTag(todoId);
     }
 
     private void HandleStartAddTag(int todoId)
