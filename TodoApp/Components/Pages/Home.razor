@@ -30,6 +30,7 @@
 @using TodoApp.Features.Todos.Notes
 @using TodoApp.Features.Todos.ColorLabel
 @inject AddSubtaskHandler AddSubtaskHandler
+@inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
 @inject AddTodoHandler AddTodoHandler
 @inject BulkOperationsHandler BulkOperationsHandler
@@ -922,16 +923,53 @@ else
                                                         Color="Color.Primary"
                                                         Size="Size.Small"
                                                         Class="subtask-checkbox" />
-                                                    <MudText Typo="Typo.body2" Class="flex-grow-1"
-                                                        Style="@(subtask.IsCompleted ? "text-decoration: line-through; opacity: 0.5;" : "")">
-                                                        @subtask.Title
-                                                    </MudText>
-                                                    <MudIconButton
-                                                        Icon="@Icons.Material.Filled.Close"
-                                                        Size="Size.Small"
-                                                        Color="Color.Default"
-                                                        OnClick="@(async () => await HandleDeleteSubtask(stId))"
-                                                        Class="subtask-delete-btn" />
+                                                    @if (_editingSubtaskId == subtask.Id)
+                                                    {
+                                                        var editStId = subtask.Id;
+                                                        <MudTextField
+                                                            @bind-Value="_editSubtaskTitle"
+                                                            Variant="Variant.Outlined"
+                                                            Margin="Margin.Dense"
+                                                            FullWidth="true"
+                                                            OnKeyUp="@(async (KeyboardEventArgs e) => await HandleSubtaskEditKeyUp(e, editStId))"
+                                                            Class="subtask-edit-input" />
+                                                        <MudIconButton
+                                                            Icon="@Icons.Material.Filled.Check"
+                                                            Color="Color.Success"
+                                                            Size="Size.Small"
+                                                            OnClick="@(async () => await HandleSaveSubtaskEdit(editStId))"
+                                                            title="Save"
+                                                            Class="subtask-edit-save-btn" />
+                                                        <MudIconButton
+                                                            Icon="@Icons.Material.Filled.Close"
+                                                            Color="Color.Default"
+                                                            Size="Size.Small"
+                                                            OnClick="@(() => _editingSubtaskId = null)"
+                                                            title="Cancel"
+                                                            Class="subtask-edit-cancel-btn" />
+                                                    }
+                                                    else
+                                                    {
+                                                        var editStId = subtask.Id;
+                                                        <MudText Typo="Typo.body2" Class="flex-grow-1"
+                                                            Style="@(subtask.IsCompleted ? "text-decoration: line-through; opacity: 0.5;" : "")"
+                                                            @ondblclick="@(() => HandleStartEditSubtask(editStId, subtask.Title))">
+                                                            @subtask.Title
+                                                        </MudText>
+                                                        <MudIconButton
+                                                            Icon="@Icons.Material.Filled.Edit"
+                                                            Color="Color.Default"
+                                                            Size="Size.Small"
+                                                            OnClick="@(() => HandleStartEditSubtask(editStId, subtask.Title))"
+                                                            title="Edit subtask"
+                                                            Class="subtask-edit-btn" />
+                                                        <MudIconButton
+                                                            Icon="@Icons.Material.Filled.Close"
+                                                            Size="Size.Small"
+                                                            Color="Color.Default"
+                                                            OnClick="@(async () => await HandleDeleteSubtask(stId))"
+                                                            Class="subtask-delete-btn" />
+                                                    }
                                                 </div>
                                             }
                                             @if (_addingSubtaskForTodoId == todo.Id)
@@ -1171,6 +1209,8 @@ else
     private int? _expandedSubtasksForTodoId;
     private int? _addingSubtaskForTodoId;
     private string _newSubtaskTitle = string.Empty;
+    private int? _editingSubtaskId;
+    private string _editSubtaskTitle = string.Empty;
 
     private IReadOnlyList<string> AllTagNames =>
         _todoTags.Values.SelectMany(tags => tags.Select(t => t.Name))
@@ -1672,6 +1712,40 @@ else
     {
         await DeleteSubtaskHandler.HandleAsync(subtaskId);
         await LoadTodosAsync();
+    }
+
+    private void HandleStartEditSubtask(int subtaskId, string currentTitle)
+    {
+        _editingSubtaskId = subtaskId;
+        _editSubtaskTitle = currentTitle;
+    }
+
+    private async Task HandleSaveSubtaskEdit(int subtaskId)
+    {
+        if (string.IsNullOrWhiteSpace(_editSubtaskTitle))
+        {
+            _editingSubtaskId = null;
+            return;
+        }
+        try
+        {
+            await EditSubtaskHandler.HandleAsync(subtaskId, _editSubtaskTitle);
+            _editingSubtaskId = null;
+            _editSubtaskTitle = string.Empty;
+            await LoadTodosAsync();
+        }
+        catch (ArgumentException)
+        {
+            _editingSubtaskId = null;
+        }
+    }
+
+    private async Task HandleSubtaskEditKeyUp(KeyboardEventArgs e, int subtaskId)
+    {
+        if (e.Key == "Enter")
+            await HandleSaveSubtaskEdit(subtaskId);
+        else if (e.Key == "Escape")
+            _editingSubtaskId = null;
     }
 
     private void HandleStartAddTag(int todoId)

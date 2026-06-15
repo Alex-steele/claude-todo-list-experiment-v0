@@ -62,6 +62,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<GetTodoTagsHandler>();
         ctx.Services.AddScoped<ImportTodosHandler>();
         ctx.Services.AddScoped<AddSubtaskHandler>();
+        ctx.Services.AddScoped<EditSubtaskHandler>();
         ctx.Services.AddScoped<CompleteSubtaskHandler>();
         ctx.Services.AddScoped<DeleteSubtaskHandler>();
         ctx.Services.AddScoped<GetSubtasksHandler>();
@@ -3076,5 +3077,119 @@ public class HomeTests : BunitContext
         await cut.WaitForAssertionAsync(() =>
             Assert.Contains("Work", snackbarProvider.Markup));
         Assert.Contains("moved to", snackbarProvider.Markup);
+    }
+
+    // Subtask editing tests
+
+    [Fact]
+    public async Task SubtaskEditButton_IsRendered_WhenSubtasksExpanded()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addSubtask = new AddSubtaskHandler(db);
+
+        var todoId = await addTodo.HandleAsync("Main task");
+        await addSubtask.HandleAsync(todoId, "Step one");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".subtasks-toggle-btn").Click();
+
+        Assert.Contains("subtask-edit-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingSubtaskEditButton_ShowsEditInput()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addSubtask = new AddSubtaskHandler(db);
+
+        var todoId = await addTodo.HandleAsync("Main task");
+        await addSubtask.HandleAsync(todoId, "Step one");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".subtasks-toggle-btn").Click();
+        cut.Find(".subtask-edit-btn").Click();
+
+        Assert.Contains("subtask-edit-input", cut.Markup);
+        Assert.Contains("subtask-edit-save-btn", cut.Markup);
+        Assert.Contains("subtask-edit-cancel-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SubtaskEdit_SaveWithNewTitle_UpdatesTitle()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addSubtask = new AddSubtaskHandler(db);
+
+        var todoId = await addTodo.HandleAsync("Main task");
+        await addSubtask.HandleAsync(todoId, "Original title");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".subtasks-toggle-btn").Click();
+        cut.Find(".subtask-edit-btn").Click();
+
+        var input = cut.Find(".subtask-edit-input input");
+        input.Change("Updated title");
+
+        cut.Find(".subtask-edit-save-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Updated title", cut.Markup));
+        Assert.DoesNotContain("subtask-edit-input", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SubtaskEdit_CancelButton_DiscardsEdit()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addSubtask = new AddSubtaskHandler(db);
+
+        var todoId = await addTodo.HandleAsync("Main task");
+        await addSubtask.HandleAsync(todoId, "Original title");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".subtasks-toggle-btn").Click();
+        cut.Find(".subtask-edit-btn").Click();
+
+        Assert.Contains("subtask-edit-input", cut.Markup);
+
+        cut.Find(".subtask-edit-cancel-btn").Click();
+
+        Assert.DoesNotContain("subtask-edit-input", cut.Markup);
+        Assert.Contains("Original title", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SubtaskEdit_EscapeKey_DiscardsEdit()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addSubtask = new AddSubtaskHandler(db);
+
+        var todoId = await addTodo.HandleAsync("Main task");
+        await addSubtask.HandleAsync(todoId, "Original title");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".subtasks-toggle-btn").Click();
+        cut.Find(".subtask-edit-btn").Click();
+
+        var input = cut.Find(".subtask-edit-input input");
+        input.KeyUp(Key.Escape);
+
+        Assert.DoesNotContain("subtask-edit-input", cut.Markup);
+        Assert.Contains("Original title", cut.Markup);
     }
 }

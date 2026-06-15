@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 42 — [2026-06-15] — Feature: Subtask Editing
+
+**Description:** Subtask titles can now be edited inline. Each subtask row gains a pencil (edit) icon button; clicking it replaces the title with a text field pre-filled with the current title. The user can type a new name, then press Enter or click the checkmark to save, or press Escape or click × to cancel. Double-clicking the subtask title also activates edit mode. Empty titles are rejected silently (the edit is cancelled). This closes the last gap in the subtask feature — previously the only way to fix a typo was to delete and re-add the subtask.
+
+**Reason for change:** Subtasks already support add, complete, and delete, but not rename. Fixing a misspelled subtask title required deleting it and creating a new one, losing its completion state. Inline editing is the natural complement to the existing subtask CRUD, and it follows the same inline-edit pattern already used for todo titles.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 320
+- Lines deleted: 10
+- Tests added: 10
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 41 — [2026-06-14] — Feature: 14-Day Activity Heatmap
 
 **Description:** The stats panel now shows a 14-day activity heatmap — a row of 14 small squares, one per day, spanning the past two weeks. Each square's color indicates how many todos were completed on that day: gray = 0, light green = 1–2, medium green = 3–4, dark green = 5+. Today's square gets a colored border to make it easy to locate. Hovering any square shows a tooltip with the exact date and count (e.g., "Jun 12: 3 completed"). The heatmap sits below the streak/count chips in the stats panel and gives users an instant visual sense of their recent productivity rhythm.
