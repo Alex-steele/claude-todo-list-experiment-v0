@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 43 — [2026-06-15] — Feature: Tag Autocomplete
+
+**Description:** When a user starts typing in the tag input field on a todo, a dropdown appears beneath the field showing existing tag names that start with the typed prefix. Suggestions exclude tags already on that todo and exact matches (since pressing Enter saves the tag as-is). Clicking any suggestion instantly applies that tag and closes the input. Suggestions are sourced from all tags in the database — not just visible todos — so tags from other lists or completed todos are always available for reuse. The dropdown shows up to 5 matches and disappears when the input is empty.
+
+**Reason for change:** Without autocomplete, users had to remember exact tag names to maintain consistency. Minor variations ("Work", "work", "work-related") would create fragmented tags that couldn't be filtered together. Autocomplete makes reuse the path of least resistance, which is essential for a tagging system to stay useful over time.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 256
+- Lines deleted: 7
+- Tests added: 8
+- Tests removed: 0
+- Test failures before green: 4
+
 ## Day 42 — [2026-06-15] — Feature: Subtask Editing
 
 **Description:** Subtask titles can now be edited inline. Each subtask row gains a pencil (edit) icon button; clicking it replaces the title with a text field pre-filled with the current title. The user can type a new name, then press Enter or click the checkmark to save, or press Escape or click × to cancel. Double-clicking the subtask title also activates edit mode. Empty titles are rejected silently (the edit is cancelled). This closes the last gap in the subtask feature — previously the only way to fix a typo was to delete and re-add the subtask.

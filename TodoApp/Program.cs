@@ -61,6 +61,7 @@ builder.Services.AddScoped<PinTodoHandler>();
 builder.Services.AddScoped<AddTagHandler>();
 builder.Services.AddScoped<RemoveTagHandler>();
 builder.Services.AddScoped<GetTodoTagsHandler>();
+builder.Services.AddScoped<GetAllTagNamesHandler>();
 builder.Services.AddScoped<AddSubtaskHandler>();
 builder.Services.AddScoped<EditSubtaskHandler>();
 builder.Services.AddScoped<CompleteSubtaskHandler>();
