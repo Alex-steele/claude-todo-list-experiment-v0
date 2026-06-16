@@ -51,6 +51,7 @@
 @inject FilterSortTodosHandler FilterSortTodosHandler
 @inject GetTodosStatsHandler GetTodosStatsHandler
 @inject RemoveTagHandler RemoveTagHandler
+@inject RenameTagHandler RenameTagHandler
 @inject CreateListHandler CreateListHandler
 @inject CreateRecurringInstanceHandler CreateRecurringInstanceHandler
 @inject DeleteListHandler DeleteListHandler
@@ -531,12 +532,27 @@ else
                     @foreach (var name in AllTagNames)
                     {
                         var tagName = name;
-                        <MudChip T="string"
-                                 Size="Size.Small"
-                                 Variant="@(_tagFilter == tagName ? Variant.Filled : Variant.Outlined)"
-                                 Color="Color.Secondary"
-                                 OnClick="@(() => _tagFilter = tagName)"
-                                 Class="tag-filter-chip">@tagName</MudChip>
+                        @if (_renamingTagName == tagName)
+                        {
+                            var renamingTag = tagName;
+                            <MudTextField
+                                @bind-Value="_renameTagValue"
+                                Variant="Variant.Outlined"
+                                Margin="Margin.Dense"
+                                Style="width: 100px; font-size: 0.75rem;"
+                                OnKeyUp="@(async (KeyboardEventArgs e) => await HandleRenameTagKeyUp(e, renamingTag))"
+                                Class="rename-tag-input" />
+                        }
+                        else
+                        {
+                            <MudChip T="string"
+                                     Size="Size.Small"
+                                     Variant="@(_tagFilter == tagName ? Variant.Filled : Variant.Outlined)"
+                                     Color="Color.Secondary"
+                                     OnClick="@(() => _tagFilter = tagName)"
+                                     Class="tag-filter-chip"
+                                     @ondblclick="@(() => HandleStartRenameTag(tagName))">@tagName</MudChip>
+                        }
                     }
                 </div>
             }
@@ -1228,6 +1244,9 @@ else
     private int? _editingNotesForTodoId;
     private string _notesValue = string.Empty;
 
+    private string? _renamingTagName;
+    private string _renameTagValue = string.Empty;
+
     private Dictionary<int, List<Subtask>> _subtasks = new();
     private int? _expandedSubtasksForTodoId;
     private int? _addingSubtaskForTodoId;
@@ -1830,6 +1849,44 @@ else
     {
         await RemoveTagHandler.HandleAsync(tagId);
         await LoadTodosAsync();
+    }
+
+    private void HandleStartRenameTag(string tagName)
+    {
+        _renamingTagName = tagName;
+        _renameTagValue = tagName;
+    }
+
+    private async Task HandleRenameTagKeyUp(KeyboardEventArgs e, string oldTagName)
+    {
+        if (e.Key == "Enter")
+            await HandleSaveRenameTag(oldTagName);
+        else if (e.Key == "Escape")
+            _renamingTagName = null;
+    }
+
+    private async Task HandleSaveRenameTag(string oldTagName)
+    {
+        if (string.IsNullOrWhiteSpace(_renameTagValue))
+        {
+            _renamingTagName = null;
+            return;
+        }
+
+        try
+        {
+            await RenameTagHandler.HandleAsync(oldTagName, _renameTagValue);
+            var newName = _renameTagValue.Trim().ToLowerInvariant();
+            if (_tagFilter == oldTagName)
+                _tagFilter = newName;
+            _renamingTagName = null;
+            _renameTagValue = string.Empty;
+            await LoadTodosAsync();
+        }
+        catch (ArgumentException)
+        {
+            _renamingTagName = null;
+        }
     }
 
     private async Task HandleDrop(int targetId)

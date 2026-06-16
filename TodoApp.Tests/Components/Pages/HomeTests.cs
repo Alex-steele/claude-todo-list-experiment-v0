@@ -60,6 +60,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<UpdateNotesHandler>();
         ctx.Services.AddScoped<AddTagHandler>();
         ctx.Services.AddScoped<RemoveTagHandler>();
+        ctx.Services.AddScoped<RenameTagHandler>();
         ctx.Services.AddScoped<GetTodoTagsHandler>();
         ctx.Services.AddScoped<GetAllTagNamesHandler>();
         ctx.Services.AddScoped<ImportTodosHandler>();
@@ -3302,5 +3303,104 @@ public class HomeTests : BunitContext
 
         await cut.WaitForAssertionAsync(() =>
             Assert.DoesNotContain("tag-autocomplete-dropdown", cut.Markup));
+    }
+
+    // Rename tag tests
+
+    [Fact]
+    public async Task TagFilterChip_DoubleClick_ShowsRenameInput()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+
+        var id = await addTodo.HandleAsync("Task");
+        await addTag.HandleAsync(id, "work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("rename-tag-input", cut.Markup);
+
+        cut.Find(".tag-filter-chip").DoubleClick();
+
+        Assert.Contains("rename-tag-input", cut.Markup);
+    }
+
+    [Fact]
+    public async Task RenameTag_EnterKey_RenamesTagAcrossAllTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+
+        var id1 = await addTodo.HandleAsync("Task one");
+        var id2 = await addTodo.HandleAsync("Task two");
+        await addTag.HandleAsync(id1, "work");
+        await addTag.HandleAsync(id2, "work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Double-click the tag chip to start rename
+        cut.Find(".tag-filter-chip").DoubleClick();
+
+        // Type new name and press Enter
+        cut.Find(".rename-tag-input input").Change("project");
+        cut.Find(".rename-tag-input input").KeyUp(Key.Enter);
+
+        await cut.WaitForAssertionAsync(async () =>
+        {
+            var getTags = new GetTodoTagsHandler(db);
+            var tags = await getTags.HandleAsync([id1, id2]);
+            Assert.Equal("project", tags[id1][0].Name);
+            Assert.Equal("project", tags[id2][0].Name);
+        });
+    }
+
+    [Fact]
+    public async Task RenameTag_EscapeKey_CancelsRename()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+
+        var id = await addTodo.HandleAsync("Task");
+        await addTag.HandleAsync(id, "work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".tag-filter-chip").DoubleClick();
+        Assert.Contains("rename-tag-input", cut.Markup);
+
+        cut.Find(".rename-tag-input input").KeyUp(Key.Escape);
+
+        Assert.DoesNotContain("rename-tag-input", cut.Markup);
+        Assert.Contains("work", cut.Markup);
+    }
+
+    [Fact]
+    public async Task RenameTag_AfterRename_FilterChipShowsNewName()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+
+        var id = await addTodo.HandleAsync("Task");
+        await addTag.HandleAsync(id, "work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".tag-filter-chip").DoubleClick();
+        cut.Find(".rename-tag-input input").Change("job");
+        cut.Find(".rename-tag-input input").KeyUp(Key.Enter);
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            Assert.DoesNotContain("rename-tag-input", cut.Markup);
+            Assert.Contains("job", cut.Markup);
+        });
     }
 }
