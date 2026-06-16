@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 44 — [2026-06-16] — Feature: Rename Tag
+
+**Description:** Users can now rename a tag across all todos at once by double-clicking any tag chip in the filter panel. Double-clicking a tag chip replaces it with a small text input pre-filled with the current tag name. Pressing Enter saves the rename — every todo that carried the old name is updated to the new name in one operation. Pressing Escape cancels without changes. If a todo already has the new name, the old-name tag is removed rather than duplicated. The active tag filter updates automatically if it pointed to the renamed tag.
+
+**Reason for change:** Tags could be added and filtered but never renamed. A typo in a frequently-used tag (e.g., "wrok" instead of "work") required manually removing it from every todo and re-adding the correct version. Rename-in-place fixes the whole set at once, which is the natural complement to the autocomplete added on Day 43.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 330
+- Lines deleted: 6
+- Tests added: 11
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 43 — [2026-06-15] — Feature: Tag Autocomplete
 
 **Description:** When a user starts typing in the tag input field on a todo, a dropdown appears beneath the field showing existing tag names that start with the typed prefix. Suggestions exclude tags already on that todo and exact matches (since pressing Enter saves the tag as-is). Clicking any suggestion instantly applies that tag and closes the input. Suggestions are sourced from all tags in the database — not just visible todos — so tags from other lists or completed todos are always available for reuse. The dropdown shows up to 5 matches and disappears when the input is empty.
