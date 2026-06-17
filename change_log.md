@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 45 — [2026-06-17] — Feature: Quick Due Date Editing
+
+**Description:** Todos can now have their due date changed directly from the list view without opening the full edit form. Todos without a due date show a "Set date" button inline; clicking it reveals a compact date picker with Save and Cancel buttons. Todos that already have a due date show a clickable due date chip — clicking it opens the same editor with an extra "Remove date" button to clear the date entirely. The editor closes automatically after saving or clearing, and the list updates immediately to reflect the new due date display.
+
+**Reason for change:** Changing a due date previously required opening the full inline edit form (pencil button), which also exposes priority and time estimate controls. For a quick reschedule — bumping a task from today to tomorrow — that's unnecessary friction. A dedicated quick-edit path on the due date itself makes the most common date adjustment a single click.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 279
+- Lines deleted: 2
+- Tests added: 12
+- Tests removed: 0
+- Test failures before green: 189
+
 ## Day 44 — [2026-06-16] — Feature: Rename Tag
 
 **Description:** Users can now rename a tag across all todos at once by double-clicking any tag chip in the filter panel. Double-clicking a tag chip replaces it with a small text input pre-filled with the current tag name. Pressing Enter saves the rename — every todo that carried the old name is updated to the new name in one operation. Pressing Escape cancels without changes. If a todo already has the new name, the old-name tag is removed rather than duplicated. The active tag filter updates automatically if it pointed to the renamed tag.

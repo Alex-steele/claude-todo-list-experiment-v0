@@ -29,6 +29,7 @@
 @using TodoApp.Features.Todos.ActivityStats
 @using TodoApp.Features.Todos.Notes
 @using TodoApp.Features.Todos.ColorLabel
+@using TodoApp.Features.Todos.SetDueDate
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -65,6 +66,7 @@
 @inject DuplicateTodoHandler DuplicateTodoHandler
 @inject ActivityStatsHandler ActivityStatsHandler
 @inject SetColorLabelHandler SetColorLabelHandler
+@inject SetDueDateHandler SetDueDateHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -807,10 +809,51 @@ else
                                         ✓ @FormatCompletedAt(todo.CompletedAt.Value)
                                     </MudText>
                                 }
-                                @if (todo.DueDate.HasValue)
+                                @{
+                                    var quickDateTodoId = todo.Id;
+                                }
+                                @if (_settingDueDateForTodoId == todo.Id)
+                                {
+                                    <div class="mt-1 quick-due-date-editor">
+                                        <MudDatePicker
+                                            @bind-Date="_quickDueDateValue"
+                                            Label="Due date"
+                                            Variant="Variant.Outlined"
+                                            Clearable="true"
+                                            Style="max-width: 200px;"
+                                            Class="quick-due-date-picker" />
+                                        <div class="d-flex gap-1 mt-1 align-center">
+                                            <MudButton
+                                                Size="Size.Small"
+                                                Variant="Variant.Filled"
+                                                Color="Color.Primary"
+                                                OnClick="@(async () => await HandleSaveQuickDueDate(quickDateTodoId))"
+                                                Class="quick-date-save-btn">Save</MudButton>
+                                            @if (todo.DueDate.HasValue)
+                                            {
+                                                <MudButton
+                                                    Size="Size.Small"
+                                                    Variant="Variant.Outlined"
+                                                    Color="Color.Error"
+                                                    OnClick="@(async () => await HandleClearQuickDueDate(quickDateTodoId))"
+                                                    Class="quick-date-clear-btn">Remove date</MudButton>
+                                            }
+                                            <MudButton
+                                                Size="Size.Small"
+                                                Variant="Variant.Text"
+                                                Color="Color.Default"
+                                                OnClick="@(() => _settingDueDateForTodoId = null)"
+                                                Class="quick-date-cancel-btn">Cancel</MudButton>
+                                        </div>
+                                    </div>
+                                }
+                                else if (todo.DueDate.HasValue)
                                 {
                                     var dueDateStatus = GetDueDateStatus(todo);
-                                    <div class="d-flex align-center gap-1 mt-1">
+                                    <div class="d-flex align-center gap-1 mt-1 due-date-display"
+                                         style="cursor:pointer;"
+                                         title="Click to change due date"
+                                         @onclick="@(() => HandleStartQuickDueDate(todo.Id, todo.DueDate))">
                                         @if (dueDateStatus == DueDateStatus.Overdue)
                                         {
                                             <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Color="Color.Error" />
@@ -832,6 +875,16 @@ else
                                             </MudText>
                                         }
                                     </div>
+                                }
+                                else if (!todo.IsCompleted)
+                                {
+                                    <MudButton
+                                        Size="Size.Small"
+                                        Variant="Variant.Text"
+                                        Color="Color.Secondary"
+                                        StartIcon="@Icons.Material.Outlined.CalendarToday"
+                                        OnClick="@(() => HandleStartQuickDueDate(todo.Id, null))"
+                                        Class="quick-date-set-btn">Set date</MudButton>
                                 }
                                 @if (_editingNotesForTodoId == todo.Id)
                                 {
@@ -1207,6 +1260,8 @@ else
 
     private int? _movingTodoId;
     private int? _snoozingTodoId;
+    private int? _settingDueDateForTodoId;
+    private DateTime? _quickDueDateValue;
 
     private TodoStatusFilter _statusFilter = TodoStatusFilter.All;
     private TodoSortOrder _sortOrder = TodoSortOrder.Newest;
@@ -1930,6 +1985,27 @@ else
         _snoozingTodoId = null;
         await LoadTodosAsync();
         Snackbar.Add($"Snoozed to {newDate:MMM d}", Severity.Info);
+    }
+
+    private void HandleStartQuickDueDate(int todoId, DateTime? currentDueDate)
+    {
+        _settingDueDateForTodoId = todoId;
+        _quickDueDateValue = currentDueDate;
+        _snoozingTodoId = null;
+    }
+
+    private async Task HandleSaveQuickDueDate(int todoId)
+    {
+        await SetDueDateHandler.HandleAsync(todoId, _quickDueDateValue);
+        _settingDueDateForTodoId = null;
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleClearQuickDueDate(int todoId)
+    {
+        await SetDueDateHandler.HandleAsync(todoId, null);
+        _settingDueDateForTodoId = null;
+        await LoadTodosAsync();
     }
 
     private void HandleSwitchList(int listId)
