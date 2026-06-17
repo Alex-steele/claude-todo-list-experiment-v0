@@ -32,6 +32,7 @@ using TodoApp.Features.Todos.FocusMode;
 using TodoApp.Features.Todos.DuplicateTodo;
 using TodoApp.Features.Todos.ActivityStats;
 using TodoApp.Features.Todos.ColorLabel;
+using TodoApp.Features.Todos.SetDueDate;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -81,6 +82,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<DuplicateTodoHandler>();
         ctx.Services.AddScoped<ActivityStatsHandler>();
         ctx.Services.AddScoped<SetColorLabelHandler>();
+        ctx.Services.AddScoped<SetDueDateHandler>();
         return ctx;
     }
 
@@ -3402,5 +3404,111 @@ public class HomeTests : BunitContext
             Assert.DoesNotContain("rename-tag-input", cut.Markup);
             Assert.Contains("job", cut.Markup);
         });
+    }
+
+    [Fact]
+    public async Task QuickDueDate_TodoWithoutDate_ShowsSetDateButton()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task without date");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("quick-date-set-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task QuickDueDate_ClickSetDate_ShowsDatePickerEditor()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task without date");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".quick-date-set-btn").Click();
+
+        Assert.Contains("quick-due-date-picker", cut.Markup);
+        Assert.Contains("quick-date-save-btn", cut.Markup);
+        Assert.Contains("quick-date-cancel-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task QuickDueDate_CancelButton_HidesEditor()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task without date");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".quick-date-set-btn").Click();
+        Assert.Contains("quick-due-date-picker", cut.Markup);
+
+        cut.Find(".quick-date-cancel-btn").Click();
+
+        Assert.DoesNotContain("quick-due-date-picker", cut.Markup);
+    }
+
+    [Fact]
+    public async Task QuickDueDate_TodoWithDate_ShowsDueDateDisplay()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task with date", dueDate: DateTime.Today.AddDays(3));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("due-date-display", cut.Markup);
+        Assert.Contains("Due in 3 days", cut.Markup);
+    }
+
+    [Fact]
+    public async Task QuickDueDate_ClickExistingDueDate_ShowsEditorWithClearButton()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task with date", dueDate: DateTime.Today.AddDays(5));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".due-date-display").Click();
+
+        Assert.Contains("quick-due-date-picker", cut.Markup);
+        Assert.Contains("quick-date-clear-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task QuickDueDate_ClearButton_RemovesDueDate()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task with date", dueDate: DateTime.Today.AddDays(5));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".due-date-display").Click();
+        cut.Find(".quick-date-clear-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            Assert.DoesNotContain("quick-due-date-picker", cut.Markup);
+            Assert.DoesNotContain("due-date-display", cut.Markup);
+            Assert.Contains("quick-date-set-btn", cut.Markup);
+        });
+    }
+
+    [Fact]
+    public async Task QuickDueDate_CompletedTodo_DoesNotShowSetDateButton()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id = await new AddTodoHandler(db).HandleAsync("Completed task");
+        await new CompleteTodoHandler(db).HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("quick-date-set-btn", cut.Markup);
     }
 }
