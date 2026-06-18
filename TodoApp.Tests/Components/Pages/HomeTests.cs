@@ -3513,6 +3513,121 @@ public class HomeTests : BunitContext
     }
 
     [Fact]
+    public async Task GroupHeaders_PrioritySort_ShowsPriorityGroupHeaders()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("High task", priority: TodoPriority.High);
+        await new AddTodoHandler(db).HandleAsync("Low task", priority: TodoPriority.Low);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var sortSelect = cut.FindComponent<MudSelect<TodoSortOrder>>();
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.PriorityDesc));
+
+        Assert.Contains("todo-group-label", cut.Markup);
+        Assert.Contains("High priority", cut.Markup);
+        Assert.Contains("Low priority", cut.Markup);
+    }
+
+    [Fact]
+    public async Task GroupHeaders_PrioritySort_ShowsNoPriorityGroup()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("No priority task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var sortSelect = cut.FindComponent<MudSelect<TodoSortOrder>>();
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.PriorityDesc));
+
+        Assert.Contains("No priority", cut.Markup);
+    }
+
+    [Fact]
+    public async Task GroupHeaders_DueDateSort_ShowsDueDateGroupHeaders()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-1));
+        await new AddTodoHandler(db).HandleAsync("Today task", dueDate: DateTime.Today);
+        await new AddTodoHandler(db).HandleAsync("No date task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var sortSelect = cut.FindComponent<MudSelect<TodoSortOrder>>();
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.DueDateAsc));
+
+        Assert.Contains("Overdue", cut.Markup);
+        Assert.Contains("No date", cut.Markup);
+    }
+
+    [Fact]
+    public async Task GroupHeaders_DefaultSort_NoGroupHeaders()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task A", priority: TodoPriority.High);
+        await new AddTodoHandler(db).HandleAsync("Task B", priority: TodoPriority.Low);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("todo-group-label", cut.Markup);
+    }
+
+    [Fact]
+    public async Task GroupHeaders_OldestSort_NoGroupHeaders()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task A");
+        await new AddTodoHandler(db).HandleAsync("Task B");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var sortSelect = cut.FindComponent<MudSelect<TodoSortOrder>>();
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.Oldest));
+
+        Assert.DoesNotContain("todo-group-label", cut.Markup);
+    }
+
+    [Fact]
+    public async Task GroupHeaders_PrioritySort_PinnedTodoGetsOwnGroup()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id = await new AddTodoHandler(db).HandleAsync("Pinned task", priority: TodoPriority.Low);
+        await new PinTodoHandler(db).HandleAsync(id);
+        await new AddTodoHandler(db).HandleAsync("High task", priority: TodoPriority.High);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var sortSelect = cut.FindComponent<MudSelect<TodoSortOrder>>();
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.PriorityDesc));
+
+        Assert.Contains("Pinned", cut.Markup);
+        Assert.Contains("High priority", cut.Markup);
+    }
+
+    [Fact]
+    public async Task GroupHeaders_SwitchSortBack_HeadersDisappear()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task A", priority: TodoPriority.High);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var sortSelect = cut.FindComponent<MudSelect<TodoSortOrder>>();
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.PriorityDesc));
+        Assert.Contains("todo-group-label", cut.Markup);
+
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.Newest));
+        Assert.DoesNotContain("todo-group-label", cut.Markup);
+    }
+
+    [Fact]
     public async Task BulkTag_SelectModeWithTodos_ShowsTagInputAndButton()
     {
         var db = await TestDatabase.CreateAsync();
