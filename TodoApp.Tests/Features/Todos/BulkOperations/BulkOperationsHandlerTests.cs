@@ -3,6 +3,7 @@ using TodoApp.Features.Todos.AddTodo;
 using TodoApp.Features.Todos.BulkOperations;
 using TodoApp.Features.Todos.CompleteTodo;
 using TodoApp.Features.Todos.GetTodos;
+using TodoApp.Features.Todos.Tags;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -166,5 +167,82 @@ public class BulkOperationsHandlerTests
         var todos = await getHandler.HandleAsync();
         Assert.Equal(workListId, todos.First(t => t.Id == id1).ListId);
         Assert.Equal(1, todos.First(t => t.Id == id2).ListId);
+    }
+
+    [Fact]
+    public async Task AddTagAsync_AppliesTagToAllSelectedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id1 = await addHandler.HandleAsync("Todo 1");
+        var id2 = await addHandler.HandleAsync("Todo 2");
+        var id3 = await addHandler.HandleAsync("Todo 3");
+
+        var bulkHandler = new BulkOperationsHandler(db);
+        await bulkHandler.AddTagAsync([id1, id2], "work");
+
+        var getTagsHandler = new GetTodoTagsHandler(db);
+        var tags = await getTagsHandler.HandleAsync([id1, id2, id3]);
+        Assert.Contains(tags[id1], t => t.Name == "work");
+        Assert.Contains(tags[id2], t => t.Name == "work");
+        Assert.DoesNotContain(tags.GetValueOrDefault(id3, []), t => t.Name == "work");
+    }
+
+    [Fact]
+    public async Task AddTagAsync_NormalizesTagToLowercase()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id = await addHandler.HandleAsync("Todo");
+
+        var bulkHandler = new BulkOperationsHandler(db);
+        await bulkHandler.AddTagAsync([id], "  Work  ");
+
+        var getTagsHandler = new GetTodoTagsHandler(db);
+        var tags = await getTagsHandler.HandleAsync([id]);
+        Assert.Contains(tags[id], t => t.Name == "work");
+    }
+
+    [Fact]
+    public async Task AddTagAsync_DoesNotDuplicateExistingTag()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var addTagHandler = new AddTagHandler(db);
+        var id = await addHandler.HandleAsync("Todo");
+        await addTagHandler.HandleAsync(id, "work");
+
+        var bulkHandler = new BulkOperationsHandler(db);
+        await bulkHandler.AddTagAsync([id], "work");
+
+        var getTagsHandler = new GetTodoTagsHandler(db);
+        var tags = await getTagsHandler.HandleAsync([id]);
+        Assert.Single(tags[id], t => t.Name == "work");
+    }
+
+    [Fact]
+    public async Task AddTagAsync_WithEmptyList_DoesNothing()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id = await addHandler.HandleAsync("Todo");
+
+        var bulkHandler = new BulkOperationsHandler(db);
+        await bulkHandler.AddTagAsync([], "work");
+
+        var getTagsHandler = new GetTodoTagsHandler(db);
+        var tags = await getTagsHandler.HandleAsync([id]);
+        Assert.Empty(tags.GetValueOrDefault(id, []));
+    }
+
+    [Fact]
+    public async Task AddTagAsync_WithEmptyTagName_ThrowsArgumentException()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id = await addHandler.HandleAsync("Todo");
+
+        var bulkHandler = new BulkOperationsHandler(db);
+        await Assert.ThrowsAsync<ArgumentException>(() => bulkHandler.AddTagAsync([id], "   "));
     }
 }

@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 46 — [2026-06-18] — Feature: Bulk Tag Assignment
+
+**Description:** In select mode, the bulk action bar now includes a tag name input and "Tag" button. After selecting any number of todos, users can type a tag name and click "Tag" to apply that tag to all selected todos at once. The tag is normalized to lowercase (matching the per-todo tagging behavior), duplicates are silently skipped, and the input clears after each successful operation. A snackbar confirms how many todos were tagged and with which tag. The tag filter panel and per-todo tag chips both update immediately.
+
+**Reason for change:** Bulk complete, delete, and move-to-list were already available in select mode, but there was no way to tag multiple todos at once. Tagging is a common organizational operation — after importing a batch of todos or reviewing a large list, assigning a shared tag ("work", "urgent", "q3") to a group is far faster in bulk than one-by-one.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 232
+- Lines deleted: 0
+- Tests added: 9
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 45 — [2026-06-17] — Feature: Quick Due Date Editing
 
 **Description:** Todos can now have their due date changed directly from the list view without opening the full edit form. Todos without a due date show a "Set date" button inline; clicking it reveals a compact date picker with Save and Cancel buttons. Todos that already have a due date show a clickable due date chip — clicking it opens the same editor with an extra "Remove date" button to clear the date entirely. The editor closes automatically after saving or clearing, and the list updates immediately to reflect the new due date display.

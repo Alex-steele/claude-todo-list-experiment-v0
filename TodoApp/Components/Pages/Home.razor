@@ -637,6 +637,24 @@ else
                     </MudButton>
                 </div>
             }
+            <div class="d-flex align-center gap-1 bulk-tag-row">
+                <MudTextField
+                    @bind-Value="_bulkTagInput"
+                    Placeholder="Tag name..."
+                    Variant="Variant.Outlined"
+                    Margin="Margin.Dense"
+                    Style="min-width: 110px; font-size: 0.8rem;"
+                    Class="bulk-tag-input" />
+                <MudButton
+                    Variant="Variant.Filled"
+                    Color="Color.Secondary"
+                    Size="Size.Small"
+                    Disabled="@(string.IsNullOrWhiteSpace(_bulkTagInput))"
+                    OnClick="HandleBulkAddTag"
+                    Class="bulk-tag-btn">
+                    Tag
+                </MudButton>
+            </div>
             <MudButton
                 Variant="Variant.Filled"
                 Color="Color.Error"
@@ -1277,6 +1295,7 @@ else
     private bool _isSelectMode;
     private HashSet<int> _selectedIds = new();
     private int _bulkMoveTargetListId;
+    private string _bulkTagInput = string.Empty;
 
     private bool _isFocusMode;
 
@@ -1657,6 +1676,25 @@ else
 
         if (targetList is not null)
             Snackbar.Add($"{count} todo{(count == 1 ? "" : "s")} moved to \"{targetList.Name}\"", Severity.Normal);
+    }
+
+    private async Task HandleBulkAddTag()
+    {
+        var tagName = _bulkTagInput.Trim();
+        if (string.IsNullOrWhiteSpace(tagName) || _selectedIds.Count == 0) return;
+
+        var ids = _selectedIds.ToList();
+        var count = ids.Count;
+        var normalizedTag = tagName.ToLowerInvariant();
+
+        await BulkOperationsHandler.AddTagAsync(ids, tagName);
+        _bulkTagInput = string.Empty;
+
+        _allTagNames = await GetAllTagNamesHandler.HandleAsync();
+        if (_todos is { Count: > 0 })
+            _todoTags = await GetTodoTagsHandler.HandleAsync(_todos.Select(t => t.Id).ToList());
+
+        Snackbar.Add($"Tagged {count} todo{(count == 1 ? "" : "s")} with \"{normalizedTag}\"", Severity.Normal);
     }
 
     private static string GetRecurrenceLabel(RecurrenceRule rule) => rule switch

@@ -3511,4 +3511,100 @@ public class HomeTests : BunitContext
 
         Assert.DoesNotContain("quick-date-set-btn", cut.Markup);
     }
+
+    [Fact]
+    public async Task BulkTag_SelectModeWithTodos_ShowsTagInputAndButton()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+        await new AddTodoHandler(db).HandleAsync("Task 2");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            var checkboxes = cut.FindAll(".todo-select-checkbox input[type=checkbox]");
+            checkboxes[0].Change(true);
+        });
+
+        Assert.Contains("bulk-tag-input", cut.Markup);
+        Assert.Contains("bulk-tag-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task BulkTag_EmptyTagName_TagButtonIsDisabled()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            cut.FindAll(".todo-select-checkbox input[type=checkbox]")[0].Change(true);
+        });
+
+        var tagBtn = cut.Find(".bulk-tag-btn");
+        Assert.True(tagBtn.HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task BulkTag_ApplyTag_TagAppearedOnTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id1 = await new AddTodoHandler(db).HandleAsync("Task 1");
+        await new AddTodoHandler(db).HandleAsync("Task 2");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            cut.FindAll(".todo-select-checkbox input[type=checkbox]")[0].Change(true);
+        });
+
+        cut.Find(".bulk-tag-input input").Change("urgent");
+        cut.Find(".bulk-tag-btn").Click();
+
+        await cut.WaitForAssertionAsync(async () =>
+        {
+            var getTagsHandler = new GetTodoTagsHandler(db);
+            var tags = await getTagsHandler.HandleAsync([id1]);
+            Assert.True(tags.ContainsKey(id1) && tags[id1].Any(t => t.Name == "urgent"));
+        });
+    }
+
+    [Fact]
+    public async Task BulkTag_AfterApplyTag_InputIsCleared()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            cut.FindAll(".todo-select-checkbox input[type=checkbox]")[0].Change(true);
+        });
+
+        cut.Find(".bulk-tag-input input").Change("work");
+        cut.Find(".bulk-tag-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            var input = cut.Find(".bulk-tag-input input");
+            Assert.Equal(string.Empty, input.GetAttribute("value") ?? string.Empty);
+        });
+    }
 }

@@ -31,4 +31,24 @@ public class BulkOperationsHandler(Database db)
             "UPDATE Todos SET ListId = @ListId WHERE Id IN @Ids",
             new { ListId = targetListId, Ids = ids });
     }
+
+    public async Task AddTagAsync(IReadOnlyList<int> ids, string tagName)
+    {
+        if (ids.Count == 0) return;
+        tagName = tagName.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(tagName))
+            throw new ArgumentException("Tag name cannot be empty.", nameof(tagName));
+
+        using var conn = db.CreateConnection();
+        foreach (var id in ids)
+        {
+            var exists = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM TodoTags WHERE TodoId = @TodoId AND Name = @Name",
+                new { TodoId = id, Name = tagName });
+            if (exists == 0)
+                await conn.ExecuteAsync(
+                    "INSERT INTO TodoTags (TodoId, Name) VALUES (@TodoId, @Name)",
+                    new { TodoId = id, Name = tagName });
+        }
+    }
 }
