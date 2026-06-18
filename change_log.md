@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 47 — [2026-06-18] — Feature: Grouped List View with Section Headers
+
+**Description:** When sorting by Priority or Due Date, the todo list now shows subtle section headers that divide todos into named groups. Priority sort shows "High priority", "Medium priority", "Low priority", and "No priority" groups. Due date sort shows "Overdue", "Today", "Tomorrow", "This week", "Later", and "No date" groups. Pinned todos always appear in a "Pinned" group at the top when grouping is active. Headers use an overline typographic style with a thin divider line above each group. All other sort orders (Newest, Oldest, Custom) show no headers — the list renders as a plain undivided sequence as before.
+
+**Reason for change:** With dozens of todos sorted by priority or due date, it's hard to see at a glance where one tier ends and the next begins. Section headers give the sorted list visual structure, letting users scan to the right group instantly rather than reading individual items to find the boundary.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 162
+- Lines deleted: 0
+- Tests added: 7
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 46 — [2026-06-18] — Feature: Bulk Tag Assignment
 
 **Description:** In select mode, the bulk action bar now includes a tag name input and "Tag" button. After selecting any number of todos, users can type a tag name and click "Tag" to apply that tag to all selected todos at once. The tag is normalized to lowercase (matching the per-todo tagging behavior), duplicates are silently skipped, and the input clears after each successful operation. A snackbar confirms how many todos were tagged and with which tag. The tag filter panel and per-todo tag chips both update immediately.
