@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 48 — [2026-06-19] — Feature: Time Estimate Filter
+
+**Description:** The filter panel now includes a "Time:" filter row with six chips: Any, No estimate, ≤15 min, ≤30 min, ≤1 hour, and ≤2 hours. Selecting a chip narrows the visible todo list to only those whose time estimate falls within the chosen budget. "No estimate" shows todos without any estimate set. The filter composes with all other filters (status, priority, date, tag, color) and resets when switching lists.
+
+**Reason for change:** Todos already carry a time estimate badge, but there was no way to filter by estimate. A common real-world need is "what can I finish in the next 30 minutes?" — this filter answers that instantly, turning the estimate data into a usable task-selection tool.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 299
+- Lines deleted: 6
+- Tests added: 13
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 47 — [2026-06-18] — Feature: Grouped List View with Section Headers
 
 **Description:** When sorting by Priority or Due Date, the todo list now shows subtle section headers that divide todos into named groups. Priority sort shows "High priority", "Medium priority", "Low priority", and "No priority" groups. Due date sort shows "Overdue", "Today", "Tomorrow", "This week", "Later", and "No date" groups. Pinned todos always appear in a "Pinned" group at the top when grouping is active. Headers use an overline typographic style with a thin divider line above each group. All other sort orders (Newest, Oldest, Custom) show no headers — the list renders as a plain undivided sequence as before.

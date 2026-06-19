@@ -23,3 +23,13 @@ public enum TodoDateFilter
     DueToday = 2,
     DueThisWeek = 3
 }
+
+public enum TodoTimeEstimateFilter
+{
+    Any = 0,
+    NoEstimate = 1,
+    Max15Min = 15,
+    Max30Min = 30,
+    Max1Hour = 60,
+    Max2Hours = 120
+}
