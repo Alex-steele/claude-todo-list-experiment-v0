@@ -573,6 +573,39 @@ else
                           @onclick="@(() => _colorFilter = label)"></span>
                 }
             </div>
+            <div class="d-flex align-center gap-1 flex-wrap mt-2 time-estimate-filter-row">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1">Time:</MudText>
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_timeEstimateFilter == TodoTimeEstimateFilter.Any ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Secondary"
+                         OnClick="@(() => _timeEstimateFilter = TodoTimeEstimateFilter.Any)"
+                         Class="time-filter-any">Any</MudChip>
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_timeEstimateFilter == TodoTimeEstimateFilter.NoEstimate ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Default"
+                         OnClick="@(() => _timeEstimateFilter = TodoTimeEstimateFilter.NoEstimate)"
+                         Class="time-filter-none">No estimate</MudChip>
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_timeEstimateFilter == TodoTimeEstimateFilter.Max15Min ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Tertiary"
+                         OnClick="@(() => _timeEstimateFilter = TodoTimeEstimateFilter.Max15Min)"
+                         Class="time-filter-15min">≤15 min</MudChip>
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_timeEstimateFilter == TodoTimeEstimateFilter.Max30Min ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Tertiary"
+                         OnClick="@(() => _timeEstimateFilter = TodoTimeEstimateFilter.Max30Min)"
+                         Class="time-filter-30min">≤30 min</MudChip>
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_timeEstimateFilter == TodoTimeEstimateFilter.Max1Hour ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Tertiary"
+                         OnClick="@(() => _timeEstimateFilter = TodoTimeEstimateFilter.Max1Hour)"
+                         Class="time-filter-1hour">≤1 hour</MudChip>
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_timeEstimateFilter == TodoTimeEstimateFilter.Max2Hours ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Tertiary"
+                         OnClick="@(() => _timeEstimateFilter = TodoTimeEstimateFilter.Max2Hours)"
+                         Class="time-filter-2hours">≤2 hours</MudChip>
+            </div>
         </MudCardContent>
     </MudCard>
 
@@ -1300,6 +1333,7 @@ else
     private TodoSortOrder _sortOrder = TodoSortOrder.Newest;
     private string _searchQuery = string.Empty;
     private TodoDateFilter _dateFilter = TodoDateFilter.None;
+    private TodoTimeEstimateFilter _timeEstimateFilter = TodoTimeEstimateFilter.Any;
 
     private int? _editingTodoId;
     private string _editValue = string.Empty;
@@ -1365,7 +1399,7 @@ else
             var source = IsGlobalSearch
                 ? _todos.ToList()
                 : _todos.Where(t => t.ListId == _activeListId).ToList();
-            var filtered = FilterSortTodosHandler.Handle(source, _statusFilter, _sortOrder, _searchQuery, _priorityFilter, _dateFilter);
+            var filtered = FilterSortTodosHandler.Handle(source, _statusFilter, _sortOrder, _searchQuery, _priorityFilter, _dateFilter, _timeEstimateFilter);
             var tagFiltered = _tagFilter is null
                 ? filtered
                 : filtered.Where(t => _todoTags.TryGetValue(t.Id, out var tags) && tags.Any(tag => tag.Name == _tagFilter)).ToList();
@@ -2103,6 +2137,7 @@ else
         _tagFilter = null;
         _dateFilter = TodoDateFilter.None;
         _colorFilter = null;
+        _timeEstimateFilter = TodoTimeEstimateFilter.Any;
         _isFocusMode = false;
     }
 

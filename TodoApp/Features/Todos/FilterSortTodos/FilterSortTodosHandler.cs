@@ -1,4 +1,5 @@
 using TodoApp.Features.Todos.GetTodos;
+using TodoApp.Features.Todos.TimeEstimates;
 
 namespace TodoApp.Features.Todos.FilterSortTodos;
 
@@ -10,7 +11,8 @@ public class FilterSortTodosHandler
         TodoSortOrder sortOrder,
         string searchQuery = "",
         TodoPriority? priorityFilter = null,
-        TodoDateFilter dateFilter = TodoDateFilter.None)
+        TodoDateFilter dateFilter = TodoDateFilter.None,
+        TodoTimeEstimateFilter timeEstimateFilter = TodoTimeEstimateFilter.Any)
     {
         var searched = string.IsNullOrWhiteSpace(searchQuery)
             ? todos.AsEnumerable()
@@ -38,7 +40,17 @@ public class FilterSortTodosHandler
             _                           => priorityFiltered
         };
 
-        var pinFirst = dateFiltered.OrderByDescending(t => t.IsPinned ? 1 : 0);
+        var timeFiltered = timeEstimateFilter switch
+        {
+            TodoTimeEstimateFilter.NoEstimate => dateFiltered.Where(t => t.TimeEstimate == TimeEstimate.None),
+            TodoTimeEstimateFilter.Max15Min   => dateFiltered.Where(t => t.TimeEstimate != TimeEstimate.None && (int)t.TimeEstimate <= 15),
+            TodoTimeEstimateFilter.Max30Min   => dateFiltered.Where(t => t.TimeEstimate != TimeEstimate.None && (int)t.TimeEstimate <= 30),
+            TodoTimeEstimateFilter.Max1Hour   => dateFiltered.Where(t => t.TimeEstimate != TimeEstimate.None && (int)t.TimeEstimate <= 60),
+            TodoTimeEstimateFilter.Max2Hours  => dateFiltered.Where(t => t.TimeEstimate != TimeEstimate.None && (int)t.TimeEstimate <= 120),
+            _                                 => dateFiltered
+        };
+
+        var pinFirst = timeFiltered.OrderByDescending(t => t.IsPinned ? 1 : 0);
 
         var sorted = sortOrder switch
         {
@@ -48,7 +60,7 @@ public class FilterSortTodosHandler
                                                   .ThenBy(t => -t.Id),
             TodoSortOrder.PriorityDesc => pinFirst.ThenByDescending(t => (int)t.Priority)
                                                   .ThenBy(t => -t.Id),
-            TodoSortOrder.Manual       => dateFiltered.AsEnumerable(), // preserve DB order (SortOrder ASC)
+            TodoSortOrder.Manual       => timeFiltered.AsEnumerable(), // preserve DB order (SortOrder ASC)
             _                          => pinFirst.ThenByDescending(t => t.Id)  // Newest (default)
         };
 

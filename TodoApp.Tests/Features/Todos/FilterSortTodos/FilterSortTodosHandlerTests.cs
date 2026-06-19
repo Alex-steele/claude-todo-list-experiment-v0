@@ -1,6 +1,7 @@
 using TodoApp.Features.Todos;
 using TodoApp.Features.Todos.FilterSortTodos;
 using TodoApp.Features.Todos.GetTodos;
+using TodoApp.Features.Todos.TimeEstimates;
 using Xunit;
 
 namespace TodoApp.Tests.Features.Todos.FilterSortTodos;
@@ -13,8 +14,9 @@ public class FilterSortTodosHandlerTests
         bool isCompleted = false,
         TodoPriority priority = TodoPriority.None,
         DateTime? dueDate = null,
-        bool isPinned = false)
-        => new(id, title, isCompleted, Base.AddSeconds(id), priority, dueDate, isPinned);
+        bool isPinned = false,
+        TimeEstimate timeEstimate = TimeEstimate.None)
+        => new(id, title, isCompleted, Base.AddSeconds(id), priority, dueDate, isPinned, TimeEstimate: timeEstimate);
 
     private readonly FilterSortTodosHandler _handler = new();
 
@@ -227,5 +229,132 @@ public class FilterSortTodosHandlerTests
 
         Assert.Single(result);
         Assert.Equal("Active", result[0].Title);
+    }
+
+    [Fact]
+    public void TimeEstimateFilter_Any_ReturnsAllTodos()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "No estimate"),
+            Make(2, "15 min task",  timeEstimate: TimeEstimate.FifteenMinutes),
+            Make(3, "1 hour task",  timeEstimate: TimeEstimate.OneHour),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            timeEstimateFilter: TodoTimeEstimateFilter.Any);
+
+        Assert.Equal(3, result.Count);
+    }
+
+    [Fact]
+    public void TimeEstimateFilter_NoEstimate_ReturnsOnlyTodosWithNoEstimate()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "No estimate"),
+            Make(2, "15 min task",  timeEstimate: TimeEstimate.FifteenMinutes),
+            Make(3, "1 hour task",  timeEstimate: TimeEstimate.OneHour),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            timeEstimateFilter: TodoTimeEstimateFilter.NoEstimate);
+
+        Assert.Single(result);
+        Assert.Equal("No estimate", result[0].Title);
+    }
+
+    [Fact]
+    public void TimeEstimateFilter_Max15Min_ReturnsOnlyFifteenMinuteTodos()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Quick task",   timeEstimate: TimeEstimate.FifteenMinutes),
+            Make(2, "Medium task",  timeEstimate: TimeEstimate.ThirtyMinutes),
+            Make(3, "Long task",    timeEstimate: TimeEstimate.OneHour),
+            Make(4, "No estimate"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            timeEstimateFilter: TodoTimeEstimateFilter.Max15Min);
+
+        Assert.Single(result);
+        Assert.Equal("Quick task", result[0].Title);
+    }
+
+    [Fact]
+    public void TimeEstimateFilter_Max30Min_IncludesFifteenAndThirtyMinute()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "15 min task",  timeEstimate: TimeEstimate.FifteenMinutes),
+            Make(2, "30 min task",  timeEstimate: TimeEstimate.ThirtyMinutes),
+            Make(3, "1 hour task",  timeEstimate: TimeEstimate.OneHour),
+            Make(4, "No estimate"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            timeEstimateFilter: TodoTimeEstimateFilter.Max30Min);
+
+        Assert.Equal(2, result.Count);
+        Assert.All(result, t => Assert.NotEqual("No estimate", t.Title));
+        Assert.All(result, t => Assert.NotEqual("1 hour task", t.Title));
+    }
+
+    [Fact]
+    public void TimeEstimateFilter_Max1Hour_IncludesUpToOneHour()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "15 min task",  timeEstimate: TimeEstimate.FifteenMinutes),
+            Make(2, "30 min task",  timeEstimate: TimeEstimate.ThirtyMinutes),
+            Make(3, "1 hour task",  timeEstimate: TimeEstimate.OneHour),
+            Make(4, "2 hour task",  timeEstimate: TimeEstimate.TwoHours),
+            Make(5, "No estimate"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            timeEstimateFilter: TodoTimeEstimateFilter.Max1Hour);
+
+        Assert.Equal(3, result.Count);
+        Assert.DoesNotContain(result, t => t.Title == "2 hour task");
+        Assert.DoesNotContain(result, t => t.Title == "No estimate");
+    }
+
+    [Fact]
+    public void TimeEstimateFilter_Max2Hours_ExcludesLongerEstimatesAndNoEstimate()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "30 min task",  timeEstimate: TimeEstimate.ThirtyMinutes),
+            Make(2, "2 hour task",  timeEstimate: TimeEstimate.TwoHours),
+            Make(3, "4 hour task",  timeEstimate: TimeEstimate.FourHours),
+            Make(4, "All day task", timeEstimate: TimeEstimate.OneDay),
+            Make(5, "No estimate"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            timeEstimateFilter: TodoTimeEstimateFilter.Max2Hours);
+
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, t => t.Title == "30 min task");
+        Assert.Contains(result, t => t.Title == "2 hour task");
+    }
+
+    [Fact]
+    public void TimeEstimateFilter_CombinesWithStatusFilter()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Active quick",     timeEstimate: TimeEstimate.FifteenMinutes),
+            Make(2, "Completed quick",  timeEstimate: TimeEstimate.FifteenMinutes, isCompleted: true),
+            Make(3, "Active slow",      timeEstimate: TimeEstimate.OneDay),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.Active, TodoSortOrder.Newest,
+            timeEstimateFilter: TodoTimeEstimateFilter.Max15Min);
+
+        Assert.Single(result);
+        Assert.Equal("Active quick", result[0].Title);
     }
 }

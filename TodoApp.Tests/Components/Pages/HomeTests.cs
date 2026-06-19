@@ -33,6 +33,7 @@ using TodoApp.Features.Todos.DuplicateTodo;
 using TodoApp.Features.Todos.ActivityStats;
 using TodoApp.Features.Todos.ColorLabel;
 using TodoApp.Features.Todos.SetDueDate;
+using TodoApp.Features.Todos.TimeEstimates;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -3721,5 +3722,111 @@ public class HomeTests : BunitContext
             var input = cut.Find(".bulk-tag-input input");
             Assert.Equal(string.Empty, input.GetAttribute("value") ?? string.Empty);
         });
+    }
+
+    [Fact]
+    public async Task TimeEstimateFilter_RowIsRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Some todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("time-estimate-filter-row", cut.Markup);
+        Assert.Contains("time-filter-any", cut.Markup);
+        Assert.Contains("time-filter-30min", cut.Markup);
+        Assert.Contains("time-filter-1hour", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TimeEstimateFilter_Any_ShowsAllTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Quick task",  timeEstimate: TimeEstimate.FifteenMinutes);
+        await addHandler.HandleAsync("No estimate task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("Quick task", cut.Markup);
+        Assert.Contains("No estimate task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TimeEstimateFilter_Max15Min_ShowsOnlyFastTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Fast task",  timeEstimate: TimeEstimate.FifteenMinutes);
+        await addHandler.HandleAsync("Slow task",  timeEstimate: TimeEstimate.OneHour);
+        await addHandler.HandleAsync("No estimate task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".time-filter-15min").Click();
+
+        Assert.Contains("Fast task", cut.Markup);
+        Assert.DoesNotContain("Slow task", cut.Markup);
+        Assert.DoesNotContain("No estimate task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TimeEstimateFilter_Max30Min_IncludesShortTasks()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("15 min task",  timeEstimate: TimeEstimate.FifteenMinutes);
+        await addHandler.HandleAsync("30 min task",  timeEstimate: TimeEstimate.ThirtyMinutes);
+        await addHandler.HandleAsync("1 hour task",  timeEstimate: TimeEstimate.OneHour);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".time-filter-30min").Click();
+
+        Assert.Contains("15 min task", cut.Markup);
+        Assert.Contains("30 min task", cut.Markup);
+        Assert.DoesNotContain("1 hour task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TimeEstimateFilter_NoEstimate_ShowsOnlyUnestimatedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("No estimate task");
+        await addHandler.HandleAsync("15 min task",  timeEstimate: TimeEstimate.FifteenMinutes);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".time-filter-none").Click();
+
+        Assert.Contains("No estimate task", cut.Markup);
+        Assert.DoesNotContain("15 min task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TimeEstimateFilter_ClickAny_ResetsFilter()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Fast task",  timeEstimate: TimeEstimate.FifteenMinutes);
+        await addHandler.HandleAsync("Slow task",  timeEstimate: TimeEstimate.OneHour);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Apply a filter
+        cut.Find(".time-filter-15min").Click();
+        Assert.DoesNotContain("Slow task", cut.Markup);
+
+        // Reset via "Any"
+        cut.Find(".time-filter-any").Click();
+        Assert.Contains("Fast task", cut.Markup);
+        Assert.Contains("Slow task", cut.Markup);
     }
 }
