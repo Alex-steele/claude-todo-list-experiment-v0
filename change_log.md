@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 49 — [2026-06-20] — Feature: Bulk Priority Assignment
+
+**Description:** In select mode, the bulk action bar now includes a priority dropdown and a "Set Priority" button. After selecting any number of todos, users choose a priority level (High, Medium, Low, or None) and click "Set Priority" to apply it to all selected todos at once. The selector resets after each successful operation and a snackbar confirms how many todos were updated. The bulk action bar now displays the priority controls alongside the existing tag, move, complete, and delete actions.
+
+**Reason for change:** Bulk complete, delete, move, and tag assignment were already available in select mode, but there was no way to reprioritize multiple todos at once. After a review session — identifying which tasks are really urgent — being able to stamp a priority on a whole selection in one click is far faster than editing each todo individually.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 220
+- Lines deleted: 0
+- Tests added: 8
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 48 — [2026-06-19] — Feature: Time Estimate Filter
 
 **Description:** The filter panel now includes a "Time:" filter row with six chips: Any, No estimate, ≤15 min, ≤30 min, ≤1 hour, and ≤2 hours. Selecting a chip narrows the visible todo list to only those whose time estimate falls within the chosen budget. "No estimate" shows todos without any estimate set. The filter composes with all other filters (status, priority, date, tag, color) and resets when switching lists.

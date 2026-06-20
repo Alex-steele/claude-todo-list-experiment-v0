@@ -1,4 +1,5 @@
 using Dapper;
+using TodoApp.Features.Todos;
 using TodoApp.Infrastructure;
 
 namespace TodoApp.Features.Todos.BulkOperations;
@@ -30,6 +31,15 @@ public class BulkOperationsHandler(Database db)
         await conn.ExecuteAsync(
             "UPDATE Todos SET ListId = @ListId WHERE Id IN @Ids",
             new { ListId = targetListId, Ids = ids });
+    }
+
+    public async Task SetPriorityAsync(IReadOnlyList<int> ids, TodoPriority priority)
+    {
+        if (ids.Count == 0) return;
+        using var conn = db.CreateConnection();
+        await conn.ExecuteAsync(
+            "UPDATE Todos SET Priority = @Priority WHERE Id IN @Ids",
+            new { Priority = (int)priority, Ids = ids });
     }
 
     public async Task AddTagAsync(IReadOnlyList<int> ids, string tagName)

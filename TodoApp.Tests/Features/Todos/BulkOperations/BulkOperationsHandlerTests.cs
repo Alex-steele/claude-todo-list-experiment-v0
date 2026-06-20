@@ -1,4 +1,5 @@
 using TodoApp.Features.Lists;
+using TodoApp.Features.Todos;
 using TodoApp.Features.Todos.AddTodo;
 using TodoApp.Features.Todos.BulkOperations;
 using TodoApp.Features.Todos.CompleteTodo;
@@ -244,5 +245,71 @@ public class BulkOperationsHandlerTests
 
         var bulkHandler = new BulkOperationsHandler(db);
         await Assert.ThrowsAsync<ArgumentException>(() => bulkHandler.AddTagAsync([id], "   "));
+    }
+
+    [Fact]
+    public async Task SetPriorityAsync_SetsAllSelectedTodosToSpecifiedPriority()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id1 = await addHandler.HandleAsync("Todo 1");
+        var id2 = await addHandler.HandleAsync("Todo 2");
+        var id3 = await addHandler.HandleAsync("Todo 3");
+
+        var bulkHandler = new BulkOperationsHandler(db);
+        await bulkHandler.SetPriorityAsync([id1, id2], TodoPriority.High);
+
+        var getHandler = new GetTodosHandler(db);
+        var todos = await getHandler.HandleAsync();
+        Assert.Equal(TodoPriority.High, todos.First(t => t.Id == id1).Priority);
+        Assert.Equal(TodoPriority.High, todos.First(t => t.Id == id2).Priority);
+        Assert.Equal(TodoPriority.None, todos.First(t => t.Id == id3).Priority);
+    }
+
+    [Fact]
+    public async Task SetPriorityAsync_WithEmptyList_DoesNothing()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Todo 1", priority: TodoPriority.High);
+
+        var bulkHandler = new BulkOperationsHandler(db);
+        await bulkHandler.SetPriorityAsync([], TodoPriority.Low);
+
+        var getHandler = new GetTodosHandler(db);
+        var todos = await getHandler.HandleAsync();
+        Assert.Equal(TodoPriority.High, todos[0].Priority);
+    }
+
+    [Fact]
+    public async Task SetPriorityAsync_CanClearPriorityToNone()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id = await addHandler.HandleAsync("Todo", priority: TodoPriority.High);
+
+        var bulkHandler = new BulkOperationsHandler(db);
+        await bulkHandler.SetPriorityAsync([id], TodoPriority.None);
+
+        var getHandler = new GetTodosHandler(db);
+        var todos = await getHandler.HandleAsync();
+        Assert.Equal(TodoPriority.None, todos.First(t => t.Id == id).Priority);
+    }
+
+    [Fact]
+    public async Task SetPriorityAsync_OnlyAffectsSpecifiedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id1 = await addHandler.HandleAsync("Target");
+        var id2 = await addHandler.HandleAsync("Bystander");
+
+        var bulkHandler = new BulkOperationsHandler(db);
+        await bulkHandler.SetPriorityAsync([id1], TodoPriority.Medium);
+
+        var getHandler = new GetTodosHandler(db);
+        var todos = await getHandler.HandleAsync();
+        Assert.Equal(TodoPriority.Medium, todos.First(t => t.Id == id1).Priority);
+        Assert.Equal(TodoPriority.None, todos.First(t => t.Id == id2).Priority);
     }
 }
