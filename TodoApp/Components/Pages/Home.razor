@@ -688,6 +688,31 @@ else
                     Tag
                 </MudButton>
             </div>
+            <div class="d-flex align-center gap-1 bulk-priority-row">
+                <MudSelect
+                    T="TodoPriority?"
+                    @bind-Value="_bulkPriority"
+                    Label="Priority"
+                    Variant="Variant.Outlined"
+                    Dense="true"
+                    Style="min-width: 120px; font-size: 0.8rem;"
+                    Class="bulk-priority-select">
+                    <MudSelectItem T="TodoPriority?" Value="@((TodoPriority?)null)">Select…</MudSelectItem>
+                    <MudSelectItem T="TodoPriority?" Value="@((TodoPriority?)TodoPriority.High)">High</MudSelectItem>
+                    <MudSelectItem T="TodoPriority?" Value="@((TodoPriority?)TodoPriority.Medium)">Medium</MudSelectItem>
+                    <MudSelectItem T="TodoPriority?" Value="@((TodoPriority?)TodoPriority.Low)">Low</MudSelectItem>
+                    <MudSelectItem T="TodoPriority?" Value="@((TodoPriority?)TodoPriority.None)">None</MudSelectItem>
+                </MudSelect>
+                <MudButton
+                    Variant="Variant.Filled"
+                    Color="Color.Primary"
+                    Size="Size.Small"
+                    Disabled="@(_bulkPriority is null)"
+                    OnClick="HandleBulkSetPriority"
+                    Class="bulk-priority-btn">
+                    Set Priority
+                </MudButton>
+            </div>
             <MudButton
                 Variant="Variant.Filled"
                 Color="Color.Error"
@@ -1345,6 +1370,7 @@ else
     private HashSet<int> _selectedIds = new();
     private int _bulkMoveTargetListId;
     private string _bulkTagInput = string.Empty;
+    private TodoPriority? _bulkPriority;
 
     private bool _isFocusMode;
 
@@ -1634,6 +1660,7 @@ else
         {
             _selectedIds.Clear();
             _bulkMoveTargetListId = 0;
+            _bulkPriority = null;
         }
     }
 
@@ -1744,6 +1771,23 @@ else
             _todoTags = await GetTodoTagsHandler.HandleAsync(_todos.Select(t => t.Id).ToList());
 
         Snackbar.Add($"Tagged {count} todo{(count == 1 ? "" : "s")} with \"{normalizedTag}\"", Severity.Normal);
+    }
+
+    private async Task HandleBulkSetPriority()
+    {
+        if (_bulkPriority is null || _selectedIds.Count == 0) return;
+
+        var ids = _selectedIds.ToList();
+        var count = ids.Count;
+        var priority = _bulkPriority.Value;
+
+        await BulkOperationsHandler.SetPriorityAsync(ids, priority);
+        _bulkPriority = null;
+
+        await LoadTodosAsync();
+
+        var label = priority == TodoPriority.None ? "none" : priority.ToString().ToLower();
+        Snackbar.Add($"Set priority to {label} for {count} todo{(count == 1 ? "" : "s")}", Severity.Normal);
     }
 
     private static string GetRecurrenceLabel(RecurrenceRule rule) => rule switch

@@ -3829,4 +3829,103 @@ public class HomeTests : BunitContext
         Assert.Contains("Fast task", cut.Markup);
         Assert.Contains("Slow task", cut.Markup);
     }
+
+    // Bulk priority tests
+
+    [Fact]
+    public async Task BulkPriority_SelectModeWithTodos_ShowsPrioritySelectAndButton()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            cut.FindAll(".todo-select-checkbox input[type=checkbox]")[0].Change(true);
+        });
+
+        Assert.Contains("bulk-priority-select", cut.Markup);
+        Assert.Contains("bulk-priority-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task BulkPriority_NoPrioritySelected_ButtonIsDisabled()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            cut.FindAll(".todo-select-checkbox input[type=checkbox]")[0].Change(true);
+        });
+
+        var btn = cut.Find(".bulk-priority-btn");
+        Assert.True(btn.HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task BulkPriority_SetPriority_UpdatesTodoInDatabase()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id1 = await new AddTodoHandler(db).HandleAsync("Task 1");
+        await new AddTodoHandler(db).HandleAsync("Task 2");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            cut.FindAll(".todo-select-checkbox input[type=checkbox]")[0].Change(true);
+        });
+
+        // Choose "High" priority via the MudSelect
+        var prioritySelect = cut.FindComponent<MudSelect<TodoPriority?>>();
+        await cut.InvokeAsync(() => prioritySelect.Instance.ValueChanged.InvokeAsync(TodoPriority.High));
+        cut.Find(".bulk-priority-btn").Click();
+
+        await cut.WaitForAssertionAsync(async () =>
+        {
+            var getHandler = new GetTodosHandler(db);
+            var todos = await getHandler.HandleAsync();
+            Assert.Equal(TodoPriority.High, todos.First(t => t.Id == id1).Priority);
+        });
+    }
+
+    [Fact]
+    public async Task BulkPriority_AfterSetPriority_SelectResetToNull()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            cut.FindAll(".todo-select-checkbox input[type=checkbox]")[0].Change(true);
+        });
+
+        var prioritySelect = cut.FindComponent<MudSelect<TodoPriority?>>();
+        await cut.InvokeAsync(() => prioritySelect.Instance.ValueChanged.InvokeAsync(TodoPriority.High));
+        cut.Find(".bulk-priority-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            var btn = cut.Find(".bulk-priority-btn");
+            Assert.True(btn.HasAttribute("disabled"));
+        });
+    }
 }
