@@ -433,6 +433,31 @@ else
                         Class="select-mode-btn">
                         @(_isSelectMode ? "Cancel" : "Select")
                     </MudButton>
+                    @if (_isSelectMode)
+                    {
+                        @if (AreAllDisplayedSelected)
+                        {
+                            <MudButton
+                                Variant="Variant.Text"
+                                Color="Color.Warning"
+                                Size="Size.Small"
+                                OnClick="HandleDeselectAll"
+                                Class="deselect-all-btn">
+                                Deselect all
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton
+                                Variant="Variant.Text"
+                                Color="Color.Warning"
+                                Size="Size.Small"
+                                OnClick="HandleSelectAll"
+                                Class="select-all-btn">
+                                Select all
+                            </MudButton>
+                        }
+                    }
                     <MudButton
                         Variant="@(_isFocusMode ? Variant.Filled : Variant.Outlined)"
                         Color="@(_isFocusMode ? Color.Success : Color.Default)"
@@ -1407,6 +1432,9 @@ else
         _todoTags.Values.SelectMany(tags => tags.Select(t => t.Name))
             .Distinct().OrderBy(n => n).ToList();
 
+    private bool AreAllDisplayedSelected =>
+        DisplayedTodos.Count > 0 && DisplayedTodos.All(t => _selectedIds.Contains(t.Id));
+
     // Cross-list mode: active when searching or date-filtering with multiple lists.
     private bool IsGlobalSearch =>
         (!string.IsNullOrWhiteSpace(_searchQuery) || _dateFilter != TodoDateFilter.None)
@@ -1677,6 +1705,17 @@ else
             _selectedIds.Add(id);
         else
             _selectedIds.Remove(id);
+    }
+
+    private void HandleSelectAll()
+    {
+        foreach (var todo in DisplayedTodos)
+            _selectedIds.Add(todo.Id);
+    }
+
+    private void HandleDeselectAll()
+    {
+        _selectedIds.Clear();
     }
 
     private async Task HandleBulkComplete()

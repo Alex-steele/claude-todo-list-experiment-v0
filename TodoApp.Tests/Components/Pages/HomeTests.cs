@@ -3928,4 +3928,116 @@ public class HomeTests : BunitContext
             Assert.True(btn.HasAttribute("disabled"));
         });
     }
+
+    // Select all / deselect all tests
+
+    [Fact]
+    public async Task SelectAll_ButtonRendered_WhenSelectModeActive()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+        await new AddTodoHandler(db).HandleAsync("Task 2");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("select-all-btn", cut.Markup));
+    }
+
+    [Fact]
+    public async Task SelectAll_SelectsAllDisplayedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+        await new AddTodoHandler(db).HandleAsync("Task 2");
+        await new AddTodoHandler(db).HandleAsync("Task 3");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("select-all-btn", cut.Markup));
+
+        cut.Find(".select-all-btn").Click();
+
+        // When all 3 are selected the bulk bar shows "3 selected" and the deselect button appears
+        await cut.WaitForAssertionAsync(() =>
+        {
+            Assert.Contains("3 selected", cut.Markup);
+            Assert.Contains("deselect-all-btn", cut.Markup);
+        });
+    }
+
+    [Fact]
+    public async Task SelectAll_AfterSelectingAll_ShowsDeselectAllButton()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+        await new AddTodoHandler(db).HandleAsync("Task 2");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("select-all-btn", cut.Markup));
+
+        cut.Find(".select-all-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("deselect-all-btn", cut.Markup));
+    }
+
+    [Fact]
+    public async Task DeselectAll_ClearsAllSelections()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+        await new AddTodoHandler(db).HandleAsync("Task 2");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("select-all-btn", cut.Markup));
+
+        cut.Find(".select-all-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("deselect-all-btn", cut.Markup));
+
+        cut.Find(".deselect-all-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.DoesNotContain("bulk-action-bar", cut.Markup));
+    }
+
+    [Fact]
+    public async Task SelectAll_ShowsBulkActionBar()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+        await new AddTodoHandler(db).HandleAsync("Task 2");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("select-all-btn", cut.Markup));
+
+        cut.Find(".select-all-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("bulk-action-bar", cut.Markup));
+    }
 }

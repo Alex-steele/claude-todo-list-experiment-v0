@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 50 — [2026-06-20] — Feature: Select All / Deselect All in Select Mode
+
+**Description:** When select mode is active, a "Select all" button now appears next to the Cancel button. Clicking it instantly selects every todo currently visible in the list (respecting all active filters). Once all todos are selected the button becomes "Deselect all", which clears the entire selection in one click. The bulk action bar still shows the live count of selected items and all existing bulk operations (complete, delete, move, tag, set priority) work seamlessly with the mass-selected set.
+
+**Reason for change:** Bulk operations existed for all the major actions, but selecting todos one-by-one was tedious when the goal was to act on the whole visible set — for example, marking every item in a filtered view complete, or deleting everything in a list. Select All / Deselect All makes those flows instant.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 151
+- Lines deleted: 0
+- Tests added: 5
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 49 — [2026-06-20] — Feature: Bulk Priority Assignment
 
 **Description:** In select mode, the bulk action bar now includes a priority dropdown and a "Set Priority" button. After selecting any number of todos, users choose a priority level (High, Medium, Low, or None) and click "Set Priority" to apply it to all selected todos at once. The selector resets after each successful operation and a snackbar confirms how many todos were updated. The bulk action bar now displays the priority controls alongside the existing tag, move, complete, and delete actions.
