@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 52 — [2026-06-21] — Feature: Active Todo Count Badges on List Tabs
+
+**Description:** Each list tab chip now shows a small pill badge with the count of active (incomplete) todos in that list. For example, a "Work" list with 5 incomplete todos displays "Work 5". The badge only appears when the count is greater than zero — a list with all todos completed, or an empty list, shows just the name. Also fixed a long-standing bug where `app.css` was never linked in `App.razor`, meaning all accumulated custom CSS (drag-over highlights, heatmap day styles, shortcut-key chips, etc.) was dead — that stylesheet is now correctly included.
+
+**Reason for change:** With multiple lists, users had no way to see at a glance which lists had outstanding work — they had to switch to each list to check. The count badge makes list state visible without clicking, so users can prioritise which list to focus on first.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 113
+- Lines deleted: 0
+- Tests added: 4
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 51 — [2026-06-21] — Feature: Alphabetical Sort (A→Z and Z→A)
 
 **Description:** The sort dropdown now offers two new options: "Title A→Z" and "Title Z→A". Selecting either sorts all displayed todos alphabetically by title in a case-insensitive manner. Pinned todos still float to the top of the list regardless of the chosen alpha sort order, and the alphabetical sort composes correctly with all existing filters (status, priority, date, tag, color, time estimate).

@@ -93,6 +93,7 @@
                     }
                     else
                     {
+                        var activeCount = GetActiveCountForList(listId);
                         <MudChip T="string"
                                  Variant="@(_activeListId == listId ? Variant.Filled : Variant.Outlined)"
                                  Color="Color.Primary"
@@ -101,6 +102,10 @@
                                  Class="list-chip"
                                  @ondblclick="@(() => HandleStartRenameList(listId, list.Name))">
                             @list.Name
+                            @if (activeCount > 0)
+                            {
+                                <span class="list-count-badge">@activeCount</span>
+                            }
                         </MudChip>
                     }
                 }
@@ -1436,6 +1441,9 @@ else
 
     private bool AreAllDisplayedSelected =>
         DisplayedTodos.Count > 0 && DisplayedTodos.All(t => _selectedIds.Contains(t.Id));
+
+    private int GetActiveCountForList(int listId) =>
+        _todos?.Count(t => t.ListId == listId && !t.IsCompleted) ?? 0;
 
     // Cross-list mode: active when searching or date-filtering with multiple lists.
     private bool IsGlobalSearch =>

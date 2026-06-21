@@ -4107,4 +4107,92 @@ public class HomeTests : BunitContext
             Assert.True(zebraPos < mangoPos && mangoPos < applePos);
         });
     }
+
+    // ── List count badges ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ListCountBadge_ShowsActiveTodoCountOnListChip()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var listId2 = await new CreateListHandler(db).HandleAsync("Work");
+        await new AddTodoHandler(db).HandleAsync("Task A", listId: listId2);
+        await new AddTodoHandler(db).HandleAsync("Task B", listId: listId2);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("list-count-badge", cut.Markup));
+
+        var badge = cut.Find(".list-count-badge");
+        Assert.Equal("2", badge.TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task ListCountBadge_DoesNotCountCompletedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var listId2 = await new CreateListHandler(db).HandleAsync("Work");
+        var handler = new AddTodoHandler(db);
+        var id1 = await handler.HandleAsync("Active task", listId: listId2);
+        var id2 = await handler.HandleAsync("Done task", listId: listId2);
+        await new CompleteTodoHandler(db).HandleAsync(id2);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("list-count-badge", cut.Markup));
+
+        var badge = cut.Find(".list-count-badge");
+        Assert.Equal("1", badge.TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task ListCountBadge_HiddenWhenAllTodosCompleted()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var listId2 = await new CreateListHandler(db).HandleAsync("Work");
+        var id = await new AddTodoHandler(db).HandleAsync("Done task", listId: listId2);
+        await new CompleteTodoHandler(db).HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Need at least one list chip rendered; wait for render
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("list-chip", cut.Markup));
+
+        // Badge for the Work list should not appear since count is 0
+        var badges = cut.FindAll(".list-count-badge");
+        Assert.Empty(badges);
+    }
+
+    [Fact]
+    public async Task ListCountBadge_ShowsIndependentCountsForEachList()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+
+        // Default list: 3 active todos
+        await addHandler.HandleAsync("Default A");
+        await addHandler.HandleAsync("Default B");
+        await addHandler.HandleAsync("Default C");
+
+        // Second list: 1 active todo
+        var listId2 = await new CreateListHandler(db).HandleAsync("Work");
+        await addHandler.HandleAsync("Work task", listId: listId2);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("list-count-badge", cut.Markup));
+
+        var badges = cut.FindAll(".list-count-badge");
+        var counts = badges.Select(b => b.TextContent.Trim()).ToList();
+
+        Assert.Contains("3", counts);
+        Assert.Contains("1", counts);
+    }
 }
