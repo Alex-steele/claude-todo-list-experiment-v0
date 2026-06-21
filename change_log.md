@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 53 — [2026-06-21] — Feature: Clickable Tag Chips on Todos Filter by Tag
+
+**Description:** Clicking the body of any tag chip on a todo item now activates the tag filter for that tag — instantly narrowing the visible list to todos sharing that tag. Clicking the same tag again clears the filter (toggle behavior). While a tag filter is active, that chip renders in its filled/primary style so users can see which tag is active. The close × button still removes the tag as before; only clicking the chip body triggers the filter.
+
+**Reason for change:** The tag filter panel at the top requires the user to scroll up and find the right tag chip. When you spot a useful tag on a todo mid-list — e.g., "work" or "urgent" — clicking it directly to narrow the view is the most natural interaction. This closes a discoverability gap where the data (tag chips on todos) and the action (tag filter) were visually disconnected.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 114
+- Lines deleted: 3
+- Tests added: 4
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 52 — [2026-06-21] — Feature: Active Todo Count Badges on List Tabs
 
 **Description:** Each list tab chip now shows a small pill badge with the count of active (incomplete) todos in that list. For example, a "Work" list with 5 incomplete todos displays "Work 5". The badge only appears when the count is greater than zero — a list with all todos completed, or an empty list, shows just the name. Also fixed a long-standing bug where `app.css` was never linked in `App.razor`, meaning all accumulated custom CSS (drag-over highlights, heatmap day styles, shortcut-key chips, etc.) was dead — that stylesheet is now correctly included.
