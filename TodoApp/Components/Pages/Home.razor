@@ -745,6 +745,35 @@ else
                     Set Priority
                 </MudButton>
             </div>
+            <div class="d-flex align-center gap-1 bulk-due-date-row">
+                <MudDatePicker
+                    @bind-Date="_bulkDueDate"
+                    Label="Due date"
+                    Variant="Variant.Outlined"
+                    Clearable="true"
+                    Style="min-width: 150px; font-size: 0.8rem;"
+                    Class="bulk-due-date-picker" />
+                <MudButton
+                    Variant="Variant.Filled"
+                    Color="Color.Secondary"
+                    Size="Size.Small"
+                    Disabled="@(_bulkDueDate is null)"
+                    OnClick="HandleBulkSetDueDate"
+                    Class="bulk-due-date-btn">
+                    Set Date
+                </MudButton>
+                @if (_bulkDueDate is not null)
+                {
+                    <MudButton
+                        Variant="Variant.Text"
+                        Color="Color.Default"
+                        Size="Size.Small"
+                        OnClick="HandleBulkClearDueDate"
+                        Class="bulk-due-date-clear-btn">
+                        Clear date
+                    </MudButton>
+                }
+            </div>
             <MudButton
                 Variant="Variant.Filled"
                 Color="Color.Error"
@@ -1406,6 +1435,7 @@ else
     private int _bulkMoveTargetListId;
     private string _bulkTagInput = string.Empty;
     private TodoPriority? _bulkPriority;
+    private DateTime? _bulkDueDate;
 
     private bool _isFocusMode;
 
@@ -1702,6 +1732,7 @@ else
             _selectedIds.Clear();
             _bulkMoveTargetListId = 0;
             _bulkPriority = null;
+            _bulkDueDate = null;
         }
     }
 
@@ -1840,6 +1871,35 @@ else
 
         var label = priority == TodoPriority.None ? "none" : priority.ToString().ToLower();
         Snackbar.Add($"Set priority to {label} for {count} todo{(count == 1 ? "" : "s")}", Severity.Normal);
+    }
+
+    private async Task HandleBulkSetDueDate()
+    {
+        if (_bulkDueDate is null || _selectedIds.Count == 0) return;
+
+        var ids = _selectedIds.ToList();
+        var count = ids.Count;
+        var date = _bulkDueDate.Value;
+
+        await BulkOperationsHandler.SetDueDateAsync(ids, date);
+        _bulkDueDate = null;
+
+        await LoadTodosAsync();
+        Snackbar.Add($"Set due date to {date:MMM d} for {count} todo{(count == 1 ? "" : "s")}", Severity.Normal);
+    }
+
+    private async Task HandleBulkClearDueDate()
+    {
+        if (_selectedIds.Count == 0) return;
+
+        var ids = _selectedIds.ToList();
+        var count = ids.Count;
+
+        await BulkOperationsHandler.SetDueDateAsync(ids, null);
+        _bulkDueDate = null;
+
+        await LoadTodosAsync();
+        Snackbar.Add($"Cleared due date for {count} todo{(count == 1 ? "" : "s")}", Severity.Normal);
     }
 
     private static string GetRecurrenceLabel(RecurrenceRule rule) => rule switch

@@ -42,6 +42,15 @@ public class BulkOperationsHandler(Database db)
             new { Priority = (int)priority, Ids = ids });
     }
 
+    public async Task SetDueDateAsync(IReadOnlyList<int> ids, DateTime? dueDate)
+    {
+        if (ids.Count == 0) return;
+        using var conn = db.CreateConnection();
+        await conn.ExecuteAsync(
+            "UPDATE Todos SET DueDate = @DueDate WHERE Id IN @Ids",
+            new { DueDate = dueDate, Ids = ids });
+    }
+
     public async Task AddTagAsync(IReadOnlyList<int> ids, string tagName)
     {
         if (ids.Count == 0) return;

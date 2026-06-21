@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 54 — [2026-06-21] — Feature: Bulk Due Date Assignment
+
+**Description:** The bulk action bar in select mode now includes a date picker and "Set Date" button. After selecting any number of todos, users pick a date and click "Set Date" to apply it to all selected todos at once. A "Clear date" button also appears once a date is chosen in the picker, allowing users to bulk-remove due dates from the selected set. A snackbar confirms how many todos were updated. The bulk due date controls sit alongside the existing tag, priority, move, complete, and delete bulk actions.
+
+**Reason for change:** Bulk priority, tag, and move assignment were already in the bulk action bar, but there was no way to set or clear due dates in bulk. A common scenario is planning a sprint or work session: you select a set of todos and want to stamp them all with a due date — previously that required editing each todo individually.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 211
+- Lines deleted: 0
+- Tests added: 7
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 53 — [2026-06-21] — Feature: Clickable Tag Chips on Todos Filter by Tag
 
 **Description:** Clicking the body of any tag chip on a todo item now activates the tag filter for that tag — instantly narrowing the visible list to todos sharing that tag. Clicking the same tag again clears the filter (toggle behavior). While a tag filter is active, that chip renders in its filled/primary style so users can see which tag is active. The close × button still removes the tag as before; only clicking the chip body triggers the filter.

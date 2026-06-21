@@ -4298,4 +4298,85 @@ public class HomeTests : BunitContext
         await cut.WaitForAssertionAsync(() =>
             Assert.Contains("keep", cut.Markup));
     }
+
+    // ── Bulk due date ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task BulkDueDateRow_RendersInBulkActionBar()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+        await new AddTodoHandler(db).HandleAsync("Task 2");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("select-all-btn", cut.Markup));
+        cut.Find(".select-all-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("bulk-due-date-row", cut.Markup));
+    }
+
+    [Fact]
+    public async Task BulkSetDueDate_UpdatesDueDateOnSelectedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id1 = await new AddTodoHandler(db).HandleAsync("Task 1");
+        var id2 = await new AddTodoHandler(db).HandleAsync("Task 2");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("select-all-btn", cut.Markup));
+        cut.Find(".select-all-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("bulk-due-date-row", cut.Markup));
+
+        // Find the bulk date picker (last on the page; the first is the new-todo picker)
+        var bulkPicker = cut.FindComponents<MudDatePicker>().Last();
+        await bulkPicker.InvokeAsync(() => bulkPicker.Instance.DateChanged.InvokeAsync(new DateTime(2027, 1, 1)));
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("bulk-due-date-btn", cut.Markup));
+        cut.Find(".bulk-due-date-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            var todos = new GetTodosHandler(db).HandleAsync().GetAwaiter().GetResult();
+            Assert.Equal(new DateTime(2027, 1, 1).Date, todos.First(t => t.Id == id1).DueDate!.Value.Date);
+            Assert.Equal(new DateTime(2027, 1, 1).Date, todos.First(t => t.Id == id2).DueDate!.Value.Date);
+        });
+    }
+
+    [Fact]
+    public async Task BulkClearDueDate_ClearsDueDateOnSelectedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var dueDate = new DateTime(2026, 12, 31);
+        var id1 = await new AddTodoHandler(db).HandleAsync("Task 1", dueDate: dueDate);
+        var id2 = await new AddTodoHandler(db).HandleAsync("Task 2", dueDate: dueDate);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("select-all-btn", cut.Markup));
+        cut.Find(".select-all-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("bulk-due-date-row", cut.Markup));
+
+        // Set a date in the bulk picker to reveal the "Clear date" button
+        var bulkPicker = cut.FindComponents<MudDatePicker>().Last();
+        await bulkPicker.InvokeAsync(() => bulkPicker.Instance.DateChanged.InvokeAsync(new DateTime(2027, 3, 1)));
+        await cut.WaitForAssertionAsync(() => Assert.Contains("bulk-due-date-clear-btn", cut.Markup));
+
+        cut.Find(".bulk-due-date-clear-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            var todos = new GetTodosHandler(db).HandleAsync().GetAwaiter().GetResult();
+            Assert.Null(todos.First(t => t.Id == id1).DueDate);
+            Assert.Null(todos.First(t => t.Id == id2).DueDate);
+        });
+    }
 }

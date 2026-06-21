@@ -312,4 +312,65 @@ public class BulkOperationsHandlerTests
         Assert.Equal(TodoPriority.Medium, todos.First(t => t.Id == id1).Priority);
         Assert.Equal(TodoPriority.None, todos.First(t => t.Id == id2).Priority);
     }
+
+    // ── SetDueDateAsync ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task SetDueDateAsync_SetsDueDateOnSelectedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id1 = await addHandler.HandleAsync("Task 1");
+        var id2 = await addHandler.HandleAsync("Task 2");
+        var id3 = await addHandler.HandleAsync("Task 3");
+
+        var dueDate = new DateTime(2026, 12, 31);
+        await new BulkOperationsHandler(db).SetDueDateAsync([id1, id2], dueDate);
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Equal(dueDate.Date, todos.First(t => t.Id == id1).DueDate!.Value.Date);
+        Assert.Equal(dueDate.Date, todos.First(t => t.Id == id2).DueDate!.Value.Date);
+        Assert.Null(todos.First(t => t.Id == id3).DueDate);
+    }
+
+    [Fact]
+    public async Task SetDueDateAsync_ClearsDueDateWhenPassedNull()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var dueDate = new DateTime(2026, 7, 1);
+        var id1 = await new AddTodoHandler(db).HandleAsync("Task 1", dueDate: dueDate);
+        var id2 = await new AddTodoHandler(db).HandleAsync("Task 2", dueDate: dueDate);
+
+        await new BulkOperationsHandler(db).SetDueDateAsync([id1], null);
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Null(todos.First(t => t.Id == id1).DueDate);
+        Assert.NotNull(todos.First(t => t.Id == id2).DueDate);
+    }
+
+    [Fact]
+    public async Task SetDueDateAsync_EmptyList_DoesNothing()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id = await new AddTodoHandler(db).HandleAsync("Task");
+
+        await new BulkOperationsHandler(db).SetDueDateAsync([], new DateTime(2026, 12, 31));
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Null(todos.First(t => t.Id == id).DueDate);
+    }
+
+    [Fact]
+    public async Task SetDueDateAsync_OverwritesExistingDueDate()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var original = new DateTime(2026, 1, 15);
+        var updated  = new DateTime(2026, 6, 30);
+        var id = await new AddTodoHandler(db).HandleAsync("Task", dueDate: original);
+
+        await new BulkOperationsHandler(db).SetDueDateAsync([id], updated);
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Equal(updated.Date, todos.First(t => t.Id == id).DueDate!.Value.Date);
+    }
 }
