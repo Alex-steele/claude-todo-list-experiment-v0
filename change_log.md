@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 51 — [2026-06-21] — Feature: Alphabetical Sort (A→Z and Z→A)
+
+**Description:** The sort dropdown now offers two new options: "Title A→Z" and "Title Z→A". Selecting either sorts all displayed todos alphabetically by title in a case-insensitive manner. Pinned todos still float to the top of the list regardless of the chosen alpha sort order, and the alphabetical sort composes correctly with all existing filters (status, priority, date, tag, color, time estimate).
+
+**Reason for change:** As the todo list grows, users often want to scan for a specific item by name without using search — for example, to quickly jump to all "Buy ..." tasks or find a project by its first word. Alphabetical sort makes the list scannable in a predictable way that search and the other sorts (newest, priority, due date) do not provide.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 170
+- Lines deleted: 1
+- Tests added: 9
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 50 — [2026-06-20] — Feature: Select All / Deselect All in Select Mode
 
 **Description:** When select mode is active, a "Select all" button now appears next to the Cancel button. Clicking it instantly selects every todo currently visible in the list (respecting all active filters). Once all todos are selected the button becomes "Deselect all", which clears the entire selection in one click. The bulk action bar still shows the live count of selected items and all existing bulk operations (complete, delete, move, tag, set priority) work seamlessly with the mass-selected set.

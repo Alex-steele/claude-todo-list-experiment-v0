@@ -357,4 +357,100 @@ public class FilterSortTodosHandlerTests
         Assert.Single(result);
         Assert.Equal("Active quick", result[0].Title);
     }
+
+    // ── Alphabetical sort ─────────────────────────────────────────────────────
+
+    [Fact]
+    public void TitleAsc_SortsAlphabeticallyAscending()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Zebra"),
+            Make(2, "Apple"),
+            Make(3, "Mango"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.TitleAsc);
+
+        Assert.Equal(["Apple", "Mango", "Zebra"], result.Select(t => t.Title).ToArray());
+    }
+
+    [Fact]
+    public void TitleDesc_SortsAlphabeticallyDescending()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Apple"),
+            Make(2, "Zebra"),
+            Make(3, "Mango"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.TitleDesc);
+
+        Assert.Equal(["Zebra", "Mango", "Apple"], result.Select(t => t.Title).ToArray());
+    }
+
+    [Fact]
+    public void TitleAsc_IsCaseInsensitive()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "banana"),
+            Make(2, "Apple"),
+            Make(3, "cherry"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.TitleAsc);
+
+        Assert.Equal("Apple", result[0].Title);
+        Assert.Equal("banana", result[1].Title);
+        Assert.Equal("cherry", result[2].Title);
+    }
+
+    [Fact]
+    public void TitleAsc_PinnedTodosStillAppearFirst()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Alpha"),
+            Make(2, "Pinned task", isPinned: true),
+            Make(3, "Beta"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.TitleAsc);
+
+        Assert.Equal("Pinned task", result[0].Title);
+        Assert.Equal(["Alpha", "Beta"], result.Skip(1).Select(t => t.Title).ToArray());
+    }
+
+    [Fact]
+    public void TitleDesc_PinnedTodosStillAppearFirst()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Alpha"),
+            Make(2, "Pinned task", isPinned: true),
+            Make(3, "Zeta"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.TitleDesc);
+
+        Assert.Equal("Pinned task", result[0].Title);
+        Assert.Equal(["Zeta", "Alpha"], result.Skip(1).Select(t => t.Title).ToArray());
+    }
+
+    [Fact]
+    public void TitleAsc_CombinesWithStatusFilter()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Carrot"),
+            Make(2, "Apple",  isCompleted: true),
+            Make(3, "Banana"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.Active, TodoSortOrder.TitleAsc);
+
+        Assert.Equal(["Banana", "Carrot"], result.Select(t => t.Title).ToArray());
+    }
 }
