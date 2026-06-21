@@ -4040,4 +4040,71 @@ public class HomeTests : BunitContext
         await cut.WaitForAssertionAsync(() =>
             Assert.Contains("bulk-action-bar", cut.Markup));
     }
+
+    // ── Alphabetical sort ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task SortByTitleAsc_SingleTodo_RendersWithoutError()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Only todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var sortSelect = cut.FindComponent<MudSelect<TodoSortOrder>>();
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.TitleAsc));
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Only todo", cut.Markup));
+    }
+
+    [Fact]
+    public async Task SortByTitleAsc_DisplaysTodosInAlphabeticalOrder()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Zebra");
+        await new AddTodoHandler(db).HandleAsync("Apple");
+        await new AddTodoHandler(db).HandleAsync("Mango");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Select "Title A→Z" from the sort dropdown
+        var sortSelect = cut.FindComponent<MudSelect<TodoSortOrder>>();
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.TitleAsc));
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            var markup = cut.Markup;
+            var applePos = markup.IndexOf("Apple", StringComparison.Ordinal);
+            var mangoPos = markup.IndexOf("Mango", StringComparison.Ordinal);
+            var zebraPos = markup.IndexOf("Zebra", StringComparison.Ordinal);
+            Assert.True(applePos < mangoPos && mangoPos < zebraPos);
+        });
+    }
+
+    [Fact]
+    public async Task SortByTitleDesc_DisplaysTodosInReverseAlphabeticalOrder()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Apple");
+        await new AddTodoHandler(db).HandleAsync("Zebra");
+        await new AddTodoHandler(db).HandleAsync("Mango");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var sortSelect = cut.FindComponent<MudSelect<TodoSortOrder>>();
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.TitleDesc));
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            var markup = cut.Markup;
+            var applePos = markup.IndexOf("Apple", StringComparison.Ordinal);
+            var mangoPos = markup.IndexOf("Mango", StringComparison.Ordinal);
+            var zebraPos = markup.IndexOf("Zebra", StringComparison.Ordinal);
+            Assert.True(zebraPos < mangoPos && mangoPos < applePos);
+        });
+    }
 }
