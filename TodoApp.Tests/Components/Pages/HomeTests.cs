@@ -4195,4 +4195,107 @@ public class HomeTests : BunitContext
         Assert.Contains("3", counts);
         Assert.Contains("1", counts);
     }
+
+    // ── Clickable todo tag chips ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task ClickingTodoTagChip_ActivatesTagFilter()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id1 = await addHandler.HandleAsync("Task with work tag");
+        var id2 = await addHandler.HandleAsync("Task with other tag");
+        await new AddTagHandler(db).HandleAsync(id1, "work");
+        await new AddTagHandler(db).HandleAsync(id2, "other");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Both tasks visible initially
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("todo-tag-chip", cut.Markup));
+
+        // Click the "work" tag chip on the first todo
+        var tagChips = cut.FindAll(".todo-tag-chip");
+        var workChip = tagChips.FirstOrDefault(c => c.TextContent.Contains("work"));
+        Assert.NotNull(workChip);
+        workChip.Click();
+
+        // Only the todo with "work" tag should now be visible
+        await cut.WaitForAssertionAsync(() =>
+        {
+            Assert.Contains("Task with work tag", cut.Markup);
+            Assert.DoesNotContain("Task with other tag", cut.Markup);
+        });
+    }
+
+    [Fact]
+    public async Task ClickingActiveTodoTagChip_ClearsTagFilter()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id = await new AddTodoHandler(db).HandleAsync("My task");
+        await new AddTagHandler(db).HandleAsync(id, "work");
+        var id2 = await new AddTodoHandler(db).HandleAsync("Other task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("todo-tag-chip", cut.Markup));
+
+        // First click activates filter
+        cut.Find(".todo-tag-chip").Click();
+        await cut.WaitForAssertionAsync(() =>
+            Assert.DoesNotContain("Other task", cut.Markup));
+
+        // Second click on same chip clears the filter
+        cut.Find(".todo-tag-chip").Click();
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Other task", cut.Markup));
+    }
+
+    [Fact]
+    public async Task ActiveTodoTagChip_HasFilledVariant()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id = await new AddTodoHandler(db).HandleAsync("Tagged task");
+        await new AddTagHandler(db).HandleAsync(id, "urgent");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("todo-tag-chip", cut.Markup));
+
+        // Activate the tag filter
+        cut.Find(".todo-tag-chip").Click();
+
+        // The chip should switch to filled variant (mud-chip-filled class) when active
+        await cut.WaitForAssertionAsync(() =>
+        {
+            var chip = cut.Find(".todo-tag-chip");
+            Assert.Contains("mud-chip-filled", chip.ClassName);
+        });
+    }
+
+    [Fact]
+    public async Task ClickingTodoTagChip_DoesNotRemoveTag()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id = await new AddTodoHandler(db).HandleAsync("Tagged task");
+        await new AddTagHandler(db).HandleAsync(id, "keep");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("keep", cut.Markup));
+
+        // Click the chip body (not the close X)
+        cut.Find(".todo-tag-chip").Click();
+
+        // Tag should still be present in the DOM
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("keep", cut.Markup));
+    }
 }

@@ -1049,12 +1049,15 @@ else
                                     @foreach (var tag in _todoTags.GetValueOrDefault(todo.Id, []))
                                     {
                                         var tagId = tag.Id;
+                                        var tagName = tag.Name;
                                         <MudChip T="string"
                                                  Size="Size.Small"
-                                                 Color="Color.Secondary"
-                                                 Variant="Variant.Outlined"
+                                                 Color="@(_tagFilter == tagName ? Color.Primary : Color.Secondary)"
+                                                 Variant="@(_tagFilter == tagName ? Variant.Filled : Variant.Outlined)"
+                                                 OnClick="@(() => HandleFilterByTag(tagName))"
                                                  OnClose="@(async (MudChip<string> _) => await HandleRemoveTag(tagId))"
-                                                 Class="todo-tag-chip">
+                                                 Class="todo-tag-chip"
+                                                 title="@(_tagFilter == tagName ? "Clear tag filter" : $"Filter by \"{tagName}\"")">
                                             @tag.Name
                                         </MudChip>
                                     }
@@ -2116,6 +2119,11 @@ else
     {
         await RemoveTagHandler.HandleAsync(tagId);
         await LoadTodosAsync();
+    }
+
+    private void HandleFilterByTag(string tagName)
+    {
+        _tagFilter = _tagFilter == tagName ? null : tagName;
     }
 
     private void HandleStartRenameTag(string tagName)
