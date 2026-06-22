@@ -638,6 +638,20 @@ else
                          OnClick="@(() => _timeEstimateFilter = TodoTimeEstimateFilter.Max2Hours)"
                          Class="time-filter-2hours">≤2 hours</MudChip>
             </div>
+            @if (HasActiveFilters)
+            {
+                <div class="d-flex justify-end mt-2 clear-filters-row">
+                    <MudButton
+                        Variant="Variant.Text"
+                        Color="Color.Secondary"
+                        Size="Size.Small"
+                        StartIcon="@Icons.Material.Filled.FilterAltOff"
+                        OnClick="HandleClearAllFilters"
+                        Class="clear-all-filters-btn">
+                        Clear all filters
+                    </MudButton>
+                </div>
+            }
         </MudCardContent>
     </MudCard>
 
@@ -1504,6 +1518,15 @@ else
     private bool AreAllDisplayedSelected =>
         DisplayedTodos.Count > 0 && DisplayedTodos.All(t => _selectedIds.Contains(t.Id));
 
+    private bool HasActiveFilters =>
+        _statusFilter != TodoStatusFilter.All ||
+        _priorityFilter is not null ||
+        _dateFilter != TodoDateFilter.None ||
+        _tagFilter is not null ||
+        _colorFilter is not null ||
+        _timeEstimateFilter != TodoTimeEstimateFilter.Any ||
+        !string.IsNullOrWhiteSpace(_searchQuery);
+
     private int GetActiveCountForList(int listId) =>
         _todos?.Count(t => t.ListId == listId && !t.IsCompleted) ?? 0;
 
@@ -1995,6 +2018,17 @@ else
         if (date == today.AddDays(1))  return "Tomorrow";
         if (date < today.AddDays(7))   return "This week";
         return "Later";
+    }
+
+    private void HandleClearAllFilters()
+    {
+        _statusFilter = TodoStatusFilter.All;
+        _priorityFilter = null;
+        _dateFilter = TodoDateFilter.None;
+        _tagFilter = null;
+        _colorFilter = null;
+        _timeEstimateFilter = TodoTimeEstimateFilter.Any;
+        _searchQuery = string.Empty;
     }
 
     private async Task HandleClearCompleted()

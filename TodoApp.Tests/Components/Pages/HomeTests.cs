@@ -4380,6 +4380,94 @@ public class HomeTests : BunitContext
         });
     }
 
+    // ── Clear all filters ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ClearAllFiltersButton_HiddenWhenNoFiltersActive()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Task", cut.Markup));
+        Assert.DoesNotContain("clear-all-filters-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClearAllFiltersButton_AppearsWhenStatusFilterActive()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Task", cut.Markup));
+
+        // Click the "Active" status filter button
+        var activeBtn = cut.FindAll("button").First(b => b.TextContent.Trim() == "Active");
+        activeBtn.Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("clear-all-filters-btn", cut.Markup));
+    }
+
+    [Fact]
+    public async Task ClearAllFiltersButton_AppearsWhenPriorityFilterActive()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Task", cut.Markup));
+
+        cut.Find(".priority-filter-high").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("clear-all-filters-btn", cut.Markup));
+    }
+
+    [Fact]
+    public async Task ClearAllFiltersButton_ClearsAllFilters()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Task", cut.Markup));
+
+        cut.Find(".priority-filter-high").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("clear-all-filters-btn", cut.Markup));
+
+        cut.Find(".clear-all-filters-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.DoesNotContain("clear-all-filters-btn", cut.Markup));
+    }
+
+    [Fact]
+    public async Task ClearAllFiltersButton_AppearsWhenDateFilterActive()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Task", cut.Markup));
+
+        cut.Find(".date-filter-overdue").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("clear-all-filters-btn", cut.Markup));
+    }
+
     // ── Bulk time estimate ───────────────────────────────────────────────────
 
     [Fact]
