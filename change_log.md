@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 56 — [2026-06-22] — Feature: Clear All Filters Button
+
+**Description:** When any filter is active — status (Active/Completed), priority, due date, tag, color label, time estimate, or search text — a "Clear all filters" button now appears at the bottom of the filter panel. Clicking it resets all filters to their defaults in one action, returning the full unfiltered todo list. The button disappears automatically once all filters are cleared.
+
+**Reason for change:** As the filter panel grew (it now has 6 independent filter rows plus search), resetting the view required clicking each filter individually. With many filters potentially active at once, getting back to the full list was tedious. A single "clear all" action completes the filtering story by making it just as easy to exit a filtered view as it is to enter one.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 122
+- Lines deleted: 0
+- Tests added: 5
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 55 — [2026-06-22] — Feature: Bulk Time Estimate Assignment
 
 **Description:** The bulk action bar in select mode now includes a time estimate dropdown and "Set Time" button. After selecting any number of todos, users pick a time estimate (No estimate, 15 min, 30 min, 1 hour, 2 hours, 4 hours, or 1 day) and click "Set Time" to apply it to all selected todos at once. A snackbar confirms how many todos were updated. The bulk time estimate controls sit alongside the existing complete, move, tag, priority, due date, and delete bulk actions.
