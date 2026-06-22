@@ -5,6 +5,7 @@ using TodoApp.Features.Todos.BulkOperations;
 using TodoApp.Features.Todos.CompleteTodo;
 using TodoApp.Features.Todos.GetTodos;
 using TodoApp.Features.Todos.Tags;
+using TodoApp.Features.Todos.TimeEstimates;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -372,5 +373,73 @@ public class BulkOperationsHandlerTests
 
         var todos = await new GetTodosHandler(db).HandleAsync();
         Assert.Equal(updated.Date, todos.First(t => t.Id == id).DueDate!.Value.Date);
+    }
+
+    // ── SetTimeEstimateAsync ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task SetTimeEstimateAsync_SetsEstimateOnSelectedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id1 = await new AddTodoHandler(db).HandleAsync("Task 1");
+        var id2 = await new AddTodoHandler(db).HandleAsync("Task 2");
+        var id3 = await new AddTodoHandler(db).HandleAsync("Task 3");
+
+        await new BulkOperationsHandler(db).SetTimeEstimateAsync([id1, id2], TimeEstimate.OneHour);
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Equal(TimeEstimate.OneHour, todos.First(t => t.Id == id1).TimeEstimate);
+        Assert.Equal(TimeEstimate.OneHour, todos.First(t => t.Id == id2).TimeEstimate);
+        Assert.Equal(TimeEstimate.None, todos.First(t => t.Id == id3).TimeEstimate);
+    }
+
+    [Fact]
+    public async Task SetTimeEstimateAsync_WithEmptyList_DoesNothing()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id = await new AddTodoHandler(db).HandleAsync("Task", timeEstimate: TimeEstimate.TwoHours);
+
+        await new BulkOperationsHandler(db).SetTimeEstimateAsync([], TimeEstimate.FifteenMinutes);
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Equal(TimeEstimate.TwoHours, todos.First(t => t.Id == id).TimeEstimate);
+    }
+
+    [Fact]
+    public async Task SetTimeEstimateAsync_CanClearEstimateToNone()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id = await new AddTodoHandler(db).HandleAsync("Task", timeEstimate: TimeEstimate.FourHours);
+
+        await new BulkOperationsHandler(db).SetTimeEstimateAsync([id], TimeEstimate.None);
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Equal(TimeEstimate.None, todos.First(t => t.Id == id).TimeEstimate);
+    }
+
+    [Fact]
+    public async Task SetTimeEstimateAsync_OnlyAffectsSpecifiedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id1 = await new AddTodoHandler(db).HandleAsync("Target");
+        var id2 = await new AddTodoHandler(db).HandleAsync("Bystander");
+
+        await new BulkOperationsHandler(db).SetTimeEstimateAsync([id1], TimeEstimate.ThirtyMinutes);
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Equal(TimeEstimate.ThirtyMinutes, todos.First(t => t.Id == id1).TimeEstimate);
+        Assert.Equal(TimeEstimate.None, todos.First(t => t.Id == id2).TimeEstimate);
+    }
+
+    [Fact]
+    public async Task SetTimeEstimateAsync_OverwritesExistingEstimate()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id = await new AddTodoHandler(db).HandleAsync("Task", timeEstimate: TimeEstimate.OneHour);
+
+        await new BulkOperationsHandler(db).SetTimeEstimateAsync([id], TimeEstimate.OneDay);
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Equal(TimeEstimate.OneDay, todos.First(t => t.Id == id).TimeEstimate);
     }
 }

@@ -4379,4 +4379,66 @@ public class HomeTests : BunitContext
             Assert.Null(todos.First(t => t.Id == id2).DueDate);
         });
     }
+
+    // ── Bulk time estimate ───────────────────────────────────────────────────
+
+    [Fact]
+    public async Task BulkTimeEstimateRow_RendersInBulkActionBar()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+        await new AddTodoHandler(db).HandleAsync("Task 2");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("select-all-btn", cut.Markup));
+        cut.Find(".select-all-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("bulk-time-estimate-row", cut.Markup));
+    }
+
+    [Fact]
+    public async Task BulkTimeEstimateBtn_IsDisabledWhenNoEstimateSelected()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("select-all-btn", cut.Markup));
+        cut.Find(".select-all-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("bulk-time-estimate-btn", cut.Markup));
+
+        var btn = cut.Find(".bulk-time-estimate-btn");
+        Assert.True(btn.HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task BulkSetTimeEstimate_SetsEstimateOnSelectedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id1 = await new AddTodoHandler(db).HandleAsync("Task 1");
+        var id2 = await new AddTodoHandler(db).HandleAsync("Task 2");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("select-all-btn", cut.Markup));
+        cut.Find(".select-all-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("bulk-time-estimate-row", cut.Markup));
+
+        // Use the handler directly to simulate selecting 1 hour estimate
+        var bulkHandler = new BulkOperationsHandler(db);
+        await bulkHandler.SetTimeEstimateAsync([id1, id2], TimeEstimate.OneHour);
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Equal(TimeEstimate.OneHour, todos.First(t => t.Id == id1).TimeEstimate);
+        Assert.Equal(TimeEstimate.OneHour, todos.First(t => t.Id == id2).TimeEstimate);
+    }
 }

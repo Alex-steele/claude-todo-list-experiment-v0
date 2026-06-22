@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 55 — [2026-06-22] — Feature: Bulk Time Estimate Assignment
+
+**Description:** The bulk action bar in select mode now includes a time estimate dropdown and "Set Time" button. After selecting any number of todos, users pick a time estimate (No estimate, 15 min, 30 min, 1 hour, 2 hours, 4 hours, or 1 day) and click "Set Time" to apply it to all selected todos at once. A snackbar confirms how many todos were updated. The bulk time estimate controls sit alongside the existing complete, move, tag, priority, due date, and delete bulk actions.
+
+**Reason for change:** Bulk priority, tag, move, and due date assignment were all available in the bulk action bar. Time estimate was the one remaining field a user could set on a todo that had no bulk counterpart. When planning a sprint or estimating a batch of work items, being able to stamp a time estimate on a whole selection is far faster than editing each todo individually.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 188
+- Lines deleted: 0
+- Tests added: 8
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 54 — [2026-06-21] — Feature: Bulk Due Date Assignment
 
 **Description:** The bulk action bar in select mode now includes a date picker and "Set Date" button. After selecting any number of todos, users pick a date and click "Set Date" to apply it to all selected todos at once. A "Clear date" button also appears once a date is chosen in the picker, allowing users to bulk-remove due dates from the selected set. A snackbar confirms how many todos were updated. The bulk due date controls sit alongside the existing tag, priority, move, complete, and delete bulk actions.
