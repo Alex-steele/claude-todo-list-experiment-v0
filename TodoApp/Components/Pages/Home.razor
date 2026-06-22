@@ -774,6 +774,34 @@ else
                     </MudButton>
                 }
             </div>
+            <div class="d-flex align-center gap-1 bulk-time-estimate-row">
+                <MudSelect
+                    T="TimeEstimate?"
+                    @bind-Value="_bulkTimeEstimate"
+                    Label="Time estimate"
+                    Variant="Variant.Outlined"
+                    Dense="true"
+                    Style="min-width: 130px; font-size: 0.8rem;"
+                    Class="bulk-time-estimate-select">
+                    <MudSelectItem T="TimeEstimate?" Value="@((TimeEstimate?)null)">Select…</MudSelectItem>
+                    <MudSelectItem T="TimeEstimate?" Value="@((TimeEstimate?)TimeEstimate.None)">No estimate</MudSelectItem>
+                    <MudSelectItem T="TimeEstimate?" Value="@((TimeEstimate?)TimeEstimate.FifteenMinutes)">15 min</MudSelectItem>
+                    <MudSelectItem T="TimeEstimate?" Value="@((TimeEstimate?)TimeEstimate.ThirtyMinutes)">30 min</MudSelectItem>
+                    <MudSelectItem T="TimeEstimate?" Value="@((TimeEstimate?)TimeEstimate.OneHour)">1 hour</MudSelectItem>
+                    <MudSelectItem T="TimeEstimate?" Value="@((TimeEstimate?)TimeEstimate.TwoHours)">2 hours</MudSelectItem>
+                    <MudSelectItem T="TimeEstimate?" Value="@((TimeEstimate?)TimeEstimate.FourHours)">4 hours</MudSelectItem>
+                    <MudSelectItem T="TimeEstimate?" Value="@((TimeEstimate?)TimeEstimate.OneDay)">1 day</MudSelectItem>
+                </MudSelect>
+                <MudButton
+                    Variant="Variant.Filled"
+                    Color="Color.Tertiary"
+                    Size="Size.Small"
+                    Disabled="@(_bulkTimeEstimate is null)"
+                    OnClick="HandleBulkSetTimeEstimate"
+                    Class="bulk-time-estimate-btn">
+                    Set Time
+                </MudButton>
+            </div>
             <MudButton
                 Variant="Variant.Filled"
                 Color="Color.Error"
@@ -1436,6 +1464,7 @@ else
     private string _bulkTagInput = string.Empty;
     private TodoPriority? _bulkPriority;
     private DateTime? _bulkDueDate;
+    private TimeEstimate? _bulkTimeEstimate;
 
     private bool _isFocusMode;
 
@@ -1733,6 +1762,7 @@ else
             _bulkMoveTargetListId = 0;
             _bulkPriority = null;
             _bulkDueDate = null;
+            _bulkTimeEstimate = null;
         }
     }
 
@@ -1900,6 +1930,23 @@ else
 
         await LoadTodosAsync();
         Snackbar.Add($"Cleared due date for {count} todo{(count == 1 ? "" : "s")}", Severity.Normal);
+    }
+
+    private async Task HandleBulkSetTimeEstimate()
+    {
+        if (_bulkTimeEstimate is null || _selectedIds.Count == 0) return;
+
+        var ids = _selectedIds.ToList();
+        var count = ids.Count;
+        var estimate = _bulkTimeEstimate.Value;
+
+        await BulkOperationsHandler.SetTimeEstimateAsync(ids, estimate);
+        _bulkTimeEstimate = null;
+
+        await LoadTodosAsync();
+
+        var label = estimate == TimeEstimate.None ? "none" : GetTimeEstimateLabel(estimate);
+        Snackbar.Add($"Set time estimate to {label} for {count} todo{(count == 1 ? "" : "s")}", Severity.Normal);
     }
 
     private static string GetRecurrenceLabel(RecurrenceRule rule) => rule switch

@@ -1,5 +1,6 @@
 using Dapper;
 using TodoApp.Features.Todos;
+using TodoApp.Features.Todos.TimeEstimates;
 using TodoApp.Infrastructure;
 
 namespace TodoApp.Features.Todos.BulkOperations;
@@ -49,6 +50,15 @@ public class BulkOperationsHandler(Database db)
         await conn.ExecuteAsync(
             "UPDATE Todos SET DueDate = @DueDate WHERE Id IN @Ids",
             new { DueDate = dueDate, Ids = ids });
+    }
+
+    public async Task SetTimeEstimateAsync(IReadOnlyList<int> ids, TimeEstimate timeEstimate)
+    {
+        if (ids.Count == 0) return;
+        using var conn = db.CreateConnection();
+        await conn.ExecuteAsync(
+            "UPDATE Todos SET TimeEstimate = @TimeEstimate WHERE Id IN @Ids",
+            new { TimeEstimate = (int)timeEstimate, Ids = ids });
     }
 
     public async Task AddTagAsync(IReadOnlyList<int> ids, string tagName)
