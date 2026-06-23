@@ -1,5 +1,6 @@
 using Dapper;
 using TodoApp.Features.Todos;
+using TodoApp.Features.Todos.ColorLabel;
 using TodoApp.Features.Todos.TimeEstimates;
 using TodoApp.Infrastructure;
 
@@ -59,6 +60,15 @@ public class BulkOperationsHandler(Database db)
         await conn.ExecuteAsync(
             "UPDATE Todos SET TimeEstimate = @TimeEstimate WHERE Id IN @Ids",
             new { TimeEstimate = (int)timeEstimate, Ids = ids });
+    }
+
+    public async Task SetColorLabelAsync(IReadOnlyList<int> ids, TodoColorLabel colorLabel)
+    {
+        if (ids.Count == 0) return;
+        using var conn = db.CreateConnection();
+        await conn.ExecuteAsync(
+            "UPDATE Todos SET ColorLabel = @ColorLabel WHERE Id IN @Ids",
+            new { ColorLabel = (int)colorLabel, Ids = ids });
     }
 
     public async Task AddTagAsync(IReadOnlyList<int> ids, string tagName)

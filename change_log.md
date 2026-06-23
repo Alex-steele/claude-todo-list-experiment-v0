@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 57 — [2026-06-23] — Feature: Bulk Color Label Assignment
+
+**Description:** The bulk action bar in select mode now includes a color dot palette and "Set Color" button. After selecting any number of todos, users click a color swatch (or the grey "none" dot to clear) and then "Set Color" to apply that color label to all selected todos at once. A snackbar confirms how many todos were updated. The bulk color controls sit alongside the existing complete, move, tag, priority, due date, time estimate, and delete bulk actions.
+
+**Reason for change:** Every other todo field — priority, due date, time estimate, tags — already had a bulk counterpart in the action bar. Color labels were the last remaining field with no bulk assignment. When color-coding a batch of related todos (e.g., marking a sprint's tasks in blue, or clearing a set of ad-hoc red flags), having to open each item's color picker individually was tedious. Bulk color assignment closes this gap and makes the bulk editing story complete.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 202
+- Lines deleted: 0
+- Tests added: 9
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 56 — [2026-06-22] — Feature: Clear All Filters Button
 
 **Description:** When any filter is active — status (Active/Completed), priority, due date, tag, color label, time estimate, or search text — a "Clear all filters" button now appears at the bottom of the filter panel. Clicking it resets all filters to their defaults in one action, returning the full unfiltered todo list. The button disappears automatically once all filters are cleared.
