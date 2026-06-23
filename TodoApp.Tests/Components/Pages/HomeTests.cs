@@ -4529,4 +4529,80 @@ public class HomeTests : BunitContext
         Assert.Equal(TimeEstimate.OneHour, todos.First(t => t.Id == id1).TimeEstimate);
         Assert.Equal(TimeEstimate.OneHour, todos.First(t => t.Id == id2).TimeEstimate);
     }
+
+    // ── Bulk Color Label ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task BulkColorLabelRow_IsRenderedInSelectMode()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("select-all-btn", cut.Markup));
+        cut.Find(".select-all-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("bulk-color-label-row", cut.Markup));
+    }
+
+    [Fact]
+    public async Task BulkColorLabelBtn_IsDisabledWhenNoColorSelected()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("select-all-btn", cut.Markup));
+        cut.Find(".select-all-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("bulk-color-label-btn", cut.Markup));
+
+        var btn = cut.Find(".bulk-color-label-btn");
+        Assert.True(btn.HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task BulkColorLabelBtn_EnablesAfterSelectingAColor()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".select-mode-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("select-all-btn", cut.Markup));
+        cut.Find(".select-all-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("bulk-color-red", cut.Markup));
+
+        cut.Find(".bulk-color-red").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            var btn = cut.Find(".bulk-color-label-btn");
+            Assert.False(btn.HasAttribute("disabled"));
+        });
+    }
+
+    [Fact]
+    public async Task BulkSetColorLabel_SetsColorOnSelectedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id1 = await new AddTodoHandler(db).HandleAsync("Task 1");
+        var id2 = await new AddTodoHandler(db).HandleAsync("Task 2");
+
+        // Use the handler directly to set color on selected todos
+        var bulkHandler = new BulkOperationsHandler(db);
+        await bulkHandler.SetColorLabelAsync([id1, id2], TodoColorLabel.Blue);
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Equal(TodoColorLabel.Blue, todos.First(t => t.Id == id1).ColorLabel);
+        Assert.Equal(TodoColorLabel.Blue, todos.First(t => t.Id == id2).ColorLabel);
+    }
 }

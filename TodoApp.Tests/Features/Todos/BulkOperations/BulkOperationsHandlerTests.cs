@@ -2,6 +2,7 @@ using TodoApp.Features.Lists;
 using TodoApp.Features.Todos;
 using TodoApp.Features.Todos.AddTodo;
 using TodoApp.Features.Todos.BulkOperations;
+using TodoApp.Features.Todos.ColorLabel;
 using TodoApp.Features.Todos.CompleteTodo;
 using TodoApp.Features.Todos.GetTodos;
 using TodoApp.Features.Todos.Tags;
@@ -441,5 +442,77 @@ public class BulkOperationsHandlerTests
 
         var todos = await new GetTodosHandler(db).HandleAsync();
         Assert.Equal(TimeEstimate.OneDay, todos.First(t => t.Id == id).TimeEstimate);
+    }
+
+    // ── SetColorLabelAsync ───────────────────────────────────────────────────
+
+    [Fact]
+    public async Task SetColorLabelAsync_SetsColorOnSelectedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id1 = await new AddTodoHandler(db).HandleAsync("Task 1");
+        var id2 = await new AddTodoHandler(db).HandleAsync("Task 2");
+        var id3 = await new AddTodoHandler(db).HandleAsync("Task 3");
+
+        await new BulkOperationsHandler(db).SetColorLabelAsync([id1, id2], TodoColorLabel.Red);
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Equal(TodoColorLabel.Red, todos.First(t => t.Id == id1).ColorLabel);
+        Assert.Equal(TodoColorLabel.Red, todos.First(t => t.Id == id2).ColorLabel);
+        Assert.Equal(TodoColorLabel.None, todos.First(t => t.Id == id3).ColorLabel);
+    }
+
+    [Fact]
+    public async Task SetColorLabelAsync_WithEmptyList_DoesNothing()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id = await new AddTodoHandler(db).HandleAsync("Task");
+
+        await new BulkOperationsHandler(db).SetColorLabelAsync([], TodoColorLabel.Blue);
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Equal(TodoColorLabel.None, todos.First(t => t.Id == id).ColorLabel);
+    }
+
+    [Fact]
+    public async Task SetColorLabelAsync_CanClearColorToNone()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var setColorHandler = new SetColorLabelHandler(db);
+        var id = await new AddTodoHandler(db).HandleAsync("Task");
+        await setColorHandler.HandleAsync(id, TodoColorLabel.Green);
+
+        await new BulkOperationsHandler(db).SetColorLabelAsync([id], TodoColorLabel.None);
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Equal(TodoColorLabel.None, todos.First(t => t.Id == id).ColorLabel);
+    }
+
+    [Fact]
+    public async Task SetColorLabelAsync_OnlyAffectsSpecifiedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var id1 = await new AddTodoHandler(db).HandleAsync("Target");
+        var id2 = await new AddTodoHandler(db).HandleAsync("Bystander");
+
+        await new BulkOperationsHandler(db).SetColorLabelAsync([id1], TodoColorLabel.Purple);
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Equal(TodoColorLabel.Purple, todos.First(t => t.Id == id1).ColorLabel);
+        Assert.Equal(TodoColorLabel.None, todos.First(t => t.Id == id2).ColorLabel);
+    }
+
+    [Fact]
+    public async Task SetColorLabelAsync_OverwritesExistingColor()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var setColorHandler = new SetColorLabelHandler(db);
+        var id = await new AddTodoHandler(db).HandleAsync("Task");
+        await setColorHandler.HandleAsync(id, TodoColorLabel.Orange);
+
+        await new BulkOperationsHandler(db).SetColorLabelAsync([id], TodoColorLabel.Blue);
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Equal(TodoColorLabel.Blue, todos.First(t => t.Id == id).ColorLabel);
     }
 }

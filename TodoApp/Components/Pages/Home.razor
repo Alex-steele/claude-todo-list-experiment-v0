@@ -816,6 +816,30 @@ else
                     Set Time
                 </MudButton>
             </div>
+            <div class="d-flex align-center gap-1 bulk-color-label-row">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1">Color:</MudText>
+                <span class="bulk-color-none @(_bulkColorLabel == TodoColorLabel.None ? "bulk-color-dot-selected" : "")"
+                      style="display:inline-block;width:18px;height:18px;border-radius:50%;background:#9e9e9e;border:2px solid @(_bulkColorLabel == TodoColorLabel.None ? "var(--mud-palette-primary)" : "transparent");cursor:pointer;vertical-align:middle;"
+                      title="None"
+                      @onclick="@(() => _bulkColorLabel = TodoColorLabel.None)"></span>
+                @foreach (var cl in new[] { TodoColorLabel.Red, TodoColorLabel.Orange, TodoColorLabel.Yellow, TodoColorLabel.Green, TodoColorLabel.Blue, TodoColorLabel.Purple })
+                {
+                    var label = cl;
+                    <span class="bulk-color-dot bulk-color-@(label.ToString().ToLower()) @(_bulkColorLabel == label ? "bulk-color-dot-selected" : "")"
+                          style="display:inline-block;width:18px;height:18px;border-radius:50%;background:@GetColorCss(label);border:2px solid @(_bulkColorLabel == label ? "var(--mud-palette-primary)" : "transparent");cursor:pointer;vertical-align:middle;"
+                          title="@label"
+                          @onclick="@(() => _bulkColorLabel = label)"></span>
+                }
+                <MudButton
+                    Variant="Variant.Filled"
+                    Color="Color.Primary"
+                    Size="Size.Small"
+                    Disabled="@(_bulkColorLabel is null)"
+                    OnClick="HandleBulkSetColorLabel"
+                    Class="bulk-color-label-btn">
+                    Set Color
+                </MudButton>
+            </div>
             <MudButton
                 Variant="Variant.Filled"
                 Color="Color.Error"
@@ -1479,6 +1503,7 @@ else
     private TodoPriority? _bulkPriority;
     private DateTime? _bulkDueDate;
     private TimeEstimate? _bulkTimeEstimate;
+    private TodoColorLabel? _bulkColorLabel;
 
     private bool _isFocusMode;
 
@@ -1786,6 +1811,7 @@ else
             _bulkPriority = null;
             _bulkDueDate = null;
             _bulkTimeEstimate = null;
+            _bulkColorLabel = null;
         }
     }
 
@@ -1970,6 +1996,23 @@ else
 
         var label = estimate == TimeEstimate.None ? "none" : GetTimeEstimateLabel(estimate);
         Snackbar.Add($"Set time estimate to {label} for {count} todo{(count == 1 ? "" : "s")}", Severity.Normal);
+    }
+
+    private async Task HandleBulkSetColorLabel()
+    {
+        if (_bulkColorLabel is null || _selectedIds.Count == 0) return;
+
+        var ids = _selectedIds.ToList();
+        var count = ids.Count;
+        var label = _bulkColorLabel.Value;
+
+        await BulkOperationsHandler.SetColorLabelAsync(ids, label);
+        _bulkColorLabel = null;
+
+        await LoadTodosAsync();
+
+        var labelName = label == TodoColorLabel.None ? "none" : label.ToString().ToLower();
+        Snackbar.Add($"Set color label to {labelName} for {count} todo{(count == 1 ? "" : "s")}", Severity.Normal);
     }
 
     private static string GetRecurrenceLabel(RecurrenceRule rule) => rule switch
