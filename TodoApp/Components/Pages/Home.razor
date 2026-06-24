@@ -30,6 +30,7 @@
 @using TodoApp.Features.Todos.Notes
 @using TodoApp.Features.Todos.ColorLabel
 @using TodoApp.Features.Todos.SetDueDate
+@using TodoApp.Features.FilterPresets
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -67,6 +68,9 @@
 @inject ActivityStatsHandler ActivityStatsHandler
 @inject SetColorLabelHandler SetColorLabelHandler
 @inject SetDueDateHandler SetDueDateHandler
+@inject SaveFilterPresetHandler SaveFilterPresetHandler
+@inject GetFilterPresetsHandler GetFilterPresetsHandler
+@inject DeleteFilterPresetHandler DeleteFilterPresetHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -650,6 +654,68 @@ else
                         Class="clear-all-filters-btn">
                         Clear all filters
                     </MudButton>
+                </div>
+            }
+            @if (_filterPresets is { Count: > 0 } || HasActiveFilters)
+            {
+                <div class="d-flex align-center gap-1 flex-wrap mt-2 filter-presets-row">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1">Presets:</MudText>
+                    @if (_filterPresets is not null)
+                    {
+                        @foreach (var preset in _filterPresets)
+                        {
+                            var p = preset;
+                            <MudChip T="string"
+                                     Size="Size.Small"
+                                     Variant="Variant.Outlined"
+                                     Color="Color.Info"
+                                     OnClick="@(() => HandleApplyPreset(p))"
+                                     OnClose="@(async (MudChip<string> _) => await HandleDeletePreset(p.Id))"
+                                     Class="filter-preset-chip">
+                                @preset.Name
+                            </MudChip>
+                        }
+                    }
+                    @if (HasActiveFilters)
+                    {
+                        @if (_savingPreset)
+                        {
+                            <div class="d-flex align-center gap-1 save-preset-input-row">
+                                <MudTextField
+                                    @bind-Value="_presetNameInput"
+                                    Placeholder="Preset name…"
+                                    Variant="Variant.Outlined"
+                                    Margin="Margin.Dense"
+                                    Style="width: 130px; font-size: 0.75rem;"
+                                    OnKeyUp="HandlePresetNameKeyUp"
+                                    Class="preset-name-input" />
+                                <MudIconButton
+                                    Icon="@Icons.Material.Filled.Check"
+                                    Color="Color.Primary"
+                                    Size="Size.Small"
+                                    OnClick="HandleSavePreset"
+                                    title="Save preset"
+                                    Class="save-preset-confirm-btn" />
+                                <MudIconButton
+                                    Icon="@Icons.Material.Filled.Close"
+                                    Color="Color.Default"
+                                    Size="Size.Small"
+                                    OnClick="@(() => { _savingPreset = false; _presetNameInput = string.Empty; })"
+                                    title="Cancel"
+                                    Class="save-preset-cancel-btn" />
+                            </div>
+                        }
+                        else
+                        {
+                            <MudIconButton
+                                Icon="@Icons.Material.Filled.BookmarkAdd"
+                                Color="Color.Info"
+                                Size="Size.Small"
+                                OnClick="@(() => { _savingPreset = true; _presetNameInput = string.Empty; })"
+                                title="Save current filters as a preset"
+                                Class="save-preset-btn" />
+                        }
+                    }
                 </div>
             }
         </MudCardContent>
@@ -1529,6 +1595,10 @@ else
     private string? _renamingTagName;
     private string _renameTagValue = string.Empty;
 
+    private IReadOnlyList<FilterPreset>? _filterPresets;
+    private bool _savingPreset;
+    private string _presetNameInput = string.Empty;
+
     private Dictionary<int, List<Subtask>> _subtasks = new();
     private int? _expandedSubtasksForTodoId;
     private int? _addingSubtaskForTodoId;
@@ -1634,6 +1704,7 @@ else
         _todos = await GetTodosHandler.HandleAsync();
         _activityStats = await ActivityStatsHandler.HandleAsync();
         _allTagNames = await GetAllTagNamesHandler.HandleAsync();
+        _filterPresets = await GetFilterPresetsHandler.HandleAsync();
         if (_todos.Count > 0)
         {
             var ids = _todos.Select(t => t.Id).ToList();
@@ -2072,6 +2143,54 @@ else
         _colorFilter = null;
         _timeEstimateFilter = TodoTimeEstimateFilter.Any;
         _searchQuery = string.Empty;
+    }
+
+    private async Task HandleSavePreset()
+    {
+        if (string.IsNullOrWhiteSpace(_presetNameInput)) return;
+
+        var options = new FilterPresetOptions(
+            _statusFilter, _priorityFilter, _dateFilter, _tagFilter,
+            _colorFilter, _timeEstimateFilter, _sortOrder);
+
+        try
+        {
+            await SaveFilterPresetHandler.HandleAsync(_presetNameInput, options);
+            _savingPreset = false;
+            _presetNameInput = string.Empty;
+            _filterPresets = await GetFilterPresetsHandler.HandleAsync();
+            Snackbar.Add($"Preset saved", Severity.Normal);
+        }
+        catch (ArgumentException) { }
+    }
+
+    private async Task HandlePresetNameKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await HandleSavePreset();
+        else if (e.Key == "Escape")
+        {
+            _savingPreset = false;
+            _presetNameInput = string.Empty;
+        }
+    }
+
+    private void HandleApplyPreset(FilterPreset preset)
+    {
+        _statusFilter        = preset.Options.StatusFilter;
+        _priorityFilter      = preset.Options.PriorityFilter;
+        _dateFilter          = preset.Options.DateFilter;
+        _tagFilter           = preset.Options.TagFilter;
+        _colorFilter         = preset.Options.ColorFilter;
+        _timeEstimateFilter  = preset.Options.TimeEstimateFilter;
+        _sortOrder           = preset.Options.SortOrder;
+        _searchQuery         = string.Empty;
+    }
+
+    private async Task HandleDeletePreset(int presetId)
+    {
+        await DeleteFilterPresetHandler.HandleAsync(presetId);
+        _filterPresets = await GetFilterPresetsHandler.HandleAsync();
     }
 
     private async Task HandleClearCompleted()

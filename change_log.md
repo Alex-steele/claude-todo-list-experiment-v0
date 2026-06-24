@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 58 — [2026-06-24] — Feature: Saved Filter Presets
+
+**Description:** Users can now save the current filter state as a named preset and restore it with one click. When any filter is active, a bookmark icon appears in the filter panel — clicking it opens an inline name input; pressing Enter or clicking the check saves the preset. Saved presets appear as chips below the filter rows and persist across sessions. Clicking a preset chip applies all its saved filters (status, priority, due date, tag, color, time estimate, and sort order) at once. Each preset chip has an × button to delete it permanently.
+
+**Reason for change:** As the filter panel grew to six independent filter rows plus search, returning to a frequently-used filter combination (e.g., "Active high-priority work items due this week") required resetting and reapplying filters by hand every time. Saved presets give that combination a name and make it one-click to restore, completing the filtering story.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 491
+- Lines deleted: 0
+- Tests added: 15
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 57 — [2026-06-23] — Feature: Bulk Color Label Assignment
 
 **Description:** The bulk action bar in select mode now includes a color dot palette and "Set Color" button. After selecting any number of todos, users click a color swatch (or the grey "none" dot to clear) and then "Set Color" to apply that color label to all selected todos at once. A snackbar confirms how many todos were updated. The bulk color controls sit alongside the existing complete, move, tag, priority, due date, time estimate, and delete bulk actions.

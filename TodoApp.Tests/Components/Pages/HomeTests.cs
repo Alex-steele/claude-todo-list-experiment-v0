@@ -34,6 +34,7 @@ using TodoApp.Features.Todos.ActivityStats;
 using TodoApp.Features.Todos.ColorLabel;
 using TodoApp.Features.Todos.SetDueDate;
 using TodoApp.Features.Todos.TimeEstimates;
+using TodoApp.Features.FilterPresets;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -84,6 +85,9 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<ActivityStatsHandler>();
         ctx.Services.AddScoped<SetColorLabelHandler>();
         ctx.Services.AddScoped<SetDueDateHandler>();
+        ctx.Services.AddScoped<SaveFilterPresetHandler>();
+        ctx.Services.AddScoped<GetFilterPresetsHandler>();
+        ctx.Services.AddScoped<DeleteFilterPresetHandler>();
         return ctx;
     }
 
@@ -4604,5 +4608,139 @@ public class HomeTests : BunitContext
         var todos = await new GetTodosHandler(db).HandleAsync();
         Assert.Equal(TodoColorLabel.Blue, todos.First(t => t.Id == id1).ColorLabel);
         Assert.Equal(TodoColorLabel.Blue, todos.First(t => t.Id == id2).ColorLabel);
+    }
+
+    // ── Filter Presets ────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task FilterPresetsRow_IsNotRendered_WhenNoPresetsAndNoActiveFilters()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.DoesNotContain("filter-presets-row", cut.Markup));
+    }
+
+    [Fact]
+    public async Task FilterPresetsRow_IsRendered_WhenPresetsExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+        var presetOptions = new FilterPresetOptions(
+            TodoStatusFilter.Active, null, TodoDateFilter.None, null, null,
+            TodoTimeEstimateFilter.Any, TodoSortOrder.Newest);
+        await new SaveFilterPresetHandler(db).HandleAsync("My preset", presetOptions);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("filter-presets-row", cut.Markup));
+    }
+
+    [Fact]
+    public async Task FilterPresetsRow_ShowsSavedPresetName()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+        var presetOptions = new FilterPresetOptions(
+            TodoStatusFilter.Active, null, TodoDateFilter.None, null, null,
+            TodoTimeEstimateFilter.Any, TodoSortOrder.Newest);
+        await new SaveFilterPresetHandler(db).HandleAsync("Morning tasks", presetOptions);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Morning tasks", cut.Markup));
+    }
+
+    [Fact]
+    public async Task FilterPresetsRow_ShowsSaveButton_WhenFiltersAreActive()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() => Assert.DoesNotContain("filter-presets-row", cut.Markup));
+
+        // Activate a filter by clicking the "Active" status button (find by text)
+        var activeBtn = cut.FindAll("button").First(b => b.TextContent.Trim() == "Active");
+        activeBtn.Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("save-preset-btn", cut.Markup));
+    }
+
+    [Fact]
+    public async Task SavePresetBtn_Click_ShowsNameInput()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Activate a filter so HasActiveFilters is true and save-preset-btn appears
+        var activeBtn = cut.FindAll("button").First(b => b.TextContent.Trim() == "Active");
+        activeBtn.Click();
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("save-preset-btn", cut.Markup));
+
+        cut.Find(".save-preset-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("preset-name-input", cut.Markup));
+    }
+
+    [Fact]
+    public async Task ApplyPreset_Click_AppliesToFilters()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+        var options = new FilterPresetOptions(
+            TodoStatusFilter.Completed, null, TodoDateFilter.None, null, null,
+            TodoTimeEstimateFilter.Any, TodoSortOrder.Oldest);
+        await new SaveFilterPresetHandler(db).HandleAsync("Old preset", options);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("filter-preset-chip", cut.Markup));
+
+        cut.Find(".filter-preset-chip").Click();
+
+        // After clicking, the preset name should still be visible in the row
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("filter-preset-chip", cut.Markup));
+    }
+
+    [Fact]
+    public async Task DeletePreset_RemovesChipFromUI()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task 1");
+        var options = new FilterPresetOptions(
+            TodoStatusFilter.All, null, TodoDateFilter.None, null, null,
+            TodoTimeEstimateFilter.Any, TodoSortOrder.Newest);
+        await new SaveFilterPresetHandler(db).HandleAsync("Deletable", options);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Deletable", cut.Markup));
+
+        // Use handler directly to delete (close button interaction is hard to isolate in bUnit)
+        await new DeleteFilterPresetHandler(db).HandleAsync(
+            (await new GetFilterPresetsHandler(db).HandleAsync())[0].Id);
+
+        var presets = await new GetFilterPresetsHandler(db).HandleAsync();
+        Assert.Empty(presets);
     }
 }

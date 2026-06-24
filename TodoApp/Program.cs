@@ -26,6 +26,7 @@ using TodoApp.Features.Todos.DuplicateTodo;
 using TodoApp.Features.Todos.ActivityStats;
 using TodoApp.Features.Todos.ColorLabel;
 using TodoApp.Features.Todos.SetDueDate;
+using TodoApp.Features.FilterPresets;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -82,6 +83,9 @@ builder.Services.AddScoped<DuplicateTodoHandler>();
 builder.Services.AddScoped<ActivityStatsHandler>();
 builder.Services.AddScoped<SetColorLabelHandler>();
 builder.Services.AddScoped<SetDueDateHandler>();
+builder.Services.AddScoped<SaveFilterPresetHandler>();
+builder.Services.AddScoped<GetFilterPresetsHandler>();
+builder.Services.AddScoped<DeleteFilterPresetHandler>();
 
 var app = builder.Build();
 
