@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 59 — [2026-06-24] — Feature: Multi-line Quick Add
+
+**Description:** A "Paste multiple" toggle button in the "Add a New Todo" card switches the input to multi-add mode. In this mode a textarea appears where users type or paste one todo per line. A live preview shows how many todos will be created ("3 todos to add"), and clicking "Add 3 Todos" creates them all at once in the active list. Toggling back exits multi-add mode and returns to the normal single-add form.
+
+**Reason for change:** Users often have a burst of tasks to capture — a project kick-off list, a grocery run, notes from a meeting. The single-add form requires a separate submit for each one. Multi-line quick-add lets users dump an entire list at once, making the capture experience dramatically faster for batch creation.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 366
+- Lines deleted: 17
+- Tests added: 14
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 58 — [2026-06-24] — Feature: Saved Filter Presets
 
 **Description:** Users can now save the current filter state as a named preset and restore it with one click. When any filter is active, a bookmark icon appears in the filter panel — clicking it opens an inline name input; pressing Enter or clicking the check saves the preset. Saved presets appear as chips below the filter rows and persist across sessions. Clicking a preset chip applies all its saved filters (status, priority, due date, tag, color, time estimate, and sort order) at once. Each preset chip has an × button to delete it permanently.

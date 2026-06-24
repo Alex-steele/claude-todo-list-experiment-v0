@@ -31,6 +31,7 @@
 @using TodoApp.Features.Todos.ColorLabel
 @using TodoApp.Features.Todos.SetDueDate
 @using TodoApp.Features.FilterPresets
+@using TodoApp.Features.Todos.MultiAdd
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -69,6 +70,7 @@
 @inject SetColorLabelHandler SetColorLabelHandler
 @inject SetDueDateHandler SetDueDateHandler
 @inject SaveFilterPresetHandler SaveFilterPresetHandler
+@inject AddMultipleTodosHandler AddMultipleTodosHandler
 @inject GetFilterPresetsHandler GetFilterPresetsHandler
 @inject DeleteFilterPresetHandler DeleteFilterPresetHandler
 @inject ISnackbar Snackbar
@@ -143,13 +145,25 @@
     <MudCardContent>
         <div class="d-flex align-center justify-space-between mb-4">
             <MudText Typo="Typo.h6">Add a New Todo</MudText>
-            <MudIconButton
-                Icon="@Icons.Material.Filled.Keyboard"
-                Size="Size.Small"
-                Color="Color.Default"
-                OnClick="ToggleShortcutsHelp"
-                title="Keyboard shortcuts"
-                Class="keyboard-shortcuts-btn" />
+            <div class="d-flex align-center gap-1">
+                <MudButton
+                    Variant="@(_isMultiAddMode ? Variant.Filled : Variant.Outlined)"
+                    Color="Color.Info"
+                    Size="Size.Small"
+                    StartIcon="@Icons.Material.Filled.PlaylistAdd"
+                    OnClick="HandleToggleMultiAdd"
+                    title="Add multiple todos at once"
+                    Class="toggle-multi-add-btn">
+                    Paste multiple
+                </MudButton>
+                <MudIconButton
+                    Icon="@Icons.Material.Filled.Keyboard"
+                    Size="Size.Small"
+                    Color="Color.Default"
+                    OnClick="ToggleShortcutsHelp"
+                    title="Keyboard shortcuts"
+                    Class="keyboard-shortcuts-btn" />
+            </div>
         </div>
         @if (_showShortcutsHelp)
         {
@@ -172,6 +186,47 @@
                 <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">Shortcuts are inactive when typing in an input.</MudText>
             </MudPaper>
         }
+        @if (_isMultiAddMode)
+        {
+            <MudTextField
+                @bind-Value="_multiAddText"
+                Label="One todo per line"
+                Variant="Variant.Outlined"
+                Lines="6"
+                FullWidth="true"
+                Immediate="true"
+                Placeholder="Buy milk&#10;Call dentist&#10;Pay bills"
+                Class="mb-3 multi-add-textarea" />
+            @if (ParsedMultiAddLines.Count > 0)
+            {
+                <div class="d-flex align-center gap-2 mb-3 multi-add-preview">
+                    <MudIcon Icon="@Icons.Material.Filled.PlaylistAdd" Size="Size.Small" Color="Color.Info" />
+                    <MudText Typo="Typo.body2" Color="Color.Info">
+                        @ParsedMultiAddLines.Count todo@(ParsedMultiAddLines.Count == 1 ? "" : "s") to add
+                    </MudText>
+                </div>
+                <MudButton
+                    Variant="Variant.Filled"
+                    Color="Color.Primary"
+                    OnClick="HandleMultiAdd"
+                    Disabled="_isSubmitting"
+                    FullWidth="true"
+                    Size="Size.Large"
+                    Class="multi-add-submit-btn">
+                    @if (_isSubmitting)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    Add @ParsedMultiAddLines.Count Todo@(ParsedMultiAddLines.Count == 1 ? "" : "s")
+                </MudButton>
+            }
+            @if (ParsedMultiAddLines.Count == 0)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Type or paste one todo per line above.</MudText>
+            }
+        }
+        @if (!_isMultiAddMode)
+        {
         <MudTextField
             @bind-Value="_newTitle"
             Label="What needs to be done?"
@@ -180,26 +235,23 @@
             Class="mb-3 new-todo-input"
             OnKeyUp="HandleEnterKey"
             Disabled="_isSubmitting" />
-        @{
-            var hints = NaturalLanguageParser.Parse(_newTitle);
-        }
-        @if (!string.IsNullOrWhiteSpace(_newTitle) && (hints.Priority.HasValue || hints.DueDate.HasValue))
+        @if (!string.IsNullOrWhiteSpace(_newTitle) && (NewTitleHints.Priority.HasValue || NewTitleHints.DueDate.HasValue))
         {
             <div class="d-flex align-center gap-1 mb-2 quick-add-hint-strip">
                 <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" Color="Color.Tertiary" />
                 <MudText Typo="Typo.caption" Color="Color.Tertiary" Class="quick-add-hint-text">
                     Quick-add:
-                    @if (!string.IsNullOrWhiteSpace(hints.CleanTitle))
+                    @if (!string.IsNullOrWhiteSpace(NewTitleHints.CleanTitle))
                     {
-                        <strong>@hints.CleanTitle</strong>
+                        <strong>@NewTitleHints.CleanTitle</strong>
                     }
-                    @if (hints.DueDate.HasValue)
+                    @if (NewTitleHints.DueDate.HasValue)
                     {
-                        <span> · Due @FormatDueDateDisplay(hints.DueDate.Value)</span>
+                        <span> · Due @FormatDueDateDisplay(NewTitleHints.DueDate.Value)</span>
                     }
-                    @if (hints.Priority.HasValue)
+                    @if (NewTitleHints.Priority.HasValue)
                     {
-                        <span> · @hints.Priority.Value priority</span>
+                        <span> · @NewTitleHints.Priority.Value priority</span>
                     }
                 </MudText>
             </div>
@@ -287,6 +339,7 @@
             }
             Add Todo
         </MudButton>
+        }
         @if (!string.IsNullOrEmpty(_errorMessage))
         {
             <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">@_errorMessage</MudAlert>
@@ -1599,6 +1652,18 @@ else
     private bool _savingPreset;
     private string _presetNameInput = string.Empty;
 
+    private bool _isMultiAddMode;
+    private string _multiAddText = string.Empty;
+
+    private IReadOnlyList<string> ParsedMultiAddLines =>
+        _multiAddText
+            .Split('\n', StringSplitOptions.None)
+            .Select(l => l.Trim())
+            .Where(l => l.Length > 0)
+            .ToList();
+
+    private TodoApp.Features.Todos.QuickAdd.ParseResult NewTitleHints => NaturalLanguageParser.Parse(_newTitle);
+
     private Dictionary<int, List<Subtask>> _subtasks = new();
     private int? _expandedSubtasksForTodoId;
     private int? _addingSubtaskForTodoId;
@@ -1747,6 +1812,32 @@ else
         catch (ArgumentException ex)
         {
             _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void HandleToggleMultiAdd()
+    {
+        _isMultiAddMode = !_isMultiAddMode;
+        _multiAddText = string.Empty;
+    }
+
+    private async Task HandleMultiAdd()
+    {
+        var lines = ParsedMultiAddLines;
+        if (lines.Count == 0) return;
+
+        _isSubmitting = true;
+        try
+        {
+            var count = await AddMultipleTodosHandler.HandleAsync(lines, _activeListId);
+            _multiAddText = string.Empty;
+            _isMultiAddMode = false;
+            await LoadTodosAsync();
+            Snackbar.Add($"Added {count} todo{(count == 1 ? "" : "s")}", Severity.Success);
         }
         finally
         {
