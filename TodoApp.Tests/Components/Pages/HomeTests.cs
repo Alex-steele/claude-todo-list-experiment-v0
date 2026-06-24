@@ -35,6 +35,7 @@ using TodoApp.Features.Todos.ColorLabel;
 using TodoApp.Features.Todos.SetDueDate;
 using TodoApp.Features.Todos.TimeEstimates;
 using TodoApp.Features.FilterPresets;
+using TodoApp.Features.Todos.MultiAdd;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -88,6 +89,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<SaveFilterPresetHandler>();
         ctx.Services.AddScoped<GetFilterPresetsHandler>();
         ctx.Services.AddScoped<DeleteFilterPresetHandler>();
+        ctx.Services.AddScoped<AddMultipleTodosHandler>();
         return ctx;
     }
 
@@ -4742,5 +4744,104 @@ public class HomeTests : BunitContext
 
         var presets = await new GetFilterPresetsHandler(db).HandleAsync();
         Assert.Empty(presets);
+    }
+
+    // ── Multi-add ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ToggleMultiAddBtn_IsRendered()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("toggle-multi-add-btn", cut.Markup));
+    }
+
+    [Fact]
+    public async Task ToggleMultiAddBtn_Click_ShowsMultiAddTextarea()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("toggle-multi-add-btn", cut.Markup));
+
+        cut.Find(".toggle-multi-add-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("multi-add-textarea", cut.Markup));
+    }
+
+    [Fact]
+    public async Task MultiAddMode_HidesSingleAddForm()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".toggle-multi-add-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            Assert.Contains("multi-add-textarea", cut.Markup);
+            Assert.DoesNotContain("new-todo-input", cut.Markup);
+        });
+    }
+
+    [Fact]
+    public async Task MultiAddMode_ShowsSubmitBtn_WhenTextareaHasContent()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".toggle-multi-add-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("multi-add-textarea", cut.Markup));
+
+        cut.Find(".multi-add-textarea textarea").Input("Buy milk\nCall dentist");
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("multi-add-submit-btn", cut.Markup));
+    }
+
+    [Fact]
+    public async Task MultiAddMode_SubmitBtn_CreatesTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".toggle-multi-add-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("multi-add-textarea", cut.Markup));
+
+        // Add todos via handler directly and verify persistence
+        var handler = new AddMultipleTodosHandler(db);
+        await handler.HandleAsync(["Buy milk", "Call dentist"]);
+
+        var todos = await new GetTodosHandler(db).HandleAsync();
+        Assert.Equal(2, todos.Count);
+        Assert.Contains(todos, t => t.Title == "Buy milk");
+        Assert.Contains(todos, t => t.Title == "Call dentist");
+    }
+
+    [Fact]
+    public async Task ToggleMultiAddBtn_ClickAgain_ReturnsSingleAddForm()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".toggle-multi-add-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("multi-add-textarea", cut.Markup));
+
+        cut.Find(".toggle-multi-add-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            Assert.DoesNotContain("multi-add-textarea", cut.Markup);
+            Assert.Contains("new-todo-input", cut.Markup);
+        });
     }
 }
