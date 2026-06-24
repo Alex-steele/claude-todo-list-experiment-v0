@@ -164,5 +164,13 @@ public class Database(string connectionString)
                 CreatedAt   TEXT    NOT NULL
             )
             """);
+
+        await conn.ExecuteAsync("""
+            CREATE TABLE IF NOT EXISTS FilterPresets (
+                Id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name        TEXT    NOT NULL,
+                FiltersJson TEXT    NOT NULL
+            )
+            """);
     }
 }
