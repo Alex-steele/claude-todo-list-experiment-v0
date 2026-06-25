@@ -32,6 +32,7 @@
 @using TodoApp.Features.Todos.SetDueDate
 @using TodoApp.Features.FilterPresets
 @using TodoApp.Features.Todos.MultiAdd
+@using TodoApp.Features.Todos.Templates
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -73,6 +74,9 @@
 @inject AddMultipleTodosHandler AddMultipleTodosHandler
 @inject GetFilterPresetsHandler GetFilterPresetsHandler
 @inject DeleteFilterPresetHandler DeleteFilterPresetHandler
+@inject GetTemplatesHandler GetTemplatesHandler
+@inject SaveTemplateHandler SaveTemplateHandler
+@inject DeleteTemplateHandler DeleteTemplateHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -325,6 +329,67 @@
             <MudSelectItem Value="@TimeEstimate.FourHours">4 hours</MudSelectItem>
             <MudSelectItem Value="@TimeEstimate.OneDay">1 day</MudSelectItem>
         </MudSelect>
+        @if (_templates is { Count: > 0 })
+        {
+            <div class="d-flex align-center gap-1 flex-wrap mb-3 template-chips-row">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1">Templates:</MudText>
+                @foreach (var tpl in _templates)
+                {
+                    var t = tpl;
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Variant="Variant.Outlined"
+                             Color="Color.Tertiary"
+                             OnClick="@(() => HandleApplyTemplate(t))"
+                             OnClose="@(async (MudChip<string> _) => await HandleDeleteTemplate(t.Id))"
+                             title="@GetTemplateTooltip(t)"
+                             Class="template-chip">
+                        @t.Name
+                    </MudChip>
+                }
+            </div>
+        }
+        @if (HasNonDefaultFormValues && !_savingTemplate)
+        {
+            <div class="d-flex justify-end mb-2">
+                <MudButton
+                    Variant="Variant.Text"
+                    Color="Color.Tertiary"
+                    Size="Size.Small"
+                    StartIcon="@Icons.Material.Filled.BookmarkAdd"
+                    OnClick="@(() => { _savingTemplate = true; _templateNameInput = string.Empty; })"
+                    Class="save-template-btn">
+                    Save as template
+                </MudButton>
+            </div>
+        }
+        @if (_savingTemplate)
+        {
+            <div class="d-flex align-center gap-1 mb-2 save-template-input-row">
+                <MudTextField
+                    @bind-Value="_templateNameInput"
+                    Placeholder="Template name…"
+                    Variant="Variant.Outlined"
+                    Margin="Margin.Dense"
+                    FullWidth="true"
+                    OnKeyUp="HandleTemplateNameKeyUp"
+                    Class="template-name-input" />
+                <MudIconButton
+                    Icon="@Icons.Material.Filled.Check"
+                    Color="Color.Primary"
+                    Size="Size.Small"
+                    OnClick="HandleSaveTemplate"
+                    title="Save template"
+                    Class="save-template-confirm-btn" />
+                <MudIconButton
+                    Icon="@Icons.Material.Filled.Close"
+                    Color="Color.Default"
+                    Size="Size.Small"
+                    OnClick="@(() => { _savingTemplate = false; _templateNameInput = string.Empty; })"
+                    title="Cancel"
+                    Class="save-template-cancel-btn" />
+            </div>
+        }
         <MudButton
             Variant="Variant.Filled"
             Color="Color.Primary"
@@ -1655,6 +1720,15 @@ else
     private bool _isMultiAddMode;
     private string _multiAddText = string.Empty;
 
+    private IReadOnlyList<TodoTemplate>? _templates;
+    private bool _savingTemplate;
+    private string _templateNameInput = string.Empty;
+
+    private bool HasNonDefaultFormValues =>
+        _newPriority != TodoPriority.None ||
+        _newTimeEstimate != TimeEstimate.None ||
+        _newRecurrence != RecurrenceRule.None;
+
     private IReadOnlyList<string> ParsedMultiAddLines =>
         _multiAddText
             .Split('\n', StringSplitOptions.None)
@@ -1770,6 +1844,7 @@ else
         _activityStats = await ActivityStatsHandler.HandleAsync();
         _allTagNames = await GetAllTagNamesHandler.HandleAsync();
         _filterPresets = await GetFilterPresetsHandler.HandleAsync();
+        _templates = await GetTemplatesHandler.HandleAsync();
         if (_todos.Count > 0)
         {
             var ids = _todos.Select(t => t.Id).ToList();
@@ -1844,6 +1919,65 @@ else
             _isSubmitting = false;
         }
     }
+
+    private void HandleApplyTemplate(TodoTemplate template)
+    {
+        _newPriority = template.Priority;
+        _newTimeEstimate = template.TimeEstimate;
+        _newRecurrence = template.Recurrence;
+    }
+
+    private async Task HandleSaveTemplate()
+    {
+        if (string.IsNullOrWhiteSpace(_templateNameInput)) return;
+
+        try
+        {
+            await SaveTemplateHandler.HandleAsync(_templateNameInput, _newPriority, _newTimeEstimate, _newRecurrence);
+            _savingTemplate = false;
+            _templateNameInput = string.Empty;
+            _templates = await GetTemplatesHandler.HandleAsync();
+            Snackbar.Add("Template saved", Severity.Normal);
+        }
+        catch (ArgumentException) { }
+    }
+
+    private async Task HandleTemplateNameKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await HandleSaveTemplate();
+        else if (e.Key == "Escape")
+        {
+            _savingTemplate = false;
+            _templateNameInput = string.Empty;
+        }
+    }
+
+    private async Task HandleDeleteTemplate(int templateId)
+    {
+        await DeleteTemplateHandler.HandleAsync(templateId);
+        _templates = await GetTemplatesHandler.HandleAsync();
+    }
+
+    private static string GetTemplateTooltip(TodoTemplate t)
+    {
+        var parts = new List<string>();
+        if (t.Priority != TodoPriority.None) parts.Add($"Priority: {t.Priority}");
+        if (t.TimeEstimate != TimeEstimate.None) parts.Add($"Time: {GetTimeEstimateLabelStatic(t.TimeEstimate)}");
+        if (t.Recurrence != RecurrenceRule.None) parts.Add($"Repeats: {t.Recurrence}");
+        return parts.Count > 0 ? string.Join(" · ", parts) : t.Name;
+    }
+
+    private static string GetTimeEstimateLabelStatic(TimeEstimate estimate) => estimate switch
+    {
+        TimeEstimate.FifteenMinutes => "15 min",
+        TimeEstimate.ThirtyMinutes  => "30 min",
+        TimeEstimate.OneHour        => "1 h",
+        TimeEstimate.TwoHours       => "2 h",
+        TimeEstimate.FourHours      => "4 h",
+        TimeEstimate.OneDay         => "1 day",
+        _                           => string.Empty
+    };
 
     private async Task HandleEnterKey(KeyboardEventArgs e)
     {

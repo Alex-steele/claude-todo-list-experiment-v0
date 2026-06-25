@@ -172,5 +172,15 @@ public class Database(string connectionString)
                 FiltersJson TEXT    NOT NULL
             )
             """);
+
+        await conn.ExecuteAsync("""
+            CREATE TABLE IF NOT EXISTS TodoTemplates (
+                Id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name         TEXT    NOT NULL,
+                Priority     INTEGER NOT NULL DEFAULT 0,
+                TimeEstimate INTEGER NOT NULL DEFAULT 0,
+                Recurrence   INTEGER NOT NULL DEFAULT 0
+            )
+            """);
     }
 }
