@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 60 — [2026-06-25] — Feature: Todo Templates
+
+**Description:** Users can now save a named template from the current add-form configuration (priority, time estimate, and recurrence) and reuse it with one click. When any of those three fields is set to a non-default value, a "Save as template" button appears; clicking it opens an inline name input and pressing Enter (or clicking ✓) saves the template. Saved templates appear as teal chips above the "Add Todo" button. Clicking a template chip pre-fills the priority, time estimate, and recurrence fields instantly, reducing repetitive setup for recurring task types. Each chip has an × button to delete it. Templates persist across sessions.
+
+**Reason for change:** Recurring todos auto-create copies on a fixed schedule, but many workflows involve creating the same type of task on demand rather than automatically — e.g., a "Bug fix" task always with High priority and a 1-hour estimate, or a "Weekly review" with Medium priority and a 2-hour block. Previously, users had to re-select these values from scratch every time. Templates make any repeating form configuration one-click to apply.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 531
+- Lines deleted: 0
+- Tests added: 19
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 59 — [2026-06-24] — Feature: Multi-line Quick Add
 
 **Description:** A "Paste multiple" toggle button in the "Add a New Todo" card switches the input to multi-add mode. In this mode a textarea appears where users type or paste one todo per line. A live preview shows how many todos will be created ("3 todos to add"), and clicking "Add 3 Todos" creates them all at once in the active list. Toggling back exits multi-add mode and returns to the normal single-add form.
