@@ -14,9 +14,11 @@ public class FilterSortTodosHandler
         TodoDateFilter dateFilter = TodoDateFilter.None,
         TodoTimeEstimateFilter timeEstimateFilter = TodoTimeEstimateFilter.Any)
     {
+        var searchTrimmed = searchQuery.Trim();
         var searched = string.IsNullOrWhiteSpace(searchQuery)
             ? todos.AsEnumerable()
-            : todos.Where(t => t.Title.Contains(searchQuery.Trim(), StringComparison.OrdinalIgnoreCase));
+            : todos.Where(t => t.Title.Contains(searchTrimmed, StringComparison.OrdinalIgnoreCase)
+                            || (t.Notes != null && t.Notes.Contains(searchTrimmed, StringComparison.OrdinalIgnoreCase)));
 
         var filtered = statusFilter switch
         {

@@ -15,8 +15,9 @@ public class FilterSortTodosHandlerTests
         TodoPriority priority = TodoPriority.None,
         DateTime? dueDate = null,
         bool isPinned = false,
-        TimeEstimate timeEstimate = TimeEstimate.None)
-        => new(id, title, isCompleted, Base.AddSeconds(id), priority, dueDate, isPinned, TimeEstimate: timeEstimate);
+        TimeEstimate timeEstimate = TimeEstimate.None,
+        string? notes = null)
+        => new(id, title, isCompleted, Base.AddSeconds(id), priority, dueDate, isPinned, notes, TimeEstimate: timeEstimate);
 
     private readonly FilterSortTodosHandler _handler = new();
 
@@ -452,5 +453,95 @@ public class FilterSortTodosHandlerTests
         var result = _handler.Handle(todos, TodoStatusFilter.Active, TodoSortOrder.TitleAsc);
 
         Assert.Equal(["Banana", "Carrot"], result.Select(t => t.Title).ToArray());
+    }
+
+    // ── Notes search ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Search_MatchesNotes_WhenTitleDoesNotMatch()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Buy groceries", notes: "milk and eggs"),
+            Make(2, "Walk the dog"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest, searchQuery: "milk");
+
+        Assert.Single(result);
+        Assert.Equal("Buy groceries", result[0].Title);
+    }
+
+    [Fact]
+    public void Search_NotesMatch_IsCaseInsensitive()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Prepare meeting", notes: "Contact Alice about the agenda"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest, searchQuery: "alice");
+
+        Assert.Single(result);
+    }
+
+    [Fact]
+    public void Search_NullNotes_DoesNotIncludeNotesMismatch()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Walk the dog", notes: null),
+            Make(2, "Buy groceries", notes: "eggs and cheese"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest, searchQuery: "milk");
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void Search_ReturnsOnce_WhenBothTitleAndNotesMatch()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Buy milk", notes: "get full-fat milk from the store"),
+            Make(2, "Walk the dog"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest, searchQuery: "milk");
+
+        Assert.Single(result);
+        Assert.Equal("Buy milk", result[0].Title);
+    }
+
+    [Fact]
+    public void Search_Notes_CombinesWithStatusFilter()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Prepare report", notes: "include revenue figures", isCompleted: false),
+            Make(2, "Old report",     notes: "include revenue figures", isCompleted: true),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.Active, TodoSortOrder.Newest, searchQuery: "revenue");
+
+        Assert.Single(result);
+        Assert.Equal("Prepare report", result[0].Title);
+    }
+
+    [Fact]
+    public void Search_Notes_CombinesWithPriorityFilter()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "High task",   notes: "check the dashboard", priority: TodoPriority.High),
+            Make(2, "Low task",    notes: "check the dashboard", priority: TodoPriority.Low),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            searchQuery: "dashboard", priorityFilter: TodoPriority.High);
+
+        Assert.Single(result);
+        Assert.Equal("High task", result[0].Title);
     }
 }

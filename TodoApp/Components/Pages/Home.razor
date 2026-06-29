@@ -522,7 +522,7 @@ else
         <MudCardContent Class="pb-3">
             <MudTextField
                 @bind-Value="_searchQuery"
-                Label="Search todos..."
+                Label="Search todos and notes..."
                 Variant="Variant.Outlined"
                 Adornment="Adornment.Start"
                 AdornmentIcon="@Icons.Material.Filled.Search"
@@ -1205,6 +1205,16 @@ else
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">
                                     Added @todo.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
                                 </MudText>
+                                @if (!string.IsNullOrWhiteSpace(_searchQuery)
+                                     && !todo.Title.Contains(_searchQuery.Trim(), StringComparison.OrdinalIgnoreCase)
+                                     && todo.Notes != null
+                                     && todo.Notes.Contains(_searchQuery.Trim(), StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined" Class="notes-match-badge"
+                                             title="This todo was found because its notes match your search">
+                                        Matched in notes
+                                    </MudChip>
+                                }
                                 @if (todo.IsCompleted && todo.CompletedAt.HasValue)
                                 {
                                     <MudText Typo="Typo.caption" Color="Color.Success" Class="completed-at-text">

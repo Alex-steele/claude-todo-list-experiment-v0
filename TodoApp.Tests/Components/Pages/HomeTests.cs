@@ -5001,4 +5001,91 @@ public class HomeTests : BunitContext
         Assert.Contains("Beta", cut.Markup);
         Assert.Contains("Gamma", cut.Markup);
     }
+
+    // ── Search within notes ───────────────────────────────────────────────────
+
+    [Fact]
+    public async Task SearchField_Label_MentionsNotes()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Any todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("Search todos and notes", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Search_MatchingNotesContent_ShowsTodo_WhenTitleDoesNotMatch()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var todoId = await addHandler.HandleAsync("Prepare presentation");
+        var notesHandler = new UpdateNotesHandler(db);
+        await notesHandler.HandleAsync(todoId, "Include revenue figures for Q3");
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-search-field input").Input("revenue");
+
+        Assert.Contains("Prepare presentation", cut.Markup);
+        Assert.DoesNotContain("Walk the dog", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Search_MatchingNotesContent_ShowsNotesBadge()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var todoId = await addHandler.HandleAsync("Prepare presentation");
+        var notesHandler = new UpdateNotesHandler(db);
+        await notesHandler.HandleAsync(todoId, "Include revenue figures for Q3");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-search-field input").Input("revenue");
+
+        Assert.NotEmpty(cut.FindAll(".notes-match-badge"));
+    }
+
+    [Fact]
+    public async Task Search_MatchingTitle_DoesNotShowNotesBadge()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var todoId = await addHandler.HandleAsync("Buy groceries");
+        var notesHandler = new UpdateNotesHandler(db);
+        await notesHandler.HandleAsync(todoId, "milk and eggs");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-search-field input").Input("groceries");
+
+        Assert.Contains("Buy groceries", cut.Markup);
+        Assert.Empty(cut.FindAll(".notes-match-badge"));
+    }
+
+    [Fact]
+    public async Task Search_NoNotesContent_OnlyTitleSearch_Works()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Clean the kitchen");
+        await addHandler.HandleAsync("Buy groceries");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-search-field input").Input("kitchen");
+
+        Assert.Contains("Clean the kitchen", cut.Markup);
+        Assert.DoesNotContain("Buy groceries", cut.Markup);
+        Assert.Empty(cut.FindAll(".notes-match-badge"));
+    }
 }
