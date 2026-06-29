@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 61 — [2026-06-29] — Feature: Search Within Notes
+
+**Description:** The todo search now searches notes content in addition to titles. When a search query matches a todo's notes but not its title, the todo appears in results with a "Matched in notes" chip indicator, making it clear why the item was included. The search field label was updated to "Search todos and notes..." to communicate the expanded scope. This makes notes genuinely discoverable — users can now find a todo by remembering any detail they wrote in its notes, not just its title.
+
+**Reason for change:** The search has always searched only titles, but many todos have rich notes with details that are useful for retrieval. A user who writes "Include Q3 revenue figures" in a todo's notes couldn't search for "revenue" to find it. Extending search to notes turns the notes field into a proper memory tool, not just decoration.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 194
+- Lines deleted: 4
+- Tests added: 11
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 60 — [2026-06-25] — Feature: Todo Templates
 
 **Description:** Users can now save a named template from the current add-form configuration (priority, time estimate, and recurrence) and reuse it with one click. When any of those three fields is set to a non-default value, a "Save as template" button appears; clicking it opens an inline name input and pressing Enter (or clicking ✓) saves the template. Saved templates appear as teal chips above the "Add Todo" button. Clicking a template chip pre-fills the priority, time estimate, and recurrence fields instantly, reducing repetitive setup for recurring task types. Each chip has an × button to delete it. Templates persist across sessions.
