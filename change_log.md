@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 62 — [2026-06-29] — Feature: Daily Completion Goal
+
+**Description:** Users can now set a daily completion target. A "Set daily goal" button appears in the stats panel; clicking it opens an inline numeric input where the user enters their target count. Once set, a goal chip shows real-time progress — "🎯 3 / 5 today" — and turns green with a checkmark when the goal is reached. Clicking the chip re-opens the editor to change the target, with a "Remove" option to clear it. The goal persists across sessions.
+
+**Reason for change:** The stats panel already tracks completions-today and streak data, but there was no way for users to declare what "enough" looks like on a given day. A daily goal turns the passive counter into an active motivator — the kind of lightweight gamification that makes a simple todo list feel like a productivity system without adding complexity.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 365
+- Lines deleted: 0
+- Tests added: 12
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 61 — [2026-06-29] — Feature: Search Within Notes
 
 **Description:** The todo search now searches notes content in addition to titles. When a search query matches a todo's notes but not its title, the todo appears in results with a "Matched in notes" chip indicator, making it clear why the item was included. The search field label was updated to "Search todos and notes..." to communicate the expanded scope. This makes notes genuinely discoverable — users can now find a todo by remembering any detail they wrote in its notes, not just its title.

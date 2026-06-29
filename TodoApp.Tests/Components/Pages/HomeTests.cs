@@ -37,6 +37,7 @@ using TodoApp.Features.Todos.TimeEstimates;
 using TodoApp.Features.FilterPresets;
 using TodoApp.Features.Todos.MultiAdd;
 using TodoApp.Features.Todos.Templates;
+using TodoApp.Features.Goals;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -94,6 +95,8 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<GetTemplatesHandler>();
         ctx.Services.AddScoped<SaveTemplateHandler>();
         ctx.Services.AddScoped<DeleteTemplateHandler>();
+        ctx.Services.AddScoped<GetDailyGoalHandler>();
+        ctx.Services.AddScoped<SetDailyGoalHandler>();
         return ctx;
     }
 
@@ -5000,6 +5003,108 @@ public class HomeTests : BunitContext
         Assert.Contains("Alpha", cut.Markup);
         Assert.Contains("Beta", cut.Markup);
         Assert.Contains("Gamma", cut.Markup);
+    }
+
+    // ── Daily completion goal ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DailyGoal_NoGoalSet_ShowsSetGoalButton()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("set-goal-btn", cut.Markup);
+        Assert.DoesNotContain("daily-goal-chip", cut.Markup);
+    }
+
+    [Fact]
+    public async Task DailyGoal_GoalSet_ShowsGoalChip()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some todo");
+        var goalHandler = new SetDailyGoalHandler(db);
+        await goalHandler.HandleAsync(5);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("daily-goal-chip", cut.Markup);
+        Assert.DoesNotContain("set-goal-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task DailyGoal_GoalChip_ShowsProgressFraction()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id1 = await addHandler.HandleAsync("Task 1");
+        await addHandler.HandleAsync("Task 2");
+        var completeHandler = new CompleteTodoHandler(db);
+        await completeHandler.HandleAsync(id1);
+        var goalHandler = new SetDailyGoalHandler(db);
+        await goalHandler.HandleAsync(5);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("1 / 5 today", cut.Markup);
+    }
+
+    [Fact]
+    public async Task DailyGoal_ClickSetGoal_ShowsGoalInput()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".set-goal-btn").Click();
+
+        Assert.Contains("goal-input", cut.Markup);
+        Assert.Contains("goal-save-btn", cut.Markup);
+        Assert.Contains("goal-cancel-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task DailyGoal_CancelEdit_HidesInput()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".set-goal-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("goal-cancel-btn", cut.Markup));
+        cut.Find(".goal-cancel-btn").Click();
+
+        Assert.DoesNotContain("goal-input", cut.Markup);
+        Assert.Contains("set-goal-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task DailyGoal_GoalReached_ShowsCheckmark()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id = await addHandler.HandleAsync("Task");
+        var completeHandler = new CompleteTodoHandler(db);
+        await completeHandler.HandleAsync(id);
+        var goalHandler = new SetDailyGoalHandler(db);
+        await goalHandler.HandleAsync(1);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("✓", cut.Find(".daily-goal-chip").TextContent);
     }
 
     // ── Search within notes ───────────────────────────────────────────────────
