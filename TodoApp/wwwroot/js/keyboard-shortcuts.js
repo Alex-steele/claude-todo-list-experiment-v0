@@ -42,6 +42,10 @@ window.todoApp.saveDarkModePreference = function (isDark) {
     localStorage.setItem('todoApp:darkMode', isDark.toString());
 };
 
+window.todoApp.copyToClipboard = function (text) {
+    return navigator.clipboard.writeText(text);
+};
+
 window.todoApp._handleKeyDown = function (e) {
     const tag = e.target.tagName.toLowerCase();
     if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
