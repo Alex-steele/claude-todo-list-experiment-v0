@@ -544,4 +544,102 @@ public class FilterSortTodosHandlerTests
         Assert.Single(result);
         Assert.Equal("High task", result[0].Title);
     }
+
+    [Fact]
+    public void Sort_TimeEstimateAsc_OrdersShortestFirst()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Long",   timeEstimate: TimeEstimate.FourHours),
+            Make(2, "Short",  timeEstimate: TimeEstimate.FifteenMinutes),
+            Make(3, "Medium", timeEstimate: TimeEstimate.OneHour),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.TimeEstimateAsc);
+
+        Assert.Equal("Short",  result[0].Title);
+        Assert.Equal("Medium", result[1].Title);
+        Assert.Equal("Long",   result[2].Title);
+    }
+
+    [Fact]
+    public void Sort_TimeEstimateDesc_OrdersLongestFirst()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Short",  timeEstimate: TimeEstimate.FifteenMinutes),
+            Make(2, "Long",   timeEstimate: TimeEstimate.FourHours),
+            Make(3, "Medium", timeEstimate: TimeEstimate.TwoHours),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.TimeEstimateDesc);
+
+        Assert.Equal("Long",   result[0].Title);
+        Assert.Equal("Medium", result[1].Title);
+        Assert.Equal("Short",  result[2].Title);
+    }
+
+    [Fact]
+    public void Sort_TimeEstimateAsc_NoneEstimateGoesToEnd()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "No estimate"),
+            Make(2, "Quick",  timeEstimate: TimeEstimate.FifteenMinutes),
+            Make(3, "Medium", timeEstimate: TimeEstimate.OneHour),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.TimeEstimateAsc);
+
+        Assert.Equal("Quick",       result[0].Title);
+        Assert.Equal("Medium",      result[1].Title);
+        Assert.Equal("No estimate", result[2].Title);
+    }
+
+    [Fact]
+    public void Sort_TimeEstimateDesc_NoneEstimateGoesToEnd()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "No estimate"),
+            Make(2, "Quick",  timeEstimate: TimeEstimate.FifteenMinutes),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.TimeEstimateDesc);
+
+        Assert.Equal("Quick",       result[0].Title);
+        Assert.Equal("No estimate", result[1].Title);
+    }
+
+    [Fact]
+    public void Sort_TimeEstimateAsc_PinnedStillSortsFirst()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Unpinned short",  timeEstimate: TimeEstimate.FifteenMinutes),
+            Make(2, "Pinned long",     timeEstimate: TimeEstimate.OneDay, isPinned: true),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.TimeEstimateAsc);
+
+        Assert.Equal("Pinned long",    result[0].Title);
+        Assert.Equal("Unpinned short", result[1].Title);
+    }
+
+    [Fact]
+    public void Sort_TimeEstimateAsc_CombinesWithStatusFilter()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Active long",      isCompleted: false, timeEstimate: TimeEstimate.TwoHours),
+            Make(2, "Completed short",  isCompleted: true,  timeEstimate: TimeEstimate.FifteenMinutes),
+            Make(3, "Active short",     isCompleted: false, timeEstimate: TimeEstimate.ThirtyMinutes),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.Active, TodoSortOrder.TimeEstimateAsc);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal("Active short", result[0].Title);
+        Assert.Equal("Active long",  result[1].Title);
+    }
 }
