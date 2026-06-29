@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 64 — [2026-06-29] — Feature: Sort by Time Estimate
+
+**Description:** Two new sort options — "Shortest first" and "Longest first" — appear in the Sort dropdown alongside the existing seven sort orders. "Shortest first" surfaces quick-win tasks by ordering todos from least to most estimated time, with unestimated todos sorted to the end. "Longest first" reverses this, putting the most time-intensive tasks at the top. Both options still respect pinned items (pinned todos always sort first) and combine correctly with all existing filters.
+
+**Reason for change:** The app already lets users filter by time estimate (≤15 min, ≤30 min, etc.) and shows total estimated time in the stats panel, but sorting by estimate wasn't possible. The two most common estimate-driven workflows — "what can I knock out quickly?" (shortest first) and "what big task should I tackle now?" (longest first) — were left to manual scanning. These sort orders complete the time-estimate story.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 174
+- Lines deleted: 4
+- Tests added: 9
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 63 — [2026-06-29] — Feature: Weekly Summary Copy
 
 **Description:** A "Copy weekly summary" button appears in the stats panel whenever at least one todo was completed in the past 7 days. Clicking it copies a plain-text bullet list to the clipboard — "Completed this week (N):" followed by one "• Title" line per item, ordered most-recent first — and shows a snackbar confirming how many items were copied. The button is hidden when no completions exist in the window, keeping the UI clean on inactive weeks.

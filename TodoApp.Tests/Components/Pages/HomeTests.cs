@@ -5240,4 +5240,68 @@ public class HomeTests : BunitContext
 
         Assert.Contains("Copy weekly summary", cut.Find(".copy-weekly-summary-btn").TextContent);
     }
+
+    // ── Sort by Time Estimate ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task SortByTimeEstimate_ShortestFirst_ApplyingDoesNotThrow()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task A");
+        await new AddTodoHandler(db).HandleAsync("Task B");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        var sortSelect = cut.FindComponent<MudSelect<TodoSortOrder>>();
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.TimeEstimateAsc));
+
+        Assert.Contains("Task A", cut.Markup);
+        Assert.Contains("Task B", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SortByTimeEstimate_LongestFirst_ApplyingDoesNotThrow()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task A");
+        await new AddTodoHandler(db).HandleAsync("Task B");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        var sortSelect = cut.FindComponent<MudSelect<TodoSortOrder>>();
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.TimeEstimateDesc));
+
+        Assert.Contains("Task A", cut.Markup);
+        Assert.Contains("Task B", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SortByTimeEstimate_ShortestFirst_OrdersRenderedTodosCorrectly()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var editHandler = new EditTodoHandler(db);
+
+        var id1 = await addHandler.HandleAsync("Long task");
+        await editHandler.HandleAsync(id1, "Long task", TodoPriority.None, null,
+            timeEstimate: TodoApp.Features.Todos.TimeEstimates.TimeEstimate.FourHours);
+
+        var id2 = await addHandler.HandleAsync("Short task");
+        await editHandler.HandleAsync(id2, "Short task", TodoPriority.None, null,
+            timeEstimate: TodoApp.Features.Todos.TimeEstimates.TimeEstimate.FifteenMinutes);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var sortSelect = cut.FindComponent<MudSelect<TodoSortOrder>>();
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.TimeEstimateAsc));
+
+        var markup = cut.Markup;
+        var shortIdx = markup.IndexOf("Short task", StringComparison.Ordinal);
+        var longIdx  = markup.IndexOf("Long task",  StringComparison.Ordinal);
+
+        Assert.True(shortIdx < longIdx, "Short task should appear before Long task when sorted shortest-first");
+    }
 }

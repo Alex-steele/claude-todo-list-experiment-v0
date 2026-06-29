@@ -15,7 +15,9 @@ public enum TodoSortOrder
     PriorityDesc = 3,
     Manual = 4,
     TitleAsc = 5,
-    TitleDesc = 6
+    TitleDesc = 6,
+    TimeEstimateAsc = 7,
+    TimeEstimateDesc = 8
 }
 
 public enum TodoDateFilter

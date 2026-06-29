@@ -63,9 +63,13 @@ public class FilterSortTodosHandler
             TodoSortOrder.PriorityDesc => pinFirst.ThenByDescending(t => (int)t.Priority)
                                                   .ThenBy(t => -t.Id),
             TodoSortOrder.Manual       => timeFiltered.AsEnumerable(), // preserve DB order (SortOrder ASC)
-            TodoSortOrder.TitleAsc     => pinFirst.ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase),
-            TodoSortOrder.TitleDesc    => pinFirst.ThenByDescending(t => t.Title, StringComparer.OrdinalIgnoreCase),
-            _                          => pinFirst.ThenByDescending(t => t.Id)  // Newest (default)
+            TodoSortOrder.TitleAsc        => pinFirst.ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase),
+            TodoSortOrder.TitleDesc       => pinFirst.ThenByDescending(t => t.Title, StringComparer.OrdinalIgnoreCase),
+            TodoSortOrder.TimeEstimateAsc => pinFirst.ThenBy(t => t.TimeEstimate == TimeEstimate.None ? int.MaxValue : (int)t.TimeEstimate)
+                                                     .ThenByDescending(t => t.Id),
+            TodoSortOrder.TimeEstimateDesc => pinFirst.ThenByDescending(t => (int)t.TimeEstimate)
+                                                      .ThenByDescending(t => t.Id),
+            _                             => pinFirst.ThenByDescending(t => t.Id)  // Newest (default)
         };
 
         return sorted.ToList();
