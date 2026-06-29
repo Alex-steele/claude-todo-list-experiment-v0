@@ -33,6 +33,7 @@
 @using TodoApp.Features.FilterPresets
 @using TodoApp.Features.Todos.MultiAdd
 @using TodoApp.Features.Todos.Templates
+@using TodoApp.Features.Goals
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -77,6 +78,8 @@
 @inject GetTemplatesHandler GetTemplatesHandler
 @inject SaveTemplateHandler SaveTemplateHandler
 @inject DeleteTemplateHandler DeleteTemplateHandler
+@inject GetDailyGoalHandler GetDailyGoalHandler
+@inject SetDailyGoalHandler SetDailyGoalHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -473,6 +476,105 @@
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info" Class="completed-week-chip">
                     This week: @_activityStats.CompletedThisWeek done
                 </MudChip>
+            </div>
+        }
+        @if (_activityStats is not null)
+        {
+            <div class="d-flex align-center gap-2 mt-3 flex-wrap daily-goal-row">
+                @if (_dailyGoal.HasValue)
+                {
+                    var done = _activityStats.CompletedToday;
+                    var target = _dailyGoal.Value;
+                    var reached = done >= target;
+                    @if (_editingGoal)
+                    {
+                        <div class="d-flex align-center gap-1 goal-edit-row">
+                            <MudNumericField
+                                T="int"
+                                @bind-Value="_goalInput"
+                                Min="1"
+                                Max="100"
+                                Label="Daily goal"
+                                Variant="Variant.Outlined"
+                                Margin="Margin.Dense"
+                                Style="width: 110px; font-size: 0.8rem;"
+                                Class="goal-input" />
+                            <MudIconButton
+                                Icon="@Icons.Material.Filled.Check"
+                                Color="Color.Primary"
+                                Size="Size.Small"
+                                OnClick="HandleSaveGoal"
+                                title="Save goal"
+                                Class="goal-save-btn" />
+                            <MudIconButton
+                                Icon="@Icons.Material.Filled.Close"
+                                Color="Color.Default"
+                                Size="Size.Small"
+                                OnClick="HandleCancelGoal"
+                                title="Cancel"
+                                Class="goal-cancel-btn" />
+                            <MudButton
+                                Variant="Variant.Text"
+                                Color="Color.Error"
+                                Size="Size.Small"
+                                OnClick="HandleClearGoal"
+                                Class="goal-clear-btn">Remove</MudButton>
+                        </div>
+                    }
+                    else
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Variant="Variant.Outlined"
+                                 Color="@(reached ? Color.Success : Color.Primary)"
+                                 OnClick="HandleStartEditGoal"
+                                 title="Click to edit daily goal"
+                                 Class="daily-goal-chip">
+                            🎯 @done / @target today@(reached ? " ✓" : "")
+                        </MudChip>
+                    }
+                }
+                else if (!_editingGoal)
+                {
+                    <MudButton
+                        Variant="Variant.Text"
+                        Color="Color.Secondary"
+                        Size="Size.Small"
+                        StartIcon="@Icons.Material.Outlined.TrackChanges"
+                        OnClick="HandleStartEditGoal"
+                        Class="set-goal-btn">
+                        Set daily goal
+                    </MudButton>
+                }
+                else
+                {
+                    <div class="d-flex align-center gap-1 goal-edit-row">
+                        <MudNumericField
+                            T="int"
+                            @bind-Value="_goalInput"
+                            Min="1"
+                            Max="100"
+                            Label="Daily goal"
+                            Variant="Variant.Outlined"
+                            Margin="Margin.Dense"
+                            Style="width: 110px; font-size: 0.8rem;"
+                            Class="goal-input" />
+                        <MudIconButton
+                            Icon="@Icons.Material.Filled.Check"
+                            Color="Color.Primary"
+                            Size="Size.Small"
+                            OnClick="HandleSaveGoal"
+                            title="Save goal"
+                            Class="goal-save-btn" />
+                        <MudIconButton
+                            Icon="@Icons.Material.Filled.Close"
+                            Color="Color.Default"
+                            Size="Size.Small"
+                            OnClick="HandleCancelGoal"
+                            title="Cancel"
+                            Class="goal-cancel-btn" />
+                    </div>
+                }
             </div>
         }
         @if (_activityStats is not null)
@@ -1734,6 +1836,10 @@ else
     private bool _savingTemplate;
     private string _templateNameInput = string.Empty;
 
+    private int? _dailyGoal;
+    private bool _editingGoal;
+    private int _goalInput = 5;
+
     private bool HasNonDefaultFormValues =>
         _newPriority != TodoPriority.None ||
         _newTimeEstimate != TimeEstimate.None ||
@@ -1855,6 +1961,7 @@ else
         _allTagNames = await GetAllTagNamesHandler.HandleAsync();
         _filterPresets = await GetFilterPresetsHandler.HandleAsync();
         _templates = await GetTemplatesHandler.HandleAsync();
+        _dailyGoal = await GetDailyGoalHandler.HandleAsync();
         if (_todos.Count > 0)
         {
             var ids = _todos.Select(t => t.Id).ToList();
@@ -1967,6 +2074,32 @@ else
     {
         await DeleteTemplateHandler.HandleAsync(templateId);
         _templates = await GetTemplatesHandler.HandleAsync();
+    }
+
+    private void HandleStartEditGoal()
+    {
+        _goalInput = _dailyGoal ?? 5;
+        _editingGoal = true;
+    }
+
+    private async Task HandleSaveGoal()
+    {
+        if (_goalInput < 1) _goalInput = 1;
+        await SetDailyGoalHandler.HandleAsync(_goalInput);
+        _dailyGoal = _goalInput;
+        _editingGoal = false;
+    }
+
+    private void HandleCancelGoal()
+    {
+        _editingGoal = false;
+    }
+
+    private async Task HandleClearGoal()
+    {
+        await SetDailyGoalHandler.HandleAsync(0);
+        _dailyGoal = null;
+        _editingGoal = false;
     }
 
     private static string GetTemplateTooltip(TodoTemplate t)

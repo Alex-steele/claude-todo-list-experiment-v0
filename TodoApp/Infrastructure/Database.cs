@@ -182,5 +182,12 @@ public class Database(string connectionString)
                 Recurrence   INTEGER NOT NULL DEFAULT 0
             )
             """);
+
+        await conn.ExecuteAsync("""
+            CREATE TABLE IF NOT EXISTS Goals (
+                Key   TEXT    PRIMARY KEY,
+                Value INTEGER NOT NULL
+            )
+            """);
     }
 }
