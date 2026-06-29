@@ -30,6 +30,7 @@ using TodoApp.Features.FilterPresets;
 using TodoApp.Features.Todos.MultiAdd;
 using TodoApp.Features.Todos.Templates;
 using TodoApp.Features.Goals;
+using TodoApp.Features.Todos.WeeklySummary;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -95,6 +96,7 @@ builder.Services.AddScoped<SaveTemplateHandler>();
 builder.Services.AddScoped<DeleteTemplateHandler>();
 builder.Services.AddScoped<GetDailyGoalHandler>();
 builder.Services.AddScoped<SetDailyGoalHandler>();
+builder.Services.AddScoped<GenerateWeeklySummaryHandler>();
 
 var app = builder.Build();
 

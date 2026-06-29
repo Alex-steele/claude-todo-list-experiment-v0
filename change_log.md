@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 63 — [2026-06-29] — Feature: Weekly Summary Copy
+
+**Description:** A "Copy weekly summary" button appears in the stats panel whenever at least one todo was completed in the past 7 days. Clicking it copies a plain-text bullet list to the clipboard — "Completed this week (N):" followed by one "• Title" line per item, ordered most-recent first — and shows a snackbar confirming how many items were copied. The button is hidden when no completions exist in the window, keeping the UI clean on inactive weeks.
+
+**Reason for change:** Users already had the activity stats panel showing how many items they'd completed this week, but no way to share or save that list. The weekly summary makes it trivial to paste a done-list into a standup message, a personal log, or a weekly review doc. The feature reuses the existing `_todos` list already in memory and requires no database round-trip, so it adds capability with minimal overhead.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 250
+- Lines deleted: 0
+- Tests added: 13
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 62 — [2026-06-29] — Feature: Daily Completion Goal
 
 **Description:** Users can now set a daily completion target. A "Set daily goal" button appears in the stats panel; clicking it opens an inline numeric input where the user enters their target count. Once set, a goal chip shows real-time progress — "🎯 3 / 5 today" — and turns green with a checkmark when the goal is reached. Clicking the chip re-opens the editor to change the target, with a "Remove" option to clear it. The goal persists across sessions.

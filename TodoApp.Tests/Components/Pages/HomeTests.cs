@@ -38,6 +38,7 @@ using TodoApp.Features.FilterPresets;
 using TodoApp.Features.Todos.MultiAdd;
 using TodoApp.Features.Todos.Templates;
 using TodoApp.Features.Goals;
+using TodoApp.Features.Todos.WeeklySummary;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -97,6 +98,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<DeleteTemplateHandler>();
         ctx.Services.AddScoped<GetDailyGoalHandler>();
         ctx.Services.AddScoped<SetDailyGoalHandler>();
+        ctx.Services.AddScoped<GenerateWeeklySummaryHandler>();
         return ctx;
     }
 
@@ -5192,5 +5194,50 @@ public class HomeTests : BunitContext
         Assert.Contains("Clean the kitchen", cut.Markup);
         Assert.DoesNotContain("Buy groceries", cut.Markup);
         Assert.Empty(cut.FindAll(".notes-match-badge"));
+    }
+
+    // ── Weekly summary copy ───────────────────────────────────────────────────
+
+    [Fact]
+    public async Task WeeklySummary_Button_NotShown_WhenNoCompletionsThisWeek()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Active todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("copy-weekly-summary-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task WeeklySummary_Button_Shown_WhenCompletionExistsThisWeek()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id = await addHandler.HandleAsync("Finished task");
+        var completeHandler = new CompleteTodoHandler(db);
+        await completeHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("copy-weekly-summary-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task WeeklySummary_Button_Label_SaysCopyWeeklySummary()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id = await addHandler.HandleAsync("Done");
+        var completeHandler = new CompleteTodoHandler(db);
+        await completeHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("Copy weekly summary", cut.Find(".copy-weekly-summary-btn").TextContent);
     }
 }

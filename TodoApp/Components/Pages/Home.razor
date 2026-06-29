@@ -34,6 +34,7 @@
 @using TodoApp.Features.Todos.MultiAdd
 @using TodoApp.Features.Todos.Templates
 @using TodoApp.Features.Goals
+@using TodoApp.Features.Todos.WeeklySummary
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -80,6 +81,7 @@
 @inject DeleteTemplateHandler DeleteTemplateHandler
 @inject GetDailyGoalHandler GetDailyGoalHandler
 @inject SetDailyGoalHandler SetDailyGoalHandler
+@inject GenerateWeeklySummaryHandler GenerateWeeklySummaryHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -590,6 +592,20 @@
                           title="@tooltip"
                           style="@GetHeatmapStyle(day.Count, isToday)"></span>
                 }
+            </div>
+        }
+        @if (_activityStats is not null && _activityStats.CompletedThisWeek > 0)
+        {
+            <div class="d-flex justify-end mt-2">
+                <MudButton
+                    Variant="Variant.Text"
+                    Color="Color.Info"
+                    Size="Size.Small"
+                    StartIcon="@Icons.Material.Filled.ContentCopy"
+                    OnClick="HandleCopyWeeklySummary"
+                    Class="copy-weekly-summary-btn">
+                    Copy weekly summary
+                </MudButton>
             </div>
         }
         @if (stats.Completed > 0)
@@ -2559,6 +2575,15 @@ else
     {
         await DeleteFilterPresetHandler.HandleAsync(presetId);
         _filterPresets = await GetFilterPresetsHandler.HandleAsync();
+    }
+
+    private async Task HandleCopyWeeklySummary()
+    {
+        if (_todos is null) return;
+        var summary = GenerateWeeklySummaryHandler.Handle(_todos);
+        await JS.InvokeVoidAsync("todoApp.copyToClipboard", summary);
+        var weekCount = _activityStats?.CompletedThisWeek ?? 0;
+        Snackbar.Add($"Weekly summary copied ({weekCount} item{(weekCount == 1 ? "" : "s")})", Severity.Success);
     }
 
     private async Task HandleClearCompleted()
