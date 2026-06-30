@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 65 — [2026-06-30] — Feature: Task Age Indicator & Stale Task Filter
+
+**Description:** Active todos that have been sitting uncompleted for 7 or more days now show a subtle age badge — "1 wk old" (amber) for tasks 7–13 days old, "2+ wks old" (amber) for 14–29 days, and "1+ mo old" (red) for tasks 30+ days old. The badge includes a tooltip showing the exact number of days and a nudge to tackle the item. A new "Age:" filter row in the filter panel lets users narrow the list to tasks that are 1+ week, 2+ weeks, or 1+ month old, making it easy to surface and review neglected work. Completed todos are never badged or matched by the staleness filter, and the filter resets when switching lists or clearing all filters.
+
+**Reason for change:** The app tracks due dates but had no awareness of how long an active task had been sitting in the list without progress. A task with no due date can lurk indefinitely — the age indicator makes procrastinated tasks visible at a glance, and the staleness filter lets users run a deliberate "stale task review" session to clear out or reprioritize long-ignored items.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 308
+- Lines deleted: 4
+- Tests added: 14
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 64 — [2026-06-29] — Feature: Sort by Time Estimate
 
 **Description:** Two new sort options — "Shortest first" and "Longest first" — appear in the Sort dropdown alongside the existing seven sort orders. "Shortest first" surfaces quick-win tasks by ordering todos from least to most estimated time, with unestimated todos sorted to the end. "Longest first" reverses this, putting the most time-intensive tasks at the top. Both options still respect pinned items (pinned todos always sort first) and combine correctly with all existing filters.
