@@ -12,7 +12,8 @@ public class FilterSortTodosHandler
         string searchQuery = "",
         TodoPriority? priorityFilter = null,
         TodoDateFilter dateFilter = TodoDateFilter.None,
-        TodoTimeEstimateFilter timeEstimateFilter = TodoTimeEstimateFilter.Any)
+        TodoTimeEstimateFilter timeEstimateFilter = TodoTimeEstimateFilter.Any,
+        TodoStalenessFilter stalenessFilter = TodoStalenessFilter.Any)
     {
         var searchTrimmed = searchQuery.Trim();
         var searched = string.IsNullOrWhiteSpace(searchQuery)
@@ -52,7 +53,15 @@ public class FilterSortTodosHandler
             _                                 => dateFiltered
         };
 
-        var pinFirst = timeFiltered.OrderByDescending(t => t.IsPinned ? 1 : 0);
+        var stalenessFiltered = stalenessFilter switch
+        {
+            TodoStalenessFilter.OneWeekPlus  => timeFiltered.Where(t => !t.IsCompleted && (today - t.CreatedAt.Date).Days >= 7),
+            TodoStalenessFilter.TwoWeeksPlus => timeFiltered.Where(t => !t.IsCompleted && (today - t.CreatedAt.Date).Days >= 14),
+            TodoStalenessFilter.OneMonthPlus => timeFiltered.Where(t => !t.IsCompleted && (today - t.CreatedAt.Date).Days >= 30),
+            _                                => timeFiltered
+        };
+
+        var pinFirst = stalenessFiltered.OrderByDescending(t => t.IsPinned ? 1 : 0);
 
         var sorted = sortOrder switch
         {
@@ -62,7 +71,7 @@ public class FilterSortTodosHandler
                                                   .ThenBy(t => -t.Id),
             TodoSortOrder.PriorityDesc => pinFirst.ThenByDescending(t => (int)t.Priority)
                                                   .ThenBy(t => -t.Id),
-            TodoSortOrder.Manual       => timeFiltered.AsEnumerable(), // preserve DB order (SortOrder ASC)
+            TodoSortOrder.Manual       => stalenessFiltered.AsEnumerable(), // preserve DB order (SortOrder ASC)
             TodoSortOrder.TitleAsc        => pinFirst.ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase),
             TodoSortOrder.TitleDesc       => pinFirst.ThenByDescending(t => t.Title, StringComparer.OrdinalIgnoreCase),
             TodoSortOrder.TimeEstimateAsc => pinFirst.ThenBy(t => t.TimeEstimate == TimeEstimate.None ? int.MaxValue : (int)t.TimeEstimate)

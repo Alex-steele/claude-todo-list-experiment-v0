@@ -1,5 +1,6 @@
 using System.Reflection;
 using Bunit;
+using Dapper;
 using TodoApp.Features.Todos;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -5303,5 +5304,144 @@ public class HomeTests : BunitContext
         var longIdx  = markup.IndexOf("Long task",  StringComparison.Ordinal);
 
         Assert.True(shortIdx < longIdx, "Short task should appear before Long task when sorted shortest-first");
+    }
+
+    private static async Task BackdateTodo(TodoApp.Infrastructure.Database db, int todoId, int daysOld)
+    {
+        using var conn = db.CreateConnection();
+        var createdAt = DateTime.UtcNow.AddDays(-daysOld).ToString("O");
+        await conn.ExecuteAsync(
+            "UPDATE Todos SET CreatedAt = @CreatedAt WHERE Id = @Id",
+            new { CreatedAt = createdAt, Id = todoId });
+    }
+
+    [Fact]
+    public async Task StalenessFilterRow_IsRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("staleness-filter-any", cut.Markup);
+        Assert.Contains("staleness-filter-1week", cut.Markup);
+        Assert.Contains("staleness-filter-2weeks", cut.Markup);
+        Assert.Contains("staleness-filter-1month", cut.Markup);
+    }
+
+    [Fact]
+    public async Task AgeBadge_IsNotShown_ForRecentTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Brand new task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("todo-age-badge", cut.Markup);
+    }
+
+    [Fact]
+    public async Task AgeBadge_Shows1WkOld_ForSevenDayOldTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id = await addHandler.HandleAsync("Old task");
+        await BackdateTodo(db, id, daysOld: 7);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("todo-age-badge", cut.Markup);
+        Assert.Contains("1 wk old", cut.Markup);
+    }
+
+    [Fact]
+    public async Task AgeBadge_Shows2WksOld_ForFourteenDayOldTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id = await addHandler.HandleAsync("Two week old task");
+        await BackdateTodo(db, id, daysOld: 14);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("todo-age-badge", cut.Markup);
+        Assert.Contains("2+ wks old", cut.Markup);
+    }
+
+    [Fact]
+    public async Task AgeBadge_Shows1MoOld_ForThirtyDayOldTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id = await addHandler.HandleAsync("Month old task");
+        await BackdateTodo(db, id, daysOld: 30);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("todo-age-badge", cut.Markup);
+        Assert.Contains("1+ mo old", cut.Markup);
+    }
+
+    [Fact]
+    public async Task AgeBadge_IsNotShown_ForCompletedOldTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Old completed task");
+        await completeHandler.HandleAsync(id);
+        await BackdateTodo(db, id, daysOld: 30);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("todo-age-badge", cut.Markup);
+    }
+
+    [Fact]
+    public async Task StalenessFilter_OneWeekPlus_HidesRecentTodoAndShowsStaleOne()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+
+        await addHandler.HandleAsync("Brand new task");
+        var staleId = await addHandler.HandleAsync("Old task");
+        await BackdateTodo(db, staleId, daysOld: 10);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var filterChip = cut.Find(".staleness-filter-1week");
+        await cut.InvokeAsync(() => filterChip.Click());
+
+        var markup = cut.Markup;
+        Assert.Contains("Old task", markup);
+        Assert.DoesNotContain("Brand new task", markup);
+    }
+
+    [Fact]
+    public async Task StalenessFilter_ClearFilters_ResetsToAny()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var filterChip = cut.Find(".staleness-filter-1week");
+        await cut.InvokeAsync(() => filterChip.Click());
+
+        var clearBtn = cut.Find(".clear-all-filters-btn");
+        await cut.InvokeAsync(() => clearBtn.Click());
+
+        Assert.DoesNotContain("staleness-filter-1week mud-chip-filled", cut.Markup);
     }
 }

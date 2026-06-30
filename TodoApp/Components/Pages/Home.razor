@@ -880,6 +880,29 @@ else
                          OnClick="@(() => _timeEstimateFilter = TodoTimeEstimateFilter.Max2Hours)"
                          Class="time-filter-2hours">≤2 hours</MudChip>
             </div>
+            <div class="d-flex align-center gap-1 flex-wrap mt-2 staleness-filter-row">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1">Age:</MudText>
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_stalenessFilter == TodoStalenessFilter.Any ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Secondary"
+                         OnClick="@(() => _stalenessFilter = TodoStalenessFilter.Any)"
+                         Class="staleness-filter-any">Any</MudChip>
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_stalenessFilter == TodoStalenessFilter.OneWeekPlus ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Warning"
+                         OnClick="@(() => _stalenessFilter = TodoStalenessFilter.OneWeekPlus)"
+                         Class="staleness-filter-1week">1+ week old</MudChip>
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_stalenessFilter == TodoStalenessFilter.TwoWeeksPlus ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Warning"
+                         OnClick="@(() => _stalenessFilter = TodoStalenessFilter.TwoWeeksPlus)"
+                         Class="staleness-filter-2weeks">2+ weeks old</MudChip>
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_stalenessFilter == TodoStalenessFilter.OneMonthPlus ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Error"
+                         OnClick="@(() => _stalenessFilter = TodoStalenessFilter.OneMonthPlus)"
+                         Class="staleness-filter-1month">1+ month old</MudChip>
+            </div>
             @if (HasActiveFilters)
             {
                 <div class="d-flex justify-end mt-2 clear-filters-row">
@@ -1304,6 +1327,22 @@ else
                                             <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined" Class="time-estimate-badge">
                                                 ~@GetTimeEstimateLabel(todo.TimeEstimate)
                                             </MudChip>
+                                        }
+                                        @if (!todo.IsCompleted)
+                                        {
+                                            var ageDays = (DateTime.Today - todo.CreatedAt.Date).Days;
+                                            @if (ageDays >= 7)
+                                            {
+                                                var ageLabel = ageDays >= 30 ? "1+ mo old"
+                                                             : ageDays >= 14 ? "2+ wks old"
+                                                             : "1 wk old";
+                                                var ageColor = ageDays >= 30 ? Color.Error : Color.Warning;
+                                                <MudChip T="string" Size="Size.Small" Color="@ageColor" Variant="Variant.Outlined"
+                                                         Class="todo-age-badge"
+                                                         title="@($"Created {ageDays} day{(ageDays == 1 ? "" : "s")} ago — consider tackling this one")">
+                                                    @ageLabel
+                                                </MudChip>
+                                            }
                                         }
                                         @if (IsGlobalSearch && todo.ListId != _activeListId)
                                         {
@@ -1823,6 +1862,7 @@ else
 
     private TodoColorLabel? _colorFilter;
     private int? _colorPickingTodoId;
+    private TodoStalenessFilter _stalenessFilter = TodoStalenessFilter.Any;
 
     private ActivityStats? _activityStats;
 
@@ -1893,6 +1933,7 @@ else
         _tagFilter is not null ||
         _colorFilter is not null ||
         _timeEstimateFilter != TodoTimeEstimateFilter.Any ||
+        _stalenessFilter != TodoStalenessFilter.Any ||
         !string.IsNullOrWhiteSpace(_searchQuery);
 
     private int GetActiveCountForList(int listId) =>
@@ -1916,7 +1957,7 @@ else
             var source = IsGlobalSearch
                 ? _todos.ToList()
                 : _todos.Where(t => t.ListId == _activeListId).ToList();
-            var filtered = FilterSortTodosHandler.Handle(source, _statusFilter, _sortOrder, _searchQuery, _priorityFilter, _dateFilter, _timeEstimateFilter);
+            var filtered = FilterSortTodosHandler.Handle(source, _statusFilter, _sortOrder, _searchQuery, _priorityFilter, _dateFilter, _timeEstimateFilter, _stalenessFilter);
             var tagFiltered = _tagFilter is null
                 ? filtered
                 : filtered.Where(t => _todoTags.TryGetValue(t.Id, out var tags) && tags.Any(tag => tag.Name == _tagFilter)).ToList();
@@ -2528,6 +2569,7 @@ else
         _tagFilter = null;
         _colorFilter = null;
         _timeEstimateFilter = TodoTimeEstimateFilter.Any;
+        _stalenessFilter = TodoStalenessFilter.Any;
         _searchQuery = string.Empty;
     }
 
@@ -2937,6 +2979,7 @@ else
         _dateFilter = TodoDateFilter.None;
         _colorFilter = null;
         _timeEstimateFilter = TodoTimeEstimateFilter.Any;
+        _stalenessFilter = TodoStalenessFilter.Any;
         _isFocusMode = false;
     }
 

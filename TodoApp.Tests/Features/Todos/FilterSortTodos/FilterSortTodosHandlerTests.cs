@@ -642,4 +642,108 @@ public class FilterSortTodosHandlerTests
         Assert.Equal("Active short", result[0].Title);
         Assert.Equal("Active long",  result[1].Title);
     }
+
+    private static TodoSummary MakeAged(int id, string title, int daysOld, bool isCompleted = false)
+        => new(id, title, isCompleted, DateTime.Today.AddDays(-daysOld), TodoPriority.None, null);
+
+    [Fact]
+    public void StalenessFilter_Any_ReturnsAllTodos()
+    {
+        var todos = new List<TodoSummary>
+        {
+            MakeAged(1, "New today",     daysOld: 0),
+            MakeAged(2, "One week old",  daysOld: 7),
+            MakeAged(3, "One month old", daysOld: 30),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            stalenessFilter: TodoStalenessFilter.Any);
+
+        Assert.Equal(3, result.Count);
+    }
+
+    [Fact]
+    public void StalenessFilter_OneWeekPlus_ExcludesRecentTodos()
+    {
+        var todos = new List<TodoSummary>
+        {
+            MakeAged(1, "New today",   daysOld: 0),
+            MakeAged(2, "Three days",  daysOld: 3),
+            MakeAged(3, "Six days",    daysOld: 6),
+            MakeAged(4, "Seven days",  daysOld: 7),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            stalenessFilter: TodoStalenessFilter.OneWeekPlus);
+
+        Assert.Single(result);
+        Assert.Equal("Seven days", result[0].Title);
+    }
+
+    [Fact]
+    public void StalenessFilter_OneWeekPlus_ExcludesCompletedTodos()
+    {
+        var todos = new List<TodoSummary>
+        {
+            MakeAged(1, "Active old",    daysOld: 14),
+            MakeAged(2, "Completed old", daysOld: 14, isCompleted: true),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            stalenessFilter: TodoStalenessFilter.OneWeekPlus);
+
+        Assert.Single(result);
+        Assert.Equal("Active old", result[0].Title);
+    }
+
+    [Fact]
+    public void StalenessFilter_TwoWeeksPlus_ExcludesOneWeekOldTodos()
+    {
+        var todos = new List<TodoSummary>
+        {
+            MakeAged(1, "Eight days",    daysOld: 8),
+            MakeAged(2, "Fourteen days", daysOld: 14),
+            MakeAged(3, "Thirty days",   daysOld: 30),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            stalenessFilter: TodoStalenessFilter.TwoWeeksPlus);
+
+        Assert.Equal(2, result.Count);
+        Assert.DoesNotContain(result, t => t.Title == "Eight days");
+    }
+
+    [Fact]
+    public void StalenessFilter_OneMonthPlus_ExcludesTwoWeekOldTodos()
+    {
+        var todos = new List<TodoSummary>
+        {
+            MakeAged(1, "Two weeks",   daysOld: 14),
+            MakeAged(2, "Thirty days", daysOld: 30),
+            MakeAged(3, "Two months",  daysOld: 60),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            stalenessFilter: TodoStalenessFilter.OneMonthPlus);
+
+        Assert.Equal(2, result.Count);
+        Assert.DoesNotContain(result, t => t.Title == "Two weeks");
+    }
+
+    [Fact]
+    public void StalenessFilter_CombinesWithStatusFilter()
+    {
+        var todos = new List<TodoSummary>
+        {
+            MakeAged(1, "Active old",      daysOld: 14),
+            MakeAged(2, "Completed old",   daysOld: 14, isCompleted: true),
+            MakeAged(3, "Active new",      daysOld: 2),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.Active, TodoSortOrder.Newest,
+            stalenessFilter: TodoStalenessFilter.OneWeekPlus);
+
+        Assert.Single(result);
+        Assert.Equal("Active old", result[0].Title);
+    }
 }

@@ -37,3 +37,11 @@ public enum TodoTimeEstimateFilter
     Max1Hour = 60,
     Max2Hours = 120
 }
+
+public enum TodoStalenessFilter
+{
+    Any = 0,
+    OneWeekPlus = 7,
+    TwoWeeksPlus = 14,
+    OneMonthPlus = 30
+}
