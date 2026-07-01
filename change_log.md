@@ -1,5 +1,19 @@
 # Change Log
 
+## Day 70 — [2026-07-01] — Feature: Streak Protection Nudge Banner
+
+**Description:** A warning banner now appears automatically when the user has an active completion streak (≥1 consecutive day) but has not yet completed any todo today. The banner shows "Your N-day streak is at risk! Complete at least 1 todo today to keep it going." with the live streak count, and includes a dismiss (×) button to hide it for the session. The banner disappears automatically the moment a todo is completed (since the activity stats are refreshed after every completion), and resets when the user switches lists so it can surface again on a fresh session. It is never shown when there is no streak or when at least one todo has already been completed today.
+
+**Reason for change:** The app already tracked streaks and showed the current count in the stats panel, but there was no proactive signal when a streak was in danger. A user who opens the app, scans their list, and closes it without completing anything would silently lose their streak — an outcome that is easy to prevent with a one-time nudge. The banner follows the same proactive pattern as the overdue urgency banner (Day 67), adding just enough friction to prompt action without being intrusive.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 55
+- Lines deleted: 0
+- Tests added: 9
+- Tests removed: 0
+
 ## Day 69 — [2026-07-01] — Feature: Recommended Smart Sort Order
 
 **Description:** Added a new "Recommended" sort option that ranks todos by composite urgency — overdue todos appear first (most overdue at the top), followed by todos due today, then due this week, then everything else. Within each urgency bucket, todos are ranked by priority (High → Medium → Low → None). Pinned todos always stay first regardless of urgency. Section headers ("Overdue", "Due today", "Due this week") are shown for items that have a due date in those categories, giving at-a-glance context about why items appear at the top. The option is listed first in the sort dropdown as the most actionable default.

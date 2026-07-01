@@ -43,6 +43,7 @@ using TodoApp.Features.Todos.WeeklySummary;
 using TodoApp.Features.Todos.RandomPicker;
 using TodoApp.Features.Todos.DueSummary;
 using TodoApp.Features.Todos.FilterCounts;
+using TodoApp.Features.Todos.StreakNudge;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -106,6 +107,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<PickRandomTodoHandler>();
         ctx.Services.AddScoped<DueSummaryHandler>();
         ctx.Services.AddScoped<FilterCountsHandler>();
+        ctx.Services.AddScoped<StreakNudgeHandler>();
         return ctx;
     }
 
@@ -5852,5 +5854,83 @@ public class HomeTests : BunitContext
         await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.Recommended));
 
         Assert.Contains("Overdue", cut.Markup);
+    }
+
+    // --- Streak nudge banner ---
+
+    [Fact]
+    public async Task StreakNudge_BannerNotShown_WhenNoStreak()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("An incomplete task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("streak-nudge-banner", cut.Markup);
+    }
+
+    [Fact]
+    public async Task StreakNudge_BannerShown_WhenStreakActiveButNothingDoneToday()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id = await addHandler.HandleAsync("Yesterday's task");
+
+        // Backdate the completion to yesterday to simulate an active streak with no completion today
+        using var conn = db.CreateConnection();
+        var yesterday = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd HH:mm:ss");
+        await conn.ExecuteAsync(
+            "UPDATE Todos SET IsCompleted = 1, CompletedAt = @at WHERE Id = @id",
+            new { at = yesterday, id });
+
+        await addHandler.HandleAsync("Today's incomplete task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("streak-nudge-banner", cut.Markup);
+        Assert.Contains("streak is at risk", cut.Markup);
+    }
+
+    [Fact]
+    public async Task StreakNudge_BannerNotShown_WhenTodoCompletedToday()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+
+        var id = await addHandler.HandleAsync("Completed today");
+        await completeHandler.HandleAsync(id);
+        await addHandler.HandleAsync("Still open");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("streak-nudge-banner", cut.Markup);
+    }
+
+    [Fact]
+    public async Task StreakNudge_DismissButtonHidesBanner()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id = await addHandler.HandleAsync("Yesterday's task");
+
+        using var conn = db.CreateConnection();
+        var yesterday = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd HH:mm:ss");
+        await conn.ExecuteAsync(
+            "UPDATE Todos SET IsCompleted = 1, CompletedAt = @at WHERE Id = @id",
+            new { at = yesterday, id });
+
+        await addHandler.HandleAsync("Today's incomplete task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".streak-nudge-dismiss-btn").Click();
+
+        Assert.DoesNotContain("streak-nudge-banner", cut.Markup);
     }
 }
