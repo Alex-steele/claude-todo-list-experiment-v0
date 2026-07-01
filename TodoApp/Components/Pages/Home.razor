@@ -35,6 +35,7 @@
 @using TodoApp.Features.Todos.Templates
 @using TodoApp.Features.Goals
 @using TodoApp.Features.Todos.WeeklySummary
+@using TodoApp.Features.Todos.RandomPicker
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -82,6 +83,7 @@
 @inject GetDailyGoalHandler GetDailyGoalHandler
 @inject SetDailyGoalHandler SetDailyGoalHandler
 @inject GenerateWeeklySummaryHandler GenerateWeeklySummaryHandler
+@inject PickRandomTodoHandler PickRandomTodoHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -713,6 +715,19 @@ else
                         Class="focus-mode-btn">
                         Focus
                     </MudButton>
+                    @if (DisplayedTodos.Any(t => !t.IsCompleted))
+                    {
+                        <MudButton
+                            Variant="Variant.Outlined"
+                            Color="Color.Secondary"
+                            Size="Size.Small"
+                            StartIcon="@Icons.Material.Filled.Casino"
+                            OnClick="HandlePickForMe"
+                            title="Pick a random active todo to work on"
+                            Class="pick-for-me-btn">
+                            Pick for me
+                        </MudButton>
+                    }
                 </div>
                 <div class="d-flex align-center gap-1">
                     <MudSelect
@@ -1178,6 +1193,29 @@ else
         </MudPaper>
     }
 
+    @if (_pickedTodoId.HasValue)
+    {
+        var picked = DisplayedTodos.FirstOrDefault(t => t.Id == _pickedTodoId.Value);
+        @if (picked is not null)
+        {
+            <MudPaper Elevation="0" Class="pa-3 mb-3 d-flex align-center gap-2 pick-for-me-banner"
+                      Style="background: var(--mud-palette-secondary-lighten); border: 1px solid var(--mud-palette-secondary); border-radius: 8px;">
+                <MudIcon Icon="@Icons.Material.Filled.Casino" Color="Color.Secondary" Size="Size.Small" />
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pick-for-me-title">
+                    <strong>You picked:</strong> @picked.Title
+                </MudText>
+                <MudSpacer />
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                           OnClick="HandlePickForMe"
+                           Class="pick-for-me-again-btn">Pick another</MudButton>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Secondary" Size="Size.Small"
+                               OnClick="@(() => _pickedTodoId = null)"
+                               title="Dismiss"
+                               Class="pick-for-me-dismiss-btn" />
+            </MudPaper>
+        }
+    }
+
     @if (DisplayedTodos.Count == 0)
     {
         <MudPaper Elevation="1" Class="pa-8 d-flex justify-center align-center">
@@ -1212,8 +1250,8 @@ else
                          @ondragover:preventDefault
                          @ondragover="@(() => _dragOverId = todoId)"
                          @ondrop="@(async () => await HandleDrop(todoId))"
-                         class="@(_dragOverId == todo.Id && _sortOrder == TodoSortOrder.Manual ? "drag-over" : "")"
-                         style="@(todo.ColorLabel != TodoColorLabel.None ? $"border-left: 4px solid {GetColorCss(todo.ColorLabel)};" : "")"
+                         class="@GetTodoRowClass(todo)"
+                         style="@GetTodoRowStyle(todo)"
                          >
                     <MudListItem>
                         <div class="d-flex align-center gap-3 flex-grow-1">
@@ -1898,6 +1936,8 @@ else
     private bool _editingGoal;
     private int _goalInput = 5;
 
+    private int? _pickedTodoId;
+
     private bool HasNonDefaultFormValues =>
         _newPriority != TodoPriority.None ||
         _newTimeEstimate != TimeEstimate.None ||
@@ -2207,6 +2247,24 @@ else
         await SetColorLabelHandler.HandleAsync(id, label);
         _colorPickingTodoId = null;
         await LoadTodosAsync();
+    }
+
+    private string GetTodoRowClass(TodoSummary todo)
+    {
+        var parts = new List<string>();
+        if (_dragOverId == todo.Id && _sortOrder == TodoSortOrder.Manual) parts.Add("drag-over");
+        if (_pickedTodoId == todo.Id) parts.Add("picked-todo");
+        return string.Join(" ", parts);
+    }
+
+    private string GetTodoRowStyle(TodoSummary todo)
+    {
+        var style = todo.ColorLabel != TodoColorLabel.None
+            ? $"border-left: 4px solid {GetColorCss(todo.ColorLabel)};"
+            : string.Empty;
+        if (_pickedTodoId == todo.Id)
+            style += " outline: 2px solid var(--mud-palette-secondary); outline-offset: -2px; border-radius: 4px;";
+        return style;
     }
 
     private static string GetColorCss(TodoColorLabel label) => label switch
@@ -2621,6 +2679,13 @@ else
         _filterPresets = await GetFilterPresetsHandler.HandleAsync();
     }
 
+    private void HandlePickForMe()
+    {
+        var activeTodos = DisplayedTodos.Where(t => !t.IsCompleted).ToList();
+        var picked = PickRandomTodoHandler.Handle(activeTodos, _pickedTodoId);
+        _pickedTodoId = picked?.Id;
+    }
+
     private async Task HandleCopyWeeklySummary()
     {
         if (_todos is null) return;
@@ -2981,6 +3046,7 @@ else
         _timeEstimateFilter = TodoTimeEstimateFilter.Any;
         _stalenessFilter = TodoStalenessFilter.Any;
         _isFocusMode = false;
+        _pickedTodoId = null;
     }
 
     private async Task HandleNewListKeyUp(KeyboardEventArgs e)
