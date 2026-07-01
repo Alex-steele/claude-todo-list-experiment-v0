@@ -38,6 +38,7 @@
 @using TodoApp.Features.Todos.RandomPicker
 @using TodoApp.Features.Todos.DueSummary
 @using TodoApp.Features.Todos.FilterCounts
+@using TodoApp.Features.Todos.StreakNudge
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -88,6 +89,7 @@
 @inject PickRandomTodoHandler PickRandomTodoHandler
 @inject DueSummaryHandler DueSummaryHandler
 @inject FilterCountsHandler FilterCountsHandler
+@inject StreakNudgeHandler StreakNudgeHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -1043,6 +1045,21 @@ else
         </MudPaper>
     }
 
+    @if (_activityStats is not null && StreakNudgeHandler.ShouldNudge(_activityStats.CurrentStreak, _activityStats.CompletedToday) && !_dismissedStreakNudge)
+    {
+        <MudPaper Elevation="0" Class="pa-3 mb-3 d-flex align-center gap-2 streak-nudge-banner"
+                  Style="background: var(--mud-palette-warning-lighten); border: 1px solid var(--mud-palette-warning); border-radius: 8px;">
+            <MudIcon Icon="@Icons.Material.Filled.LocalFireDepartment" Color="Color.Warning" Size="Size.Small" />
+            <MudText Typo="Typo.body2" Color="Color.Warning" Class="flex-grow-1 streak-nudge-text">
+                <strong>Your @_activityStats.CurrentStreak-day streak is at risk!</strong> Complete at least 1 todo today to keep it going.
+            </MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Warning" Size="Size.Small"
+                           OnClick="@(() => _dismissedStreakNudge = true)"
+                           title="Dismiss"
+                           Class="streak-nudge-dismiss-btn" />
+        </MudPaper>
+    }
+
     @if (_isFocusMode)
     {
         var focusTodos = FocusModeHandler.Handle(_todos!.Where(t => t.ListId == _activeListId).ToList());
@@ -1985,6 +2002,7 @@ else
     private int? _pickedTodoId;
 
     private bool _dismissedUrgencyBanner;
+    private bool _dismissedStreakNudge;
 
     private FilterCountsResult? _filterCountsCache;
 
@@ -3128,6 +3146,7 @@ else
         _isFocusMode = false;
         _pickedTodoId = null;
         _dismissedUrgencyBanner = false;
+        _dismissedStreakNudge = false;
         _filterCountsCache = null;
     }
 

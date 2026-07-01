@@ -34,6 +34,7 @@ using TodoApp.Features.Todos.WeeklySummary;
 using TodoApp.Features.Todos.RandomPicker;
 using TodoApp.Features.Todos.DueSummary;
 using TodoApp.Features.Todos.FilterCounts;
+using TodoApp.Features.Todos.StreakNudge;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -103,6 +104,7 @@ builder.Services.AddScoped<GenerateWeeklySummaryHandler>();
 builder.Services.AddScoped<PickRandomTodoHandler>();
 builder.Services.AddScoped<DueSummaryHandler>();
 builder.Services.AddScoped<FilterCountsHandler>();
+builder.Services.AddScoped<StreakNudgeHandler>();
 
 var app = builder.Build();
 
