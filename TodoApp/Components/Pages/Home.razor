@@ -36,6 +36,7 @@
 @using TodoApp.Features.Goals
 @using TodoApp.Features.Todos.WeeklySummary
 @using TodoApp.Features.Todos.RandomPicker
+@using TodoApp.Features.Todos.DueSummary
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -84,6 +85,7 @@
 @inject SetDailyGoalHandler SetDailyGoalHandler
 @inject GenerateWeeklySummaryHandler GenerateWeeklySummaryHandler
 @inject PickRandomTodoHandler PickRandomTodoHandler
+@inject DueSummaryHandler DueSummaryHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -996,6 +998,46 @@ else
             }
         </MudCardContent>
     </MudCard>
+
+    @if (GetUrgencyBannerSummary() is { } urgency && !_dismissedUrgencyBanner && _dateFilter == TodoDateFilter.None)
+    {
+        <MudPaper Elevation="0" Class="pa-3 mb-3 d-flex align-center gap-2 flex-wrap urgency-banner"
+                  Style="background: var(--mud-palette-error-lighten); border: 1px solid var(--mud-palette-error); border-radius: 8px;">
+            <MudIcon Icon="@Icons.Material.Filled.NotificationImportant" Color="Color.Error" Size="Size.Small" />
+            <div class="d-flex align-center gap-2 flex-wrap flex-grow-1 urgency-banner-content">
+                @if (urgency.Overdue > 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Error" Class="urgency-overdue-text">
+                        <strong>@urgency.Overdue overdue</strong>
+                    </MudText>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small"
+                               OnClick="@(() => { _dateFilter = TodoDateFilter.Overdue; _dismissedUrgencyBanner = true; })"
+                               Class="urgency-show-overdue-btn">
+                        Show overdue
+                    </MudButton>
+                }
+                @if (urgency.Overdue > 0 && urgency.DueToday > 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Error">·</MudText>
+                }
+                @if (urgency.DueToday > 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Warning" Class="urgency-today-text">
+                        <strong>@urgency.DueToday due today</strong>
+                    </MudText>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Warning" Size="Size.Small"
+                               OnClick="@(() => { _dateFilter = TodoDateFilter.DueToday; _dismissedUrgencyBanner = true; })"
+                               Class="urgency-show-today-btn">
+                        Show today's
+                    </MudButton>
+                }
+            </div>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Error" Size="Size.Small"
+                           OnClick="@(() => _dismissedUrgencyBanner = true)"
+                           title="Dismiss"
+                           Class="urgency-dismiss-btn" />
+        </MudPaper>
+    }
 
     @if (_isFocusMode)
     {
@@ -1938,6 +1980,8 @@ else
 
     private int? _pickedTodoId;
 
+    private bool _dismissedUrgencyBanner;
+
     private bool HasNonDefaultFormValues =>
         _newPriority != TodoPriority.None ||
         _newTimeEstimate != TimeEstimate.None ||
@@ -2629,6 +2673,7 @@ else
         _timeEstimateFilter = TodoTimeEstimateFilter.Any;
         _stalenessFilter = TodoStalenessFilter.Any;
         _searchQuery = string.Empty;
+        _dismissedUrgencyBanner = false;
     }
 
     private async Task HandleSavePreset()
@@ -2677,6 +2722,14 @@ else
     {
         await DeleteFilterPresetHandler.HandleAsync(presetId);
         _filterPresets = await GetFilterPresetsHandler.HandleAsync();
+    }
+
+    private DueSummaryResult? GetUrgencyBannerSummary()
+    {
+        if (_todos is null) return null;
+        var listTodos = _todos.Where(t => t.ListId == _activeListId).ToList();
+        var summary = DueSummaryHandler.Handle(listTodos);
+        return summary.Overdue > 0 || summary.DueToday > 0 ? summary : null;
     }
 
     private void HandlePickForMe()
@@ -3047,6 +3100,7 @@ else
         _stalenessFilter = TodoStalenessFilter.Any;
         _isFocusMode = false;
         _pickedTodoId = null;
+        _dismissedUrgencyBanner = false;
     }
 
     private async Task HandleNewListKeyUp(KeyboardEventArgs e)

@@ -41,6 +41,7 @@ using TodoApp.Features.Todos.Templates;
 using TodoApp.Features.Goals;
 using TodoApp.Features.Todos.WeeklySummary;
 using TodoApp.Features.Todos.RandomPicker;
+using TodoApp.Features.Todos.DueSummary;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -102,6 +103,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<SetDailyGoalHandler>();
         ctx.Services.AddScoped<GenerateWeeklySummaryHandler>();
         ctx.Services.AddScoped<PickRandomTodoHandler>();
+        ctx.Services.AddScoped<DueSummaryHandler>();
         return ctx;
     }
 
@@ -5556,5 +5558,146 @@ public class HomeTests : BunitContext
 
         var bannerMarkup = cut.Find(".pick-for-me-banner").InnerHtml;
         Assert.Contains("Unique task title", bannerMarkup);
+    }
+
+    // --- Urgency banner ---
+
+    [Fact]
+    public async Task UrgencyBanner_NotShown_WhenNoOverdueOrDueToday()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Future task", dueDate: DateTime.Today.AddDays(5));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("urgency-banner", cut.Markup);
+    }
+
+    [Fact]
+    public async Task UrgencyBanner_Shown_WhenOverdueTaskExists()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Late task", dueDate: DateTime.Today.AddDays(-2));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("urgency-banner", cut.Markup);
+        Assert.Contains("urgency-overdue-text", cut.Markup);
+    }
+
+    [Fact]
+    public async Task UrgencyBanner_Shown_WhenDueTodayTaskExists()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Today task", dueDate: DateTime.Today);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("urgency-banner", cut.Markup);
+        Assert.Contains("urgency-today-text", cut.Markup);
+    }
+
+    [Fact]
+    public async Task UrgencyBanner_ShowsCorrectCounts()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Overdue 1", dueDate: DateTime.Today.AddDays(-1));
+        await addHandler.HandleAsync("Overdue 2", dueDate: DateTime.Today.AddDays(-3));
+        await addHandler.HandleAsync("Today task", dueDate: DateTime.Today);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("2 overdue", cut.Markup);
+        Assert.Contains("1 due today", cut.Markup);
+    }
+
+    [Fact]
+    public async Task UrgencyBanner_DismissButton_HidesBanner()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-1));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("urgency-banner", cut.Markup);
+        cut.Find(".urgency-dismiss-btn").Click();
+        Assert.DoesNotContain("urgency-banner", cut.Markup);
+    }
+
+    [Fact]
+    public async Task UrgencyBanner_ShowOverdueButton_SetsDateFilter()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-1));
+        await addHandler.HandleAsync("Normal task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".urgency-show-overdue-btn").Click();
+
+        // Banner should be gone (dismissed) and overdue filter applied
+        Assert.DoesNotContain("urgency-banner", cut.Markup);
+        Assert.DoesNotContain("Normal task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task UrgencyBanner_ShowTodayButton_SetsDateFilter()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Today task", dueDate: DateTime.Today);
+        await addHandler.HandleAsync("Normal task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".urgency-show-today-btn").Click();
+
+        Assert.DoesNotContain("urgency-banner", cut.Markup);
+        Assert.DoesNotContain("Normal task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task UrgencyBanner_NotShown_WhenDateFilterAlreadySet()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-1));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Apply the overdue filter
+        cut.Find(".urgency-show-overdue-btn").Click();
+
+        // Banner should not reappear (it's dismissed and filter is set)
+        Assert.DoesNotContain("urgency-banner", cut.Markup);
+    }
+
+    [Fact]
+    public async Task UrgencyBanner_NotShown_WhenOverdueTaskIsCompleted()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Completed overdue", dueDate: DateTime.Today.AddDays(-1));
+        await completeHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("urgency-banner", cut.Markup);
     }
 }

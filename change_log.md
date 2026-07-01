@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 67 — [2026-07-01] — Feature: Overdue & Due-Today Urgency Banner
+
+**Description:** A red alert banner now appears automatically below the filter panel whenever the current list has overdue or due-today active tasks and the date filter is not already set. The banner shows distinct counts — "2 overdue" and/or "3 due today" — each paired with a one-click "Show overdue" or "Show today's" button that applies the corresponding date filter and dismisses the banner. A dismiss (×) button hides the banner for the current session without changing the filter. The banner is invisible once the date filter is active (no duplicate signal) and resets when the user switches lists or clears all filters, so it resurfaces if needed.
+
+**Reason for change:** Overdue tasks were surfaced only passively — a small "Overdue: N" chip in the stats panel and filter options the user had to actively seek out. Users who are not looking at the stats panel can easily miss urgent tasks. The banner is proactive: it appears at the top of the list and demands a decision (show them, or explicitly dismiss), making it much harder to unknowingly skip overdue and same-day work.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 240
+- Lines deleted: 0
+- Tests added: 18
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 66 — [2026-07-01] — Feature: Pick for Me (Random Task Picker)
 
 **Description:** A "Pick for me" button appears in the filter bar whenever there is at least one active (non-completed) todo in the current view. Clicking it randomly selects one active todo and shows a "You picked: [title]" banner above the list, while also applying a coloured outline highlight to the selected item in the list so it is easy to spot. The banner includes a "Pick another" button that picks a different task (excluding the current pick to avoid repeating the same item when two or more are available), and a dismiss button to clear the selection. The picked item resets when the user switches lists.
