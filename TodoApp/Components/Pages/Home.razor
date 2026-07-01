@@ -741,6 +741,7 @@ else
                         Variant="Variant.Outlined"
                         Dense="true"
                         Style="min-width: 150px;">
+                        <MudSelectItem Value="@TodoSortOrder.Recommended">Recommended</MudSelectItem>
                         <MudSelectItem Value="@TodoSortOrder.Newest">Newest first</MudSelectItem>
                         <MudSelectItem Value="@TodoSortOrder.Oldest">Oldest first</MudSelectItem>
                         <MudSelectItem Value="@TodoSortOrder.DueDateAsc">Due date</MudSelectItem>
@@ -2639,14 +2640,26 @@ else
 
     private string? GetGroupLabel(TodoSummary todo)
     {
-        if (_sortOrder != TodoSortOrder.PriorityDesc && _sortOrder != TodoSortOrder.DueDateAsc) return null;
+        if (_sortOrder != TodoSortOrder.PriorityDesc && _sortOrder != TodoSortOrder.DueDateAsc && _sortOrder != TodoSortOrder.Recommended) return null;
         if (todo.IsPinned) return "Pinned";
         return _sortOrder switch
         {
-            TodoSortOrder.PriorityDesc => GetPriorityGroupLabel(todo.Priority),
-            TodoSortOrder.DueDateAsc   => GetDueDateGroupLabel(todo),
-            _                          => null
+            TodoSortOrder.PriorityDesc  => GetPriorityGroupLabel(todo.Priority),
+            TodoSortOrder.DueDateAsc    => GetDueDateGroupLabel(todo),
+            TodoSortOrder.Recommended   => GetRecommendedGroupLabel(todo),
+            _                           => null
         };
+    }
+
+    private static string? GetRecommendedGroupLabel(TodoSummary todo)
+    {
+        if (!todo.DueDate.HasValue || todo.IsCompleted) return null;
+        var today = DateTime.Today;
+        var due = todo.DueDate.Value.Date;
+        if (due < today)            return "Overdue";
+        if (due == today)           return "Due today";
+        if (due < today.AddDays(7)) return "Due this week";
+        return null;
     }
 
     private static string GetPriorityGroupLabel(TodoPriority priority) => priority switch

@@ -78,9 +78,27 @@ public class FilterSortTodosHandler
                                                      .ThenByDescending(t => t.Id),
             TodoSortOrder.TimeEstimateDesc => pinFirst.ThenByDescending(t => (int)t.TimeEstimate)
                                                       .ThenByDescending(t => t.Id),
+            TodoSortOrder.Recommended     => pinFirst.ThenBy(t => RecommendedBucket(t, today))
+                                                     .ThenBy(t => RecommendedTiebreak(t, today))
+                                                     .ThenByDescending(t => t.Id),
             _                             => pinFirst.ThenByDescending(t => t.Id)  // Newest (default)
         };
 
         return sorted.ToList();
     }
+
+    private static int RecommendedBucket(TodoSummary t, DateTime today)
+    {
+        if (t.IsCompleted || !t.DueDate.HasValue) return 3;
+        var due = t.DueDate.Value.Date;
+        if (due < today)            return 0; // overdue
+        if (due == today)           return 1; // due today
+        if (due < today.AddDays(7)) return 2; // due this week
+        return 3;
+    }
+
+    private static long RecommendedTiebreak(TodoSummary t, DateTime today)
+        => RecommendedBucket(t, today) == 0
+            ? t.DueDate!.Value.Ticks          // most overdue first (ascending)
+            : (long)(int.MaxValue - (int)t.Priority); // highest priority first (ascending)
 }
