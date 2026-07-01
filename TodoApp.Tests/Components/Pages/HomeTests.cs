@@ -5789,4 +5789,68 @@ public class HomeTests : BunitContext
         Assert.Contains("shopping (1)", cut.Markup);
         Assert.DoesNotContain("shopping (2)", cut.Markup);
     }
+
+    // --- Recommended sort ---
+
+    [Fact]
+    public async Task SortDropdown_AcceptsRecommendedValueWithoutError()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("A task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var sortSelect = cut.FindComponent<MudSelect<TodoSortOrder>>();
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.Recommended));
+
+        Assert.Contains("A task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task RecommendedSort_ShowsOverdueTodosBeforeDueTodayTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var dueDateHandler = new SetDueDateHandler(db);
+        var today = DateTime.Today;
+
+        var overdueId = await addHandler.HandleAsync("Overdue task");
+        await dueDateHandler.HandleAsync(overdueId, today.AddDays(-2));
+
+        var todayId = await addHandler.HandleAsync("Due today task");
+        await dueDateHandler.HandleAsync(todayId, today);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var sortSelect = cut.FindComponent<MudSelect<TodoSortOrder>>();
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.Recommended));
+
+        var markup = cut.Markup;
+        var overduePos  = markup.IndexOf("Overdue task",    StringComparison.Ordinal);
+        var todayPos    = markup.IndexOf("Due today task",  StringComparison.Ordinal);
+        Assert.True(overduePos < todayPos, "Overdue task should appear before due-today task in Recommended sort");
+    }
+
+    [Fact]
+    public async Task RecommendedSort_ShowsGroupHeaderForOverdueTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var dueDateHandler = new SetDueDateHandler(db);
+        var today = DateTime.Today;
+
+        var id = await addHandler.HandleAsync("Overdue task");
+        await dueDateHandler.HandleAsync(id, today.AddDays(-1));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var sortSelect = cut.FindComponent<MudSelect<TodoSortOrder>>();
+        await sortSelect.InvokeAsync(() => sortSelect.Instance.ValueChanged.InvokeAsync(TodoSortOrder.Recommended));
+
+        Assert.Contains("Overdue", cut.Markup);
+    }
 }

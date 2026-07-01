@@ -1,5 +1,19 @@
 # Change Log
 
+## Day 69 — [2026-07-01] — Feature: Recommended Smart Sort Order
+
+**Description:** Added a new "Recommended" sort option that ranks todos by composite urgency — overdue todos appear first (most overdue at the top), followed by todos due today, then due this week, then everything else. Within each urgency bucket, todos are ranked by priority (High → Medium → Low → None). Pinned todos always stay first regardless of urgency. Section headers ("Overdue", "Due today", "Due this week") are shown for items that have a due date in those categories, giving at-a-glance context about why items appear at the top. The option is listed first in the sort dropdown as the most actionable default.
+
+**Reason for change:** The existing sort options require the user to know what they're looking for — "Due date" shows earliest due first but doesn't account for priority, and "Priority" ignores when things are due. Neither answers the real question: "what should I work on right now?" Recommended solves this with a composite urgency score that combines deadline imminence and priority, surfacing the most pressing work without requiring the user to apply multiple filters manually.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 85
+- Lines deleted: 1
+- Tests added: 9
+- Tests removed: 0
+
 ## Day 68 — [2026-07-01] — Feature: Filter Chip Active Counts
 
 **Description:** Priority filter chips and tag filter chips now show the count of active (non-completed) todos for that value alongside the label — e.g. `High (3)`, `Medium (1)`, `work (5)`. Counts only appear when non-zero, keeping the UI uncluttered when a priority or tag has no active items. Completed todos are excluded from all counts so the numbers reflect actionable work. The counts update immediately when todos are added, completed, or deleted, and reset correctly when switching lists.

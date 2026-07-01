@@ -746,4 +746,106 @@ public class FilterSortTodosHandlerTests
         Assert.Single(result);
         Assert.Equal("Active old", result[0].Title);
     }
+
+    // --- Recommended sort ---
+
+    [Fact]
+    public void Sort_Recommended_OverdueTodosBeforeDueToday()
+    {
+        var today = DateTime.Today;
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Due today",  dueDate: today),
+            Make(2, "Overdue",    dueDate: today.AddDays(-1)),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Recommended);
+
+        Assert.Equal("Overdue",   result[0].Title);
+        Assert.Equal("Due today", result[1].Title);
+    }
+
+    [Fact]
+    public void Sort_Recommended_DueTodayBeforeDueThisWeek()
+    {
+        var today = DateTime.Today;
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "This week",  dueDate: today.AddDays(3)),
+            Make(2, "Due today",  dueDate: today),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Recommended);
+
+        Assert.Equal("Due today",  result[0].Title);
+        Assert.Equal("This week",  result[1].Title);
+    }
+
+    [Fact]
+    public void Sort_Recommended_DueThisWeekBeforeNoDueDate()
+    {
+        var today = DateTime.Today;
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "No date",    dueDate: null),
+            Make(2, "This week",  dueDate: today.AddDays(4)),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Recommended);
+
+        Assert.Equal("This week", result[0].Title);
+        Assert.Equal("No date",   result[1].Title);
+    }
+
+    [Fact]
+    public void Sort_Recommended_WithinOverdueMostOverdueFirst()
+    {
+        var today = DateTime.Today;
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Yesterday",   dueDate: today.AddDays(-1)),
+            Make(2, "Last week",   dueDate: today.AddDays(-7)),
+            Make(3, "Two weeks ago", dueDate: today.AddDays(-14)),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Recommended);
+
+        Assert.Equal("Two weeks ago", result[0].Title);
+        Assert.Equal("Last week",     result[1].Title);
+        Assert.Equal("Yesterday",     result[2].Title);
+    }
+
+    [Fact]
+    public void Sort_Recommended_WithinSameBucketHighPriorityFirst()
+    {
+        var today = DateTime.Today;
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Low today",    dueDate: today, priority: TodoPriority.Low),
+            Make(2, "High today",   dueDate: today, priority: TodoPriority.High),
+            Make(3, "Medium today", dueDate: today, priority: TodoPriority.Medium),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Recommended);
+
+        Assert.Equal("High today",   result[0].Title);
+        Assert.Equal("Medium today", result[1].Title);
+        Assert.Equal("Low today",    result[2].Title);
+    }
+
+    [Fact]
+    public void Sort_Recommended_PinnedAlwaysFirst()
+    {
+        var today = DateTime.Today;
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Overdue",  dueDate: today.AddDays(-3)),
+            Make(2, "Pinned no date", isPinned: true),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Recommended);
+
+        Assert.Equal("Pinned no date", result[0].Title);
+        Assert.Equal("Overdue",        result[1].Title);
+    }
 }
