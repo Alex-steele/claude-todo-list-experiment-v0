@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 68 — [2026-07-01] — Feature: Filter Chip Active Counts
+
+**Description:** Priority filter chips and tag filter chips now show the count of active (non-completed) todos for that value alongside the label — e.g. `High (3)`, `Medium (1)`, `work (5)`. Counts only appear when non-zero, keeping the UI uncluttered when a priority or tag has no active items. Completed todos are excluded from all counts so the numbers reflect actionable work. The counts update immediately when todos are added, completed, or deleted, and reset correctly when switching lists.
+
+**Reason for change:** Filter chips were passive selectors with no hint of what applying each filter would show. A user looking at a list with many todos had to click each priority or tag chip to discover how many items fell into it. Adding counts turns the filter row into a lightweight dashboard — users can see at a glance that "High (4)" demands attention, or that "shopping (0)" can be skipped, without clicking anything.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 165
+- Lines deleted: 2
+- Tests added: 13
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 67 — [2026-07-01] — Feature: Overdue & Due-Today Urgency Banner
 
 **Description:** A red alert banner now appears automatically below the filter panel whenever the current list has overdue or due-today active tasks and the date filter is not already set. The banner shows distinct counts — "2 overdue" and/or "3 due today" — each paired with a one-click "Show overdue" or "Show today's" button that applies the corresponding date filter and dismisses the banner. A dismiss (×) button hides the banner for the current session without changing the filter. The banner is invisible once the date filter is active (no duplicate signal) and resets when the user switches lists or clears all filters, so it resurfaces if needed.

@@ -37,6 +37,7 @@
 @using TodoApp.Features.Todos.WeeklySummary
 @using TodoApp.Features.Todos.RandomPicker
 @using TodoApp.Features.Todos.DueSummary
+@using TodoApp.Features.Todos.FilterCounts
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -86,6 +87,7 @@
 @inject GenerateWeeklySummaryHandler GenerateWeeklySummaryHandler
 @inject PickRandomTodoHandler PickRandomTodoHandler
 @inject DueSummaryHandler DueSummaryHandler
+@inject FilterCountsHandler FilterCountsHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -780,12 +782,13 @@ else
                 @foreach (var p in new[] { TodoPriority.High, TodoPriority.Medium, TodoPriority.Low, TodoPriority.None })
                 {
                     var pri = p;
+                    var priCount = GetFilterCounts().ByPriority.GetValueOrDefault(pri);
                     <MudChip T="string" Size="Size.Small"
                              Variant="@(_priorityFilter == pri ? Variant.Filled : Variant.Outlined)"
                              Color="@GetPriorityColor(pri)"
                              OnClick="@(() => _priorityFilter = pri)"
                              Class="@($"priority-filter-{pri.ToString().ToLower()}")">
-                        @(pri == TodoPriority.None ? "None" : pri.ToString())
+                        @(pri == TodoPriority.None ? "None" : pri.ToString())@(priCount > 0 ? $" ({priCount})" : "")
                     </MudChip>
                 }
             </div>
@@ -844,7 +847,7 @@ else
                                      Color="Color.Secondary"
                                      OnClick="@(() => _tagFilter = tagName)"
                                      Class="tag-filter-chip"
-                                     @ondblclick="@(() => HandleStartRenameTag(tagName))">@tagName</MudChip>
+                                     @ondblclick="@(() => HandleStartRenameTag(tagName))">@tagName@(GetFilterCounts().ByTag.GetValueOrDefault(tagName) is var tc && tc > 0 ? $" ({tc})" : "")</MudChip>
                         }
                     }
                 </div>
@@ -1982,6 +1985,8 @@ else
 
     private bool _dismissedUrgencyBanner;
 
+    private FilterCountsResult? _filterCountsCache;
+
     private bool HasNonDefaultFormValues =>
         _newPriority != TodoPriority.None ||
         _newTimeEstimate != TimeEstimate.None ||
@@ -2098,6 +2103,7 @@ else
 
     private async Task LoadTodosAsync()
     {
+        _filterCountsCache = null;
         _lists = await GetListsHandler.HandleAsync();
         _todos = await GetTodosHandler.HandleAsync();
         _activityStats = await ActivityStatsHandler.HandleAsync();
@@ -2724,6 +2730,14 @@ else
         _filterPresets = await GetFilterPresetsHandler.HandleAsync();
     }
 
+    private FilterCountsResult GetFilterCounts()
+    {
+        if (_filterCountsCache is not null) return _filterCountsCache;
+        var listTodos = _todos?.Where(t => t.ListId == _activeListId).ToList() ?? [];
+        _filterCountsCache = FilterCountsHandler.Handle(listTodos, _todoTags);
+        return _filterCountsCache;
+    }
+
     private DueSummaryResult? GetUrgencyBannerSummary()
     {
         if (_todos is null) return null;
@@ -3101,6 +3115,7 @@ else
         _isFocusMode = false;
         _pickedTodoId = null;
         _dismissedUrgencyBanner = false;
+        _filterCountsCache = null;
     }
 
     private async Task HandleNewListKeyUp(KeyboardEventArgs e)
