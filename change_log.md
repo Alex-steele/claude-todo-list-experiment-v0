@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 66 — [2026-07-01] — Feature: Pick for Me (Random Task Picker)
+
+**Description:** A "Pick for me" button appears in the filter bar whenever there is at least one active (non-completed) todo in the current view. Clicking it randomly selects one active todo and shows a "You picked: [title]" banner above the list, while also applying a coloured outline highlight to the selected item in the list so it is easy to spot. The banner includes a "Pick another" button that picks a different task (excluding the current pick to avoid repeating the same item when two or more are available), and a dismiss button to clear the selection. The picked item resets when the user switches lists.
+
+**Reason for change:** With 65+ features in the app, users who have a long active todo list can suffer from decision paralysis — many items to choose from, no clear "next" signal. The random picker removes the need to decide: one click and the app nominates a task. It complements Focus mode (which is rules-based) with a purely random alternative, useful for clearing backlogs when there is no urgent item.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 230
+- Lines deleted: 2
+- Tests added: 15
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 65 — [2026-06-30] — Feature: Task Age Indicator & Stale Task Filter
 
 **Description:** Active todos that have been sitting uncompleted for 7 or more days now show a subtle age badge — "1 wk old" (amber) for tasks 7–13 days old, "2+ wks old" (amber) for 14–29 days, and "1+ mo old" (red) for tasks 30+ days old. The badge includes a tooltip showing the exact number of days and a nudge to tackle the item. A new "Age:" filter row in the filter panel lets users narrow the list to tasks that are 1+ week, 2+ weeks, or 1+ month old, making it easy to surface and review neglected work. Completed todos are never badged or matched by the staleness filter, and the filter resets when switching lists or clearing all filters.

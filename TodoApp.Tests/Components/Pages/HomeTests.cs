@@ -40,6 +40,7 @@ using TodoApp.Features.Todos.MultiAdd;
 using TodoApp.Features.Todos.Templates;
 using TodoApp.Features.Goals;
 using TodoApp.Features.Todos.WeeklySummary;
+using TodoApp.Features.Todos.RandomPicker;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -100,6 +101,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<GetDailyGoalHandler>();
         ctx.Services.AddScoped<SetDailyGoalHandler>();
         ctx.Services.AddScoped<GenerateWeeklySummaryHandler>();
+        ctx.Services.AddScoped<PickRandomTodoHandler>();
         return ctx;
     }
 
@@ -5443,5 +5445,116 @@ public class HomeTests : BunitContext
         await cut.InvokeAsync(() => clearBtn.Click());
 
         Assert.DoesNotContain("staleness-filter-1week mud-chip-filled", cut.Markup);
+    }
+
+    // --- Pick for me ---
+
+    [Fact]
+    public async Task PickForMe_Button_IsRendered_WhenActiveTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Active task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("pick-for-me-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task PickForMe_Button_IsNotRendered_WhenNoActiveTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Only task");
+        await completeHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("pick-for-me-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task PickForMe_Click_ShowsBanner()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("My task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".pick-for-me-btn").Click();
+
+        Assert.Contains("pick-for-me-banner", cut.Markup);
+        Assert.Contains("You picked:", cut.Markup);
+        Assert.Contains("My task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task PickForMe_DismissButton_HidesBanner()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("My task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".pick-for-me-btn").Click();
+        Assert.Contains("pick-for-me-banner", cut.Markup);
+
+        cut.Find(".pick-for-me-dismiss-btn").Click();
+        Assert.DoesNotContain("pick-for-me-banner", cut.Markup);
+    }
+
+    [Fact]
+    public async Task PickForMe_PickedTodo_HasHighlightClass()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task to pick");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".pick-for-me-btn").Click();
+
+        Assert.Contains("picked-todo", cut.Markup);
+    }
+
+    [Fact]
+    public async Task PickForMe_PickAnotherButton_IsRendered_InBanner()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task A");
+        await addHandler.HandleAsync("Task B");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".pick-for-me-btn").Click();
+
+        Assert.Contains("pick-for-me-again-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task PickForMe_BannerShows_TitleOfPickedTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Unique task title");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".pick-for-me-btn").Click();
+
+        var bannerMarkup = cut.Find(".pick-for-me-banner").InnerHtml;
+        Assert.Contains("Unique task title", bannerMarkup);
     }
 }
