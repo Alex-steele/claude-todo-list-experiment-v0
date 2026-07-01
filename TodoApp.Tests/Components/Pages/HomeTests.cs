@@ -42,6 +42,7 @@ using TodoApp.Features.Goals;
 using TodoApp.Features.Todos.WeeklySummary;
 using TodoApp.Features.Todos.RandomPicker;
 using TodoApp.Features.Todos.DueSummary;
+using TodoApp.Features.Todos.FilterCounts;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -104,6 +105,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<GenerateWeeklySummaryHandler>();
         ctx.Services.AddScoped<PickRandomTodoHandler>();
         ctx.Services.AddScoped<DueSummaryHandler>();
+        ctx.Services.AddScoped<FilterCountsHandler>();
         return ctx;
     }
 
@@ -5699,5 +5701,92 @@ public class HomeTests : BunitContext
         var cut = RenderHome(ctx);
 
         Assert.DoesNotContain("urgency-banner", cut.Markup);
+    }
+
+    // --- Filter chip counts ---
+
+    [Fact]
+    public async Task PriorityFilterChips_ShowCount_ForActiveTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("High task 1", priority: TodoPriority.High);
+        await addHandler.HandleAsync("High task 2", priority: TodoPriority.High);
+        await addHandler.HandleAsync("Medium task", priority: TodoPriority.Medium);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("High (2)", cut.Markup);
+        Assert.Contains("Medium (1)", cut.Markup);
+    }
+
+    [Fact]
+    public async Task PriorityFilterChips_DoNotShowCount_WhenCountIsZero()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("High task", priority: TodoPriority.High);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Low priority has 0 — should not show "(0)"
+        Assert.DoesNotContain("Low (0)", cut.Markup);
+        Assert.DoesNotContain("None (0)", cut.Markup);
+    }
+
+    [Fact]
+    public async Task PriorityFilterChips_ExcludeCompletedTodosFromCount()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        await addHandler.HandleAsync("Active high", priority: TodoPriority.High);
+        var completedId = await addHandler.HandleAsync("Completed high", priority: TodoPriority.High);
+        await completeHandler.HandleAsync(completedId);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("High (1)", cut.Markup);
+        Assert.DoesNotContain("High (2)", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TagFilterChips_ShowCount_ForActiveTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var tagHandler = new AddTagHandler(db);
+        var id1 = await addHandler.HandleAsync("Tagged task 1");
+        var id2 = await addHandler.HandleAsync("Tagged task 2");
+        await tagHandler.HandleAsync(id1, "work");
+        await tagHandler.HandleAsync(id2, "work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("work (2)", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TagFilterChips_ExcludeCompletedTodosFromCount()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var tagHandler = new AddTagHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var id1 = await addHandler.HandleAsync("Active tagged");
+        var id2 = await addHandler.HandleAsync("Completed tagged");
+        await tagHandler.HandleAsync(id1, "shopping");
+        await tagHandler.HandleAsync(id2, "shopping");
+        await completeHandler.HandleAsync(id2);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("shopping (1)", cut.Markup);
+        Assert.DoesNotContain("shopping (2)", cut.Markup);
     }
 }

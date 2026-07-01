@@ -33,6 +33,7 @@ using TodoApp.Features.Goals;
 using TodoApp.Features.Todos.WeeklySummary;
 using TodoApp.Features.Todos.RandomPicker;
 using TodoApp.Features.Todos.DueSummary;
+using TodoApp.Features.Todos.FilterCounts;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -101,6 +102,7 @@ builder.Services.AddScoped<SetDailyGoalHandler>();
 builder.Services.AddScoped<GenerateWeeklySummaryHandler>();
 builder.Services.AddScoped<PickRandomTodoHandler>();
 builder.Services.AddScoped<DueSummaryHandler>();
+builder.Services.AddScoped<FilterCountsHandler>();
 
 var app = builder.Build();
 
