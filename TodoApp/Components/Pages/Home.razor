@@ -39,6 +39,7 @@
 @using TodoApp.Features.Todos.DueSummary
 @using TodoApp.Features.Todos.FilterCounts
 @using TodoApp.Features.Todos.StreakNudge
+@using TodoApp.Features.Todos.CompletionTimeAnalytics
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -90,6 +91,7 @@
 @inject DueSummaryHandler DueSummaryHandler
 @inject FilterCountsHandler FilterCountsHandler
 @inject StreakNudgeHandler StreakNudgeHandler
+@inject CompletionTimeAnalyticsHandler CompletionTimeAnalyticsHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -449,6 +451,18 @@
             {
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Tertiary" Class="stats-estimated-time">
                     ~@FormatEstimatedTime(stats.TotalEstimatedMinutes) remaining
+                </MudChip>
+            }
+            @{
+                var listTodosForCompletion = _todos!.Where(t => t.ListId == _activeListId).ToList();
+                var completionTime = CompletionTimeAnalyticsHandler.Handle(listTodosForCompletion);
+            }
+            @if (completionTime.OverallAverageDays.HasValue)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default"
+                         Class="avg-completion-chip"
+                         title="@GetCompletionTimeTooltip(completionTime)">
+                    ⏱ Avg: @completionTime.OverallAverageDays.Value.ToString("0.#") days to complete
                 </MudChip>
             }
         </div>
@@ -2638,6 +2652,15 @@ else
 
         var labelName = label == TodoColorLabel.None ? "none" : label.ToString().ToLower();
         Snackbar.Add($"Set color label to {labelName} for {count} todo{(count == 1 ? "" : "s")}", Severity.Normal);
+    }
+
+    private static string GetCompletionTimeTooltip(CompletionTimeResult r)
+    {
+        var parts = new List<string> { $"Based on {r.SampleCount} completed todo{(r.SampleCount == 1 ? "" : "s")}" };
+        if (r.HighPriorityAverageDays.HasValue)   parts.Add($"High: {r.HighPriorityAverageDays.Value:0.#} days");
+        if (r.MediumPriorityAverageDays.HasValue) parts.Add($"Medium: {r.MediumPriorityAverageDays.Value:0.#} days");
+        if (r.LowPriorityAverageDays.HasValue)    parts.Add($"Low: {r.LowPriorityAverageDays.Value:0.#} days");
+        return string.Join(" · ", parts);
     }
 
     private static string GetRecurrenceLabel(RecurrenceRule rule) => rule switch

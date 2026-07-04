@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 71 — [2026-07-04] — Feature: Completion Time Analytics
+
+**Description:** The stats panel now shows an "Avg: X days to complete" chip whenever the current list has completed todos with completion timestamps. Hovering over the chip reveals a tooltip with a priority-level breakdown — e.g., "High: 1 days · Medium: 3.5 days · Low: 9 days" — alongside the sample count used for the average. Todos completed within the same day round to 0 days; the handler clamps negative values (clock skew) to zero to keep the display clean.
+
+**Reason for change:** The app already tracked streaks, today's completions, weekly completions, and time estimates, but had no insight into turnaround speed — how quickly todos move from creation to completion. The average completion time tells users whether their backlog is being processed briskly or accumulating lag, and the priority breakdown surfaces a concrete signal: high-priority items completed in days while low-priority ones take weeks indicates healthy prioritisation; the reverse pattern flags a problem worth addressing.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 345
+- Lines deleted: 0
+- Tests added: 15
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 70 — [2026-07-01] — Feature: Streak Protection Nudge Banner
 
 **Description:** A warning banner now appears automatically when the user has an active completion streak (≥1 consecutive day) but has not yet completed any todo today. The banner shows "Your N-day streak is at risk! Complete at least 1 todo today to keep it going." with the live streak count, and includes a dismiss (×) button to hide it for the session. The banner disappears automatically the moment a todo is completed (since the activity stats are refreshed after every completion), and resets when the user switches lists so it can surface again on a fresh session. It is never shown when there is no streak or when at least one todo has already been completed today.
