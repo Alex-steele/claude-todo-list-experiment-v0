@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 73 — [2026-07-04] — Feature: Blocked / Waiting For Task Flag
+
+**Description:** Every todo now has a "blocked / waiting for" flag. A ⏸ toggle button appears in each todo row; clicking it marks the task as blocked and shows a "⏸ Waiting for" badge inline on the todo. A "Blocked:" filter chip row (below the staleness filters) lets users filter to show only blocked/waiting-for tasks — the chip label includes a live count of blocked active todos in the current list. Focus mode automatically excludes blocked todos so the focus queue only surfaces actionable items. The flag persists to the database via a new `IsBlocked` column with toggle-on-update semantics (no separate set/clear calls needed).
+
+**Reason for change:** Task management tools commonly distinguish between tasks you can act on now and tasks stalled on an external dependency (waiting for a reply, a review, a decision, a handoff). Without this distinction every todo in the list looks equally actionable, making it impossible to know at a glance how much of the backlog is actually blocked. The blocked flag lets users park waiting-for tasks without deleting or completing them, and the focused filter view gives a quick audit of what's in limbo — useful for weekly review or when chasing up dependencies.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 248
+- Lines deleted: 7
+- Tests added: 10
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 72 — [2026-07-04] — Feature: Priority Completion Rates
 
 **Description:** The stats panel now shows a "By priority:" breakdown row with a chip for each priority level (High / Medium / Low) that has at least one todo. Each chip displays completed/total count and completion percentage — e.g. "High 4/6 (67%)". The chip is coloured by priority (red/amber/blue) and includes a tooltip with the exact active/completed split. The row is hidden when no todos carry an explicit priority, keeping the stats panel uncluttered for simple lists.

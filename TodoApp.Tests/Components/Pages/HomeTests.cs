@@ -46,6 +46,7 @@ using TodoApp.Features.Todos.FilterCounts;
 using TodoApp.Features.Todos.StreakNudge;
 using TodoApp.Features.Todos.CompletionTimeAnalytics;
 using TodoApp.Features.Todos.PriorityBreakdown;
+using TodoApp.Features.Todos.BlockTodo;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -112,6 +113,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<StreakNudgeHandler>();
         ctx.Services.AddScoped<CompletionTimeAnalyticsHandler>();
         ctx.Services.AddScoped<PriorityBreakdownHandler>();
+        ctx.Services.AddScoped<BlockTodoHandler>();
         return ctx;
     }
 
@@ -6125,5 +6127,86 @@ public class HomeTests : BunitContext
         Assert.DoesNotContain("priority-breakdown-high", cut.Markup);
         Assert.DoesNotContain("priority-breakdown-low", cut.Markup);
         Assert.Contains("priority-breakdown-medium", cut.Markup);
+    }
+
+    // ---- Blocked / Waiting For (Day 73) ----
+
+    [Fact]
+    public async Task BlockedBadge_RenderedForBlockedTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var blockHandler = new BlockTodoHandler(db);
+
+        var id = await addHandler.HandleAsync("Waiting on design");
+        await blockHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("blocked-badge", cut.Markup);
+    }
+
+    [Fact]
+    public async Task BlockedBadge_NotRendered_ForUnblockedTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Normal task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("blocked-badge", cut.Markup);
+    }
+
+    [Fact]
+    public async Task BlockedFilterChip_AlwaysRendered()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Any task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("blocked-filter-chip", cut.Markup);
+    }
+
+    [Fact]
+    public async Task BlockedFilter_ShowsOnlyBlockedTodos_WhenActive()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var blockHandler = new BlockTodoHandler(db);
+
+        var blockedId = await addHandler.HandleAsync("Blocked task");
+        await addHandler.HandleAsync("Normal task");
+        await blockHandler.HandleAsync(blockedId);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var chip = cut.Find(".blocked-filter-chip");
+        chip.Click();
+        cut.WaitForState(() => cut.Markup.Contains("blocked-badge"));
+
+        Assert.Contains("Blocked task", cut.Markup);
+        Assert.DoesNotContain("Normal task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task BlockedToggleButton_RenderedForEachTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task alpha");
+        await addHandler.HandleAsync("Task beta");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var btns = cut.FindAll(".todo-block-btn");
+        Assert.Equal(2, btns.Count);
     }
 }
