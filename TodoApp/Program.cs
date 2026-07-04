@@ -36,6 +36,7 @@ using TodoApp.Features.Todos.DueSummary;
 using TodoApp.Features.Todos.FilterCounts;
 using TodoApp.Features.Todos.StreakNudge;
 using TodoApp.Features.Todos.CompletionTimeAnalytics;
+using TodoApp.Features.Todos.PriorityBreakdown;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -107,6 +108,7 @@ builder.Services.AddScoped<DueSummaryHandler>();
 builder.Services.AddScoped<FilterCountsHandler>();
 builder.Services.AddScoped<StreakNudgeHandler>();
 builder.Services.AddScoped<CompletionTimeAnalyticsHandler>();
+builder.Services.AddScoped<PriorityBreakdownHandler>();
 
 var app = builder.Build();
 

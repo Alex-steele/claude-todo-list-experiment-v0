@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 72 — [2026-07-04] — Feature: Priority Completion Rates
+
+**Description:** The stats panel now shows a "By priority:" breakdown row with a chip for each priority level (High / Medium / Low) that has at least one todo. Each chip displays completed/total count and completion percentage — e.g. "High 4/6 (67%)". The chip is coloured by priority (red/amber/blue) and includes a tooltip with the exact active/completed split. The row is hidden when no todos carry an explicit priority, keeping the stats panel uncluttered for simple lists.
+
+**Reason for change:** The filter chip counts (Day 68) already show how many active todos exist per priority, but give no sense of completion progress within each priority tier. The new breakdown tells users whether their high-priority work is being tackled proportionally — a High completion rate of 20% while Low sits at 80% is a clear signal that priorities are inverted and worth addressing. This turns the stats panel from a simple count display into a lightweight productivity health check.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 302
+- Lines deleted: 0
+- Tests added: 13
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 71 — [2026-07-04] — Feature: Completion Time Analytics
 
 **Description:** The stats panel now shows an "Avg: X days to complete" chip whenever the current list has completed todos with completion timestamps. Hovering over the chip reveals a tooltip with a priority-level breakdown — e.g., "High: 1 days · Medium: 3.5 days · Low: 9 days" — alongside the sample count used for the average. Todos completed within the same day round to 0 days; the handler clamps negative values (clock skew) to zero to keep the display clean.

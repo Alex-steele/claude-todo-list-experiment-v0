@@ -40,6 +40,7 @@
 @using TodoApp.Features.Todos.FilterCounts
 @using TodoApp.Features.Todos.StreakNudge
 @using TodoApp.Features.Todos.CompletionTimeAnalytics
+@using TodoApp.Features.Todos.PriorityBreakdown
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -92,6 +93,7 @@
 @inject FilterCountsHandler FilterCountsHandler
 @inject StreakNudgeHandler StreakNudgeHandler
 @inject CompletionTimeAnalyticsHandler CompletionTimeAnalyticsHandler
+@inject PriorityBreakdownHandler PriorityBreakdownHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -475,6 +477,39 @@
                 Class="flex-grow-1 stats-progress" />
             <MudText Typo="Typo.caption" Color="Color.Secondary" Class="stats-percentage">@stats.CompletionPercentage%</MudText>
         </div>
+        @{
+            var breakdown = PriorityBreakdownHandler.Handle(_todos!.Where(t => t.ListId == _activeListId).ToList());
+        }
+        @if (breakdown.HasData)
+        {
+            <div class="d-flex align-center gap-2 mt-2 flex-wrap priority-breakdown-row">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1" Style="white-space:nowrap;">By priority:</MudText>
+                @if (breakdown.High.Total > 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                             Class="priority-breakdown-high"
+                             title="@($"High priority: {breakdown.High.Active} active, {breakdown.High.Completed} completed")">
+                        High @breakdown.High.Completed/@breakdown.High.Total (@breakdown.High.CompletionPercent%)
+                    </MudChip>
+                }
+                @if (breakdown.Medium.Total > 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning"
+                             Class="priority-breakdown-medium"
+                             title="@($"Medium priority: {breakdown.Medium.Active} active, {breakdown.Medium.Completed} completed")">
+                        Medium @breakdown.Medium.Completed/@breakdown.Medium.Total (@breakdown.Medium.CompletionPercent%)
+                    </MudChip>
+                }
+                @if (breakdown.Low.Total > 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info"
+                             Class="priority-breakdown-low"
+                             title="@($"Low priority: {breakdown.Low.Active} active, {breakdown.Low.Completed} completed")">
+                        Low @breakdown.Low.Completed/@breakdown.Low.Total (@breakdown.Low.CompletionPercent%)
+                    </MudChip>
+                }
+            </div>
+        }
         @if (_activityStats is not null && (_activityStats.CurrentStreak > 0 || _activityStats.CompletedToday > 0 || _activityStats.CompletedThisWeek > 0))
         {
             <div class="d-flex align-center gap-2 mt-3 flex-wrap activity-stats-row">
