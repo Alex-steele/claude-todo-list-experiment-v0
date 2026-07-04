@@ -44,6 +44,7 @@ using TodoApp.Features.Todos.RandomPicker;
 using TodoApp.Features.Todos.DueSummary;
 using TodoApp.Features.Todos.FilterCounts;
 using TodoApp.Features.Todos.StreakNudge;
+using TodoApp.Features.Todos.CompletionTimeAnalytics;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -108,6 +109,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<DueSummaryHandler>();
         ctx.Services.AddScoped<FilterCountsHandler>();
         ctx.Services.AddScoped<StreakNudgeHandler>();
+        ctx.Services.AddScoped<CompletionTimeAnalyticsHandler>();
         return ctx;
     }
 
@@ -5932,5 +5934,110 @@ public class HomeTests : BunitContext
         cut.Find(".streak-nudge-dismiss-btn").Click();
 
         Assert.DoesNotContain("streak-nudge-banner", cut.Markup);
+    }
+
+    // --- Completion time analytics bUnit tests ---
+
+    [Fact]
+    public async Task AvgCompletionChip_NotRendered_WhenNoCompletedTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Active todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("avg-completion-chip", cut.Markup);
+    }
+
+    [Fact]
+    public async Task AvgCompletionChip_NotRendered_WhenCompletedTodoHasNoCompletedAt()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id = await addHandler.HandleAsync("Todo");
+
+        using var conn = db.CreateConnection();
+        // Mark complete but leave CompletedAt null
+        await conn.ExecuteAsync("UPDATE Todos SET IsCompleted = 1 WHERE Id = @id", new { id });
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("avg-completion-chip", cut.Markup);
+    }
+
+    [Fact]
+    public async Task AvgCompletionChip_Rendered_WhenCompletedTodoWithTimestamp()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+
+        var id = await addHandler.HandleAsync("Completed task");
+        await completeHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("avg-completion-chip", cut.Markup);
+        Assert.Contains("days to complete", cut.Markup);
+    }
+
+    [Fact]
+    public async Task AvgCompletionChip_ShowsCorrectDayCount()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+
+        // Insert a todo with a known creation date 3 days ago and complete it now
+        var id = await addHandler.HandleAsync("Old task");
+        using var conn = db.CreateConnection();
+        var createdAt = DateTime.UtcNow.AddDays(-3).ToString("yyyy-MM-dd HH:mm:ss");
+        var completedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+        await conn.ExecuteAsync(
+            "UPDATE Todos SET CreatedAt = @c, IsCompleted = 1, CompletedAt = @done WHERE Id = @id",
+            new { c = createdAt, done = completedAt, id });
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Should show "3" days in the chip
+        Assert.Contains("avg-completion-chip", cut.Markup);
+        Assert.Contains("3", cut.Markup);
+    }
+
+    [Fact]
+    public async Task AvgCompletionChip_ShowsAverageAcrossMultipleCompleted()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+
+        // Create two todos and set known creation/completion timestamps
+        var id1 = await addHandler.HandleAsync("Task one");
+        var id2 = await addHandler.HandleAsync("Task two");
+
+        using var conn = db.CreateConnection();
+        var now = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+
+        // Task 1: 2 days to complete
+        var created1 = DateTime.UtcNow.AddDays(-2).ToString("yyyy-MM-dd HH:mm:ss");
+        await conn.ExecuteAsync(
+            "UPDATE Todos SET CreatedAt = @c, IsCompleted = 1, CompletedAt = @done WHERE Id = @id",
+            new { c = created1, done = now, id = id1 });
+
+        // Task 2: 4 days to complete
+        var created2 = DateTime.UtcNow.AddDays(-4).ToString("yyyy-MM-dd HH:mm:ss");
+        await conn.ExecuteAsync(
+            "UPDATE Todos SET CreatedAt = @c, IsCompleted = 1, CompletedAt = @done WHERE Id = @id",
+            new { c = created2, done = now, id = id2 });
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Average is (2+4)/2 = 3
+        Assert.Contains("avg-completion-chip", cut.Markup);
+        Assert.Contains("3", cut.Markup);
     }
 }

@@ -35,6 +35,7 @@ using TodoApp.Features.Todos.RandomPicker;
 using TodoApp.Features.Todos.DueSummary;
 using TodoApp.Features.Todos.FilterCounts;
 using TodoApp.Features.Todos.StreakNudge;
+using TodoApp.Features.Todos.CompletionTimeAnalytics;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -105,6 +106,7 @@ builder.Services.AddScoped<PickRandomTodoHandler>();
 builder.Services.AddScoped<DueSummaryHandler>();
 builder.Services.AddScoped<FilterCountsHandler>();
 builder.Services.AddScoped<StreakNudgeHandler>();
+builder.Services.AddScoped<CompletionTimeAnalyticsHandler>();
 
 var app = builder.Build();
 
