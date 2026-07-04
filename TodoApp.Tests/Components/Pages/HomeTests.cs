@@ -45,6 +45,7 @@ using TodoApp.Features.Todos.DueSummary;
 using TodoApp.Features.Todos.FilterCounts;
 using TodoApp.Features.Todos.StreakNudge;
 using TodoApp.Features.Todos.CompletionTimeAnalytics;
+using TodoApp.Features.Todos.PriorityBreakdown;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -110,6 +111,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<FilterCountsHandler>();
         ctx.Services.AddScoped<StreakNudgeHandler>();
         ctx.Services.AddScoped<CompletionTimeAnalyticsHandler>();
+        ctx.Services.AddScoped<PriorityBreakdownHandler>();
         return ctx;
     }
 
@@ -6039,5 +6041,89 @@ public class HomeTests : BunitContext
         // Average is (2+4)/2 = 3
         Assert.Contains("avg-completion-chip", cut.Markup);
         Assert.Contains("3", cut.Markup);
+    }
+
+    // --- Priority breakdown bUnit tests ---
+
+    [Fact]
+    public async Task PriorityBreakdown_NotRendered_WhenNoPriorityTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("No priority task"); // priority defaults to None
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("priority-breakdown-row", cut.Markup);
+    }
+
+    [Fact]
+    public async Task PriorityBreakdown_Rendered_WhenHighPriorityTodoExists()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("High priority task", priority: TodoPriority.High);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("priority-breakdown-row", cut.Markup);
+        Assert.Contains("priority-breakdown-high", cut.Markup);
+    }
+
+    [Fact]
+    public async Task PriorityBreakdown_ShowsCorrectActiveCounts()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("High 1", priority: TodoPriority.High);
+        await addHandler.HandleAsync("High 2", priority: TodoPriority.High);
+        await addHandler.HandleAsync("Medium 1", priority: TodoPriority.Medium);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // High: 2 active, 0 completed = "0/2 (0%)"
+        Assert.Contains("priority-breakdown-high", cut.Markup);
+        Assert.Contains("0/2", cut.Markup);
+        // Medium: 1 active, 0 completed = "0/1 (0%)"
+        Assert.Contains("priority-breakdown-medium", cut.Markup);
+        Assert.Contains("0/1", cut.Markup);
+    }
+
+    [Fact]
+    public async Task PriorityBreakdown_ShowsCompletionPercent_AfterCompletion()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+
+        var id1 = await addHandler.HandleAsync("High done",   priority: TodoPriority.High);
+        var id2 = await addHandler.HandleAsync("High active", priority: TodoPriority.High);
+        await completeHandler.HandleAsync(id1);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // 1 completed out of 2 total = 50%
+        Assert.Contains("1/2", cut.Markup);
+        Assert.Contains("50%", cut.Markup);
+    }
+
+    [Fact]
+    public async Task PriorityBreakdown_NotShown_ForChipsWithZeroTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Only medium", priority: TodoPriority.Medium);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // High and Low chips should not appear since they have no todos
+        Assert.DoesNotContain("priority-breakdown-high", cut.Markup);
+        Assert.DoesNotContain("priority-breakdown-low", cut.Markup);
+        Assert.Contains("priority-breakdown-medium", cut.Markup);
     }
 }
