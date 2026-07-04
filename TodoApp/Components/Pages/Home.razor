@@ -41,6 +41,8 @@
 @using TodoApp.Features.Todos.StreakNudge
 @using TodoApp.Features.Todos.CompletionTimeAnalytics
 @using TodoApp.Features.Todos.PriorityBreakdown
+@using TodoApp.Features.Todos.BlockTodo
+@inject BlockTodoHandler BlockTodoHandler
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -975,6 +977,20 @@ else
                          OnClick="@(() => _stalenessFilter = TodoStalenessFilter.OneMonthPlus)"
                          Class="staleness-filter-1month">1+ month old</MudChip>
             </div>
+            @{
+                var blockedCount = _todos?.Count(t => t.ListId == _activeListId && t.IsBlocked && !t.IsCompleted) ?? 0;
+            }
+            <div class="d-flex align-center gap-1 flex-wrap mt-2 blocked-filter-row">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1">Blocked:</MudText>
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_blockedFilter ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Warning"
+                         OnClick="@(() => _blockedFilter = !_blockedFilter)"
+                         Class="blocked-filter-chip"
+                         title="Show only blocked / waiting-for todos">
+                    ⏸ Waiting for@(blockedCount > 0 ? $" ({blockedCount})" : "")
+                </MudChip>
+            </div>
             @if (HasActiveFilters)
             {
                 <div class="d-flex justify-end mt-2 clear-filters-row">
@@ -1494,6 +1510,14 @@ else
                                                 </MudChip>
                                             }
                                         }
+                                        @if (todo.IsBlocked)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined"
+                                                     Class="blocked-badge"
+                                                     title="This todo is blocked / waiting for something">
+                                                ⏸ Waiting for
+                                            </MudChip>
+                                        }
                                         @if (IsGlobalSearch && todo.ListId != _activeListId)
                                         {
                                             var listName = _lists?.FirstOrDefault(l => l.Id == todo.ListId)?.Name;
@@ -1914,6 +1938,16 @@ else
                                 OnClick="@(async () => await HandleDuplicateTodo(todo.Id))"
                                 title="Duplicate"
                                 Class="todo-duplicate-btn" />
+                            @if (!todo.IsCompleted)
+                            {
+                                <MudIconButton
+                                    Icon="@(todo.IsBlocked ? Icons.Material.Filled.PauseCircle : Icons.Material.Outlined.PauseCircle)"
+                                    Color="@(todo.IsBlocked ? Color.Warning : Color.Default)"
+                                    Size="Size.Small"
+                                    OnClick="@(async () => await HandleToggleBlocked(todo.Id))"
+                                    title="@(todo.IsBlocked ? "Mark as unblocked" : "Mark as blocked / waiting for")"
+                                    Class="todo-block-btn" />
+                            }
                             @{
                                 var colorTodoId = todo.Id;
                             }
@@ -2052,6 +2086,7 @@ else
 
     private bool _dismissedUrgencyBanner;
     private bool _dismissedStreakNudge;
+    private bool _blockedFilter;
 
     private FilterCountsResult? _filterCountsCache;
 
@@ -2091,6 +2126,7 @@ else
         _colorFilter is not null ||
         _timeEstimateFilter != TodoTimeEstimateFilter.Any ||
         _stalenessFilter != TodoStalenessFilter.Any ||
+        _blockedFilter ||
         !string.IsNullOrWhiteSpace(_searchQuery);
 
     private int GetActiveCountForList(int listId) =>
@@ -2108,7 +2144,8 @@ else
             if (_todos is null) return [];
             if (_isFocusMode)
             {
-                var listSource = _todos.Where(t => t.ListId == _activeListId).ToList();
+                // Blocked todos are excluded from Focus mode — you can't act on them
+                var listSource = _todos.Where(t => t.ListId == _activeListId && !t.IsBlocked).ToList();
                 return FocusModeHandler.Handle(listSource);
             }
             var source = IsGlobalSearch
@@ -2118,8 +2155,11 @@ else
             var tagFiltered = _tagFilter is null
                 ? filtered
                 : filtered.Where(t => _todoTags.TryGetValue(t.Id, out var tags) && tags.Any(tag => tag.Name == _tagFilter)).ToList();
-            if (_colorFilter is null) return tagFiltered;
-            return tagFiltered.Where(t => t.ColorLabel == _colorFilter.Value).ToList();
+            var colorFiltered = _colorFilter is null
+                ? tagFiltered
+                : tagFiltered.Where(t => t.ColorLabel == _colorFilter.Value).ToList();
+            if (!_blockedFilter) return colorFiltered;
+            return colorFiltered.Where(t => t.IsBlocked).ToList();
         }
     }
 
@@ -2767,6 +2807,7 @@ else
         _colorFilter = null;
         _timeEstimateFilter = TodoTimeEstimateFilter.Any;
         _stalenessFilter = TodoStalenessFilter.Any;
+        _blockedFilter = false;
         _searchQuery = string.Empty;
         _dismissedUrgencyBanner = false;
     }
@@ -2895,6 +2936,12 @@ else
     private async Task HandleTogglePin(int id)
     {
         await PinTodoHandler.HandleAsync(id);
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleToggleBlocked(int id)
+    {
+        await BlockTodoHandler.HandleAsync(id);
         await LoadTodosAsync();
     }
 
@@ -3205,6 +3252,7 @@ else
         _pickedTodoId = null;
         _dismissedUrgencyBanner = false;
         _dismissedStreakNudge = false;
+        _blockedFilter = false;
         _filterCountsCache = null;
     }
 

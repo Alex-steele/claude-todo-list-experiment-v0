@@ -147,6 +147,16 @@ public class Database(string connectionString)
             // Column already exists — ignore
         }
 
+        // Migration: add IsBlocked column for "Waiting For" / blocked task flag
+        try
+        {
+            await conn.ExecuteAsync("ALTER TABLE Todos ADD COLUMN IsBlocked INTEGER NOT NULL DEFAULT 0");
+        }
+        catch (SqliteException)
+        {
+            // Column already exists — ignore
+        }
+
         await conn.ExecuteAsync("""
             CREATE TABLE IF NOT EXISTS TodoTags (
                 Id      INTEGER PRIMARY KEY AUTOINCREMENT,
