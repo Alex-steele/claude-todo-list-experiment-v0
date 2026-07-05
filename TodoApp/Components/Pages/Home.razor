@@ -76,6 +76,7 @@
 @inject DeleteListHandler DeleteListHandler
 @inject GetListsHandler GetListsHandler
 @inject RenameListHandler RenameListHandler
+@inject ReorderListsHandler ReorderListsHandler
 @inject ReorderTodosHandler ReorderTodosHandler
 @inject MoveTodoHandler MoveTodoHandler
 @inject RestoreTodosHandler RestoreTodosHandler
@@ -139,6 +140,14 @@
                     else
                     {
                         var activeCount = GetActiveCountForList(listId);
+                        <span draggable="true"
+                              @ondragstart="@(() => _draggingListId = listId)"
+                              @ondragend="@(() => { _draggingListId = null; _dragOverListId = null; })"
+                              @ondragover:preventDefault
+                              @ondragover="@(() => _dragOverListId = listId)"
+                              @ondrop="@(async () => await HandleListDrop(listId))"
+                              style="@(_dragOverListId == listId && _draggingListId != listId ? "opacity: 0.5;" : "")"
+                              class="list-drag-wrapper">
                         <MudChip T="string"
                                  Variant="@(_activeListId == listId ? Variant.Filled : Variant.Outlined)"
                                  Color="Color.Primary"
@@ -152,6 +161,7 @@
                                 <span class="list-count-badge">@activeCount</span>
                             }
                         </MudChip>
+                        </span>
                     }
                 }
                 @if (_creatingList)
@@ -2145,6 +2155,8 @@ else
     private string _newListName = string.Empty;
     private int? _renamingListId;
     private string _renameListValue = string.Empty;
+    private int? _draggingListId;
+    private int? _dragOverListId;
 
     private int? _draggingId;
     private int? _dragOverId;
@@ -3409,6 +3421,28 @@ else
         _isTodayView = true;
         _isFocusMode = false;
         _pickedTodoId = null;
+    }
+
+    private async Task HandleListDrop(int targetListId)
+    {
+        if (_draggingListId is null || _draggingListId == targetListId || _lists is null)
+            return;
+
+        var current = _lists.ToList();
+        var dragIdx = current.FindIndex(l => l.Id == _draggingListId.Value);
+        var dropIdx = current.FindIndex(l => l.Id == targetListId);
+        if (dragIdx < 0 || dropIdx < 0) return;
+
+        var item = current[dragIdx];
+        current.RemoveAt(dragIdx);
+        current.Insert(dropIdx, item);
+
+        var orderedIds = current.Select(l => l.Id).ToList();
+        await ReorderListsHandler.HandleAsync(orderedIds);
+        await LoadTodosAsync();
+
+        _draggingListId = null;
+        _dragOverListId = null;
     }
 
     private async Task HandleNewListKeyUp(KeyboardEventArgs e)

@@ -194,4 +194,94 @@ public class ListHandlerTests
 
         await Assert.ThrowsAsync<ArgumentException>(() => renameHandler.HandleAsync(999, "Ghost"));
     }
+
+    // ReorderListsHandler tests
+
+    [Fact]
+    public async Task ReorderLists_PersistsNewOrder()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        var reorder = new ReorderListsHandler(db);
+        var get = new GetListsHandler(db);
+
+        var id2 = await create.HandleAsync("Work");
+        var id3 = await create.HandleAsync("Shopping");
+
+        // Reorder: Shopping first, then Work, then Personal (id=1)
+        await reorder.HandleAsync([id3, id2, 1]);
+
+        var lists = await get.HandleAsync();
+        Assert.Equal(id3, lists[0].Id);
+        Assert.Equal(id2, lists[1].Id);
+        Assert.Equal(1,   lists[2].Id);
+    }
+
+    [Fact]
+    public async Task ReorderLists_EmptyList_DoesNotThrow()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var reorder = new ReorderListsHandler(db);
+
+        var ex = await Record.ExceptionAsync(() => reorder.HandleAsync([]));
+        Assert.Null(ex);
+    }
+
+    [Fact]
+    public async Task ReorderLists_SingleList_RemainsFirst()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var reorder = new ReorderListsHandler(db);
+        var get = new GetListsHandler(db);
+
+        await reorder.HandleAsync([1]);
+
+        var lists = await get.HandleAsync();
+        Assert.Single(lists);
+        Assert.Equal(1, lists[0].Id);
+    }
+
+    [Fact]
+    public async Task GetLists_AfterReorder_ReturnsListsInNewOrder()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        var reorder = new ReorderListsHandler(db);
+        var get = new GetListsHandler(db);
+
+        var workId = await create.HandleAsync("Work");
+        var shoppingId = await create.HandleAsync("Shopping");
+
+        // Initial order: Personal(1), Work, Shopping
+        var before = await get.HandleAsync();
+        Assert.Equal(1, before[0].Id);
+        Assert.Equal(workId, before[1].Id);
+        Assert.Equal(shoppingId, before[2].Id);
+
+        // Reverse order
+        await reorder.HandleAsync([shoppingId, workId, 1]);
+
+        var after = await get.HandleAsync();
+        Assert.Equal(shoppingId, after[0].Id);
+        Assert.Equal(workId, after[1].Id);
+        Assert.Equal(1, after[2].Id);
+    }
+
+    [Fact]
+    public async Task ReorderLists_PartialReorder_UpdatesSpecifiedLists()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        var reorder = new ReorderListsHandler(db);
+        var get = new GetListsHandler(db);
+
+        var id2 = await create.HandleAsync("Work");
+
+        // Swap: Work first, Personal second
+        await reorder.HandleAsync([id2, 1]);
+
+        var lists = await get.HandleAsync();
+        Assert.Equal(id2, lists[0].Id);
+        Assert.Equal(1, lists[1].Id);
+    }
 }

@@ -89,6 +89,7 @@ builder.Services.AddScoped<GetListsHandler>();
 builder.Services.AddScoped<CreateListHandler>();
 builder.Services.AddScoped<DeleteListHandler>();
 builder.Services.AddScoped<RenameListHandler>();
+builder.Services.AddScoped<ReorderListsHandler>();
 builder.Services.AddScoped<ReorderTodosHandler>();
 builder.Services.AddScoped<MoveTodoHandler>();
 builder.Services.AddScoped<SnoozeTodoHandler>();

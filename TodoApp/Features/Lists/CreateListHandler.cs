@@ -12,7 +12,8 @@ public class CreateListHandler(Database db)
 
         using var conn = db.CreateConnection();
         return await conn.ExecuteScalarAsync<int>("""
-            INSERT INTO TodoLists (Name) VALUES (@Name);
+            INSERT INTO TodoLists (Name, SortOrder)
+            VALUES (@Name, (SELECT COALESCE(MAX(SortOrder), 0) + 1 FROM TodoLists));
             SELECT last_insert_rowid();
             """, new { Name = name.Trim() });
     }

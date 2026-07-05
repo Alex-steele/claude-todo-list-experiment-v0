@@ -199,5 +199,16 @@ public class Database(string connectionString)
                 Value INTEGER NOT NULL
             )
             """);
+
+        // Migration: add SortOrder to TodoLists for drag-to-reorder
+        try
+        {
+            await conn.ExecuteAsync("ALTER TABLE TodoLists ADD COLUMN SortOrder INTEGER NOT NULL DEFAULT 0");
+            await conn.ExecuteAsync("UPDATE TodoLists SET SortOrder = Id WHERE SortOrder = 0");
+        }
+        catch (SqliteException)
+        {
+            // Column already exists — ignore
+        }
     }
 }

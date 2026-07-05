@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 77 — [2026-07-05] — Feature: List Drag-to-Reorder
+
+**Description:** Lists in the sidebar can now be reordered by dragging. Each list chip is wrapped in a draggable element; dragging one chip over another and releasing drops it into that position. The new order is persisted immediately to SQLite via a `SortOrder` column on `TodoLists`. Lists are returned from `GetListsHandler` in `SortOrder ASC, Id ASC` order, so the arrangement survives page refreshes and server restarts. The "Today" chip is fixed at the top and cannot be dragged. Newly created lists are appended at the end (`MAX(SortOrder) + 1`), so create-then-reorder works without breaking the initial ordering invariant.
+
+**Reason for change:** Users who maintain multiple lists naturally develop a preferred order — inbox at the top, reference lists at the bottom. Without reordering, every new list lands in creation order and cannot be moved without deleting and recreating. Drag-to-reorder is the standard affordance for this (iOS Reminders, Things, Todoist all use it), and the HTML5 drag API makes it achievable without a JS library. Persisting `SortOrder` also gives a stable ordering foundation for future list features (e.g. pinning a list, hiding a list).
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 211
+- Lines deleted: 2
+- Tests added: 9
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 76 — [2026-07-05] — Feature: Markdown Export
 
 **Description:** A new "Export to Markdown" button (the document icon, next to the existing CSV export) downloads the current list as a `.md` file. Active todos are formatted as `- [ ] Title _(priority · due date · #tags)_` and completed todos as `- [x] ~~Title~~`. The file has an `## Active` section followed by a `## Completed` section; active todos are sorted by priority (High first) then due date; completed todos are sorted newest-completion-first. Pinned todos show a 📌 marker. Overdue dates are flagged as `overdue YYYY-MM-DD`; today's date shows as `due today`.
