@@ -58,6 +58,7 @@
 @inject ClearCompletedHandler ClearCompletedHandler
 @inject UpdateNotesHandler UpdateNotesHandler
 @inject CsvExportHandler CsvExportHandler
+@inject MarkdownExportHandler MarkdownExportHandler
 @inject ImportTodosHandler ImportTodosHandler
 @inject PinTodoHandler PinTodoHandler
 @inject CompleteSubtaskHandler CompleteSubtaskHandler
@@ -939,6 +940,15 @@ else
                             OnClick="HandleExportCsv"
                             title="Export to CSV"
                             Class="export-csv-btn" />
+                    </MudTooltip>
+                    <MudTooltip Text="Export to Markdown">
+                        <MudIconButton
+                            Icon="@Icons.Material.Filled.Description"
+                            Size="Size.Small"
+                            Color="Color.Default"
+                            OnClick="HandleExportMarkdown"
+                            title="Export to Markdown"
+                            Class="export-markdown-btn" />
                     </MudTooltip>
                     <MudTooltip Text="Import from CSV">
                         <MudIconButton
@@ -3100,6 +3110,16 @@ else
         var csv = CsvExportHandler.Generate(_todos, _todoTags);
         var filename = $"todos-{DateTime.Today:yyyy-MM-dd}.csv";
         await JS.InvokeVoidAsync("todoApp.downloadFile", filename, csv, "text/csv");
+    }
+
+    private async Task HandleExportMarkdown()
+    {
+        if (_todos is null || _todos.Count == 0) return;
+        var listName = _lists?.FirstOrDefault(l => l.Id == _activeListId)?.Name ?? "Todos";
+        var listTodos = _todos.Where(t => t.ListId == _activeListId).ToList();
+        var md = MarkdownExportHandler.Generate(listName, listTodos, _todoTags);
+        var filename = $"todos-{DateTime.Today:yyyy-MM-dd}.md";
+        await JS.InvokeVoidAsync("todoApp.downloadFile", filename, md, "text/markdown");
     }
 
     private void ToggleSubtasksExpanded(int todoId)
