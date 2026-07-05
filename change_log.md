@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 74 — [2026-07-05] — Feature: Today Cross-List View
+
+**Description:** A new "Today" tab in the list selector shows all overdue and due-today todos across every list in one aggregated view. The chip displays a live count of urgent todos (e.g. "Today (3)") and turns red when items are waiting. Clicking it opens the Today panel, which groups urgent todos by their source list with the list name as a header and a "Go to list" shortcut. Each todo shows its title, an overdue or due-today chip, and a priority chip; users can complete or delete todos directly from the Today view. The Add a New Todo form is hidden while Today view is active, replaced by a clean read-only panel. A "Back to list" button or clicking any list chip exits the Today view.
+
+**Reason for change:** Users who maintain multiple lists (e.g., Work and Personal) have no single place to see what demands their attention right now. They must switch between lists one by one to find overdue or today's items — a friction point that grows with the number of lists. The Today view solves the morning planning problem: open the app, glance at Today, see exactly what is urgent and which list it belongs to, take action.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 547
+- Lines deleted: 1
+- Tests added: 21
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 73 — [2026-07-04] — Feature: Blocked / Waiting For Task Flag
 
 **Description:** Every todo now has a "blocked / waiting for" flag. A ⏸ toggle button appears in each todo row; clicking it marks the task as blocked and shows a "⏸ Waiting for" badge inline on the todo. A "Blocked:" filter chip row (below the staleness filters) lets users filter to show only blocked/waiting-for tasks — the chip label includes a live count of blocked active todos in the current list. Focus mode automatically excludes blocked todos so the focus queue only surfaces actionable items. The flag persists to the database via a new `IsBlocked` column with toggle-on-update semantics (no separate set/clear calls needed).

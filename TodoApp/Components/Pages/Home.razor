@@ -42,7 +42,9 @@
 @using TodoApp.Features.Todos.CompletionTimeAnalytics
 @using TodoApp.Features.Todos.PriorityBreakdown
 @using TodoApp.Features.Todos.BlockTodo
+@using TodoApp.Features.Todos.TodayView
 @inject BlockTodoHandler BlockTodoHandler
+@inject TodayViewHandler TodayViewHandler
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -107,6 +109,17 @@
     <MudCard Elevation="1" Class="mb-4">
         <MudCardContent Class="py-2">
             <div class="d-flex align-center gap-1 flex-wrap list-selector-row">
+                @{
+                    var todayCount = _todos is not null ? TodayViewHandler.CountUrgent(_todos) : 0;
+                }
+                <MudChip T="string"
+                         Variant="@(_isTodayView ? Variant.Filled : Variant.Outlined)"
+                         Color="@(todayCount > 0 ? Color.Error : Color.Secondary)"
+                         OnClick="HandleSwitchToTodayView"
+                         title="See all overdue and due-today todos across every list"
+                         Class="today-view-chip">
+                    ☀ Today@(todayCount > 0 ? $" ({todayCount})" : "")
+                </MudChip>
                 @foreach (var list in _lists)
                 {
                     var listId = list.Id;
@@ -164,6 +177,8 @@
     </MudCard>
 }
 
+@if (!_isTodayView)
+{
 <MudCard Elevation="2" Class="mb-6">
     <MudCardContent>
         <div class="d-flex align-center justify-space-between mb-4">
@@ -430,6 +445,7 @@
         }
     </MudCardContent>
 </MudCard>
+}
 
 @if (_todos is { Count: > 0 })
 {
@@ -683,7 +699,96 @@
     </MudPaper>
 }
 
-@if (_todos is null)
+@if (_isTodayView && _todos is not null)
+{
+    var todayGroups = TodayViewHandler.Handle(_todos, _lists ?? []);
+    <MudPaper Elevation="1" Class="pa-4 mb-4 today-view-panel">
+        <div class="d-flex align-center gap-2 mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.WbSunny" Color="Color.Warning" />
+            <MudText Typo="Typo.h6" Class="today-view-title">Today</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Overdue and due today across all lists</MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                       OnClick="@(() => HandleSwitchList(_activeListId))"
+                       Class="today-view-exit-btn">Back to list</MudButton>
+        </div>
+        @if (todayGroups.Count == 0)
+        {
+            <div class="d-flex flex-column align-center py-6 today-view-empty">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Style="font-size: 2.5rem;" Class="mb-2" />
+                <MudText Typo="Typo.body1" Color="Color.Secondary">You're all caught up! No overdue or due-today todos.</MudText>
+            </div>
+        }
+        else
+        {
+            @foreach (var group in todayGroups)
+            {
+                var groupListId = group.ListId;
+                <div class="today-view-group mb-4">
+                    <div class="d-flex align-center gap-2 mb-2 today-view-group-header">
+                        <MudText Typo="Typo.overline" Color="Color.Primary" Style="font-weight:600;">@group.ListName</MudText>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default"
+                                 Class="today-view-group-count">@group.Todos.Count</MudChip>
+                        <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                                   OnClick="@(() => HandleSwitchList(groupListId))"
+                                   Class="today-view-go-to-list-btn">Go to list</MudButton>
+                    </div>
+                    <MudPaper Elevation="0" Style="border: 1px solid var(--mud-palette-divider); border-radius: 6px;">
+                        <MudList T="TodoSummary" Dense="true">
+                            @foreach (var todo in group.Todos)
+                            {
+                                var dueDateStatus = GetDueDateStatus(todo);
+                                <MudListItem>
+                                    <div class="d-flex align-center gap-2 flex-grow-1">
+                                        <MudCheckBox
+                                            Value="@todo.IsCompleted"
+                                            ValueChanged="@(async (bool _) => await HandleToggleComplete(todo.Id))"
+                                            Color="Color.Primary" />
+                                        <div class="flex-grow-1">
+                                            <MudText Typo="Typo.body2" Style="@(todo.IsCompleted ? "text-decoration: line-through; opacity: 0.6;" : "")">@todo.Title</MudText>
+                                            <div class="d-flex align-center gap-2 mt-1">
+                                                @if (dueDateStatus == DueDateStatus.Overdue)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                                                             Class="today-view-overdue-chip">
+                                                        ⚠ @FormatDueDateDisplay(todo.DueDate!.Value)
+                                                    </MudChip>
+                                                }
+                                                else
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning"
+                                                             Class="today-view-today-chip">
+                                                        Due today
+                                                    </MudChip>
+                                                }
+                                                @if (todo.Priority != TodoPriority.None)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                                             Color="@(todo.Priority == TodoPriority.High ? Color.Error : todo.Priority == TodoPriority.Medium ? Color.Warning : Color.Info)"
+                                                             Class="today-view-priority-chip">
+                                                        @todo.Priority
+                                                    </MudChip>
+                                                }
+                                            </div>
+                                        </div>
+                                        <MudIconButton
+                                            Icon="@Icons.Material.Filled.Delete"
+                                            Size="Size.Small"
+                                            Color="Color.Default"
+                                            OnClick="@(async () => await HandleDeleteTodo(todo.Id))"
+                                            title="Delete"
+                                            Class="today-view-delete-btn" />
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    </MudPaper>
+                </div>
+            }
+        }
+    </MudPaper>
+}
+else if (_todos is null)
 {
     <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
 }
@@ -2087,6 +2192,7 @@ else
     private bool _dismissedUrgencyBanner;
     private bool _dismissedStreakNudge;
     private bool _blockedFilter;
+    private bool _isTodayView;
 
     private FilterCountsResult? _filterCountsCache;
 
@@ -3238,6 +3344,7 @@ else
 
     private void HandleSwitchList(int listId)
     {
+        _isTodayView = false;
         _activeListId = listId;
         // Reset filters when switching lists
         _statusFilter = TodoStatusFilter.All;
@@ -3254,6 +3361,13 @@ else
         _dismissedStreakNudge = false;
         _blockedFilter = false;
         _filterCountsCache = null;
+    }
+
+    private void HandleSwitchToTodayView()
+    {
+        _isTodayView = true;
+        _isFocusMode = false;
+        _pickedTodoId = null;
     }
 
     private async Task HandleNewListKeyUp(KeyboardEventArgs e)
