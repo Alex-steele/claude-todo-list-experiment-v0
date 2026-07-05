@@ -93,6 +93,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<DeleteListHandler>();
         ctx.Services.AddScoped<RenameListHandler>();
         ctx.Services.AddScoped<ReorderTodosHandler>();
+        ctx.Services.AddScoped<ReorderListsHandler>();
         ctx.Services.AddScoped<MoveTodoHandler>();
         ctx.Services.AddScoped<SnoozeTodoHandler>();
         ctx.Services.AddScoped<FocusModeHandler>();
@@ -6522,5 +6523,76 @@ public class HomeTests : BunitContext
 
         Assert.Contains("export-csv-btn", cut.Markup);
         Assert.Contains("export-markdown-btn", cut.Markup);
+    }
+
+    // List reorder tests
+
+    [Fact]
+    public async Task ListChips_AreRenderedAsDraggable_WhenMultipleListsExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        await create.HandleAsync("Work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // list-drag-wrapper spans should exist for each list
+        var wrappers = cut.FindAll(".list-drag-wrapper");
+        Assert.Equal(2, wrappers.Count);
+    }
+
+    [Fact]
+    public async Task ListChips_DragWrapper_HasDraggableAttribute()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        await create.HandleAsync("Work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var wrapper = cut.Find(".list-drag-wrapper");
+        Assert.Equal("true", wrapper.GetAttribute("draggable"));
+    }
+
+    [Fact]
+    public async Task ListChips_TodayChip_IsNotInsideDragWrapper()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Today chip should be a direct MudChip, not wrapped in list-drag-wrapper
+        var todayChip = cut.Find(".today-view-chip");
+        Assert.NotNull(todayChip);
+        // It should not be inside a list-drag-wrapper
+        Assert.DoesNotContain("list-drag-wrapper", todayChip.ParentElement?.ClassName ?? "");
+    }
+
+    [Fact]
+    public async Task ListReorder_AfterDrop_UpdatesListOrder()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        var reorder = new ReorderListsHandler(db);
+        var get = new GetListsHandler(db);
+
+        var workId = await create.HandleAsync("Work");
+
+        // Swap: Work first, Personal second
+        await reorder.HandleAsync([workId, 1]);
+
+        var lists = await get.HandleAsync();
+        Assert.Equal("Work", lists[0].Name);
+        Assert.Equal("Personal", lists[1].Name);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Work chip should appear before Personal chip in markup
+        var workIdx = cut.Markup.IndexOf("Work", StringComparison.Ordinal);
+        var personalIdx = cut.Markup.IndexOf("Personal", StringComparison.Ordinal);
+        Assert.True(workIdx < personalIdx);
     }
 }

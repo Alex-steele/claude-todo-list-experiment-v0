@@ -9,7 +9,7 @@ public class GetListsHandler(Database db)
     {
         using var conn = db.CreateConnection();
         var rows = await conn.QueryAsync<(int Id, string Name)>(
-            "SELECT Id, Name FROM TodoLists ORDER BY Id");
+            "SELECT Id, Name FROM TodoLists ORDER BY SortOrder ASC, Id ASC");
         return rows.Select(r => new TodoList(r.Id, r.Name)).ToList();
     }
 }
