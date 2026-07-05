@@ -73,6 +73,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<GetTodosStatsHandler>();
         ctx.Services.AddScoped<ClearCompletedHandler>();
         ctx.Services.AddScoped<CsvExportHandler>();
+        ctx.Services.AddScoped<MarkdownExportHandler>();
         ctx.Services.AddScoped<PinTodoHandler>();
         ctx.Services.AddScoped<UpdateNotesHandler>();
         ctx.Services.AddScoped<AddTagHandler>();
@@ -6478,5 +6479,48 @@ public class HomeTests : BunitContext
         Assert.NotNull(title);
         Assert.Contains("project", title);
         Assert.Contains("active", title);
+    }
+
+    // Markdown export tests
+
+    [Fact]
+    public async Task ExportMarkdownButton_IsRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("export-markdown-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ExportMarkdownButton_HasCorrectTooltip()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var btn = cut.Find(".export-markdown-btn");
+        Assert.Contains("Markdown", btn.GetAttribute("title") ?? "");
+    }
+
+    [Fact]
+    public async Task ExportMarkdownButton_IsRendered_AlongsideCsvButton()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("export-csv-btn", cut.Markup);
+        Assert.Contains("export-markdown-btn", cut.Markup);
     }
 }

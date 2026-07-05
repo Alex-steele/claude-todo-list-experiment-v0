@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 76 — [2026-07-05] — Feature: Markdown Export
+
+**Description:** A new "Export to Markdown" button (the document icon, next to the existing CSV export) downloads the current list as a `.md` file. Active todos are formatted as `- [ ] Title _(priority · due date · #tags)_` and completed todos as `- [x] ~~Title~~`. The file has an `## Active` section followed by a `## Completed` section; active todos are sorted by priority (High first) then due date; completed todos are sorted newest-completion-first. Pinned todos show a 📌 marker. Overdue dates are flagged as `overdue YYYY-MM-DD`; today's date shows as `due today`.
+
+**Reason for change:** CSV export is useful for data analysis, but many users work in markdown-native tools — Notion, Obsidian, GitHub issues, Bear, Logseq, plain text editors. The markdown export produces a human-readable, pasteable task list that renders correctly in any of those tools without further formatting. A user finishing a sprint can copy the markdown into a GitHub issue or meeting note without any manual reformatting.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 363
+- Lines deleted: 0
+- Tests added: 19
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 75 — [2026-07-05] — Feature: Tag Completion Stats
 
 **Description:** The stats panel now shows a "By tag:" breakdown row with a chip for each tag used in the current list. Each chip displays completed/total count and completion percentage — e.g. "#work 3/5 (60%)" — and a tooltip with the exact active/completed split. Tags are ordered by completion rate ascending, so the most incomplete tags appear first and demand attention. The row is hidden when no todos carry a tag, keeping the stats panel clean for simple lists. Multi-tagged todos count toward each of their tags.
