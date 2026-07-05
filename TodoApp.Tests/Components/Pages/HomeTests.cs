@@ -47,6 +47,7 @@ using TodoApp.Features.Todos.StreakNudge;
 using TodoApp.Features.Todos.CompletionTimeAnalytics;
 using TodoApp.Features.Todos.PriorityBreakdown;
 using TodoApp.Features.Todos.BlockTodo;
+using TodoApp.Features.Todos.TodayView;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -114,6 +115,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<CompletionTimeAnalyticsHandler>();
         ctx.Services.AddScoped<PriorityBreakdownHandler>();
         ctx.Services.AddScoped<BlockTodoHandler>();
+        ctx.Services.AddScoped<TodayViewHandler>();
         return ctx;
     }
 
@@ -6208,5 +6210,178 @@ public class HomeTests : BunitContext
 
         var btns = cut.FindAll(".todo-block-btn");
         Assert.Equal(2, btns.Count);
+    }
+
+    // Today view tests
+
+    [Fact]
+    public async Task TodayViewChip_IsRendered_WhenListsExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("today-view-chip", cut.Markup);
+        Assert.Contains("Today", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TodayViewChip_ShowsCount_WhenOverdueTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-2));
+        await addHandler.HandleAsync("Future task", dueDate: DateTime.Today.AddDays(5));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("Today (1)", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingTodayViewChip_ShowsTodayViewPanel()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-1));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".today-view-chip").Click();
+
+        cut.WaitForState(() => cut.Markup.Contains("today-view-panel"));
+        Assert.Contains("today-view-panel", cut.Markup);
+        Assert.Contains("Overdue and due today across all lists", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TodayView_ShowsOverdueTodo_WithOverdueChip()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Pay bills", dueDate: DateTime.Today.AddDays(-3));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".today-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("today-view-panel"));
+
+        Assert.Contains("Pay bills", cut.Markup);
+        Assert.Contains("today-view-overdue-chip", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TodayView_ShowsDueTodayTodo_WithTodayChip()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Submit report", dueDate: DateTime.Today);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".today-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("today-view-panel"));
+
+        Assert.Contains("Submit report", cut.Markup);
+        Assert.Contains("today-view-today-chip", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TodayView_ShowsEmptyState_WhenNothingUrgent()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Future task", dueDate: DateTime.Today.AddDays(5));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".today-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("today-view-panel"));
+
+        Assert.Contains("today-view-empty", cut.Markup);
+        Assert.Contains("all caught up", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TodayView_HidesAddTodoCard()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task", dueDate: DateTime.Today.AddDays(-1));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".today-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("today-view-panel"));
+
+        Assert.DoesNotContain("Add a New Todo", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TodayView_BackToListButton_ExitsTodayView()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Overdue", dueDate: DateTime.Today.AddDays(-1));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".today-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("today-view-panel"));
+
+        cut.Find(".today-view-exit-btn").Click();
+        cut.WaitForState(() => !cut.Markup.Contains("today-view-panel"));
+
+        Assert.Contains("Add a New Todo", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TodayView_GroupsTodosByListName()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var createList = new CreateListHandler(db);
+        var addHandler = new AddTodoHandler(db);
+
+        var workListId = await createList.HandleAsync("Work");
+        await addHandler.HandleAsync("Personal overdue", dueDate: DateTime.Today.AddDays(-1), listId: 1);
+        await addHandler.HandleAsync("Work overdue", dueDate: DateTime.Today.AddDays(-1), listId: workListId);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".today-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("today-view-panel"));
+
+        Assert.Contains("Personal", cut.Markup);
+        Assert.Contains("Work", cut.Markup);
+        Assert.Equal(2, cut.FindAll(".today-view-group").Count);
+    }
+
+    [Fact]
+    public async Task TodayView_DoesNotShowFutureTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Future task", dueDate: DateTime.Today.AddDays(7));
+        await addHandler.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-1));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".today-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("today-view-panel"));
+
+        Assert.DoesNotContain("Future task", cut.Markup);
+        Assert.Contains("Overdue task", cut.Markup);
     }
 }
