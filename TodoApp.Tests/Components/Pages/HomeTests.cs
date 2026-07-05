@@ -48,6 +48,7 @@ using TodoApp.Features.Todos.CompletionTimeAnalytics;
 using TodoApp.Features.Todos.PriorityBreakdown;
 using TodoApp.Features.Todos.BlockTodo;
 using TodoApp.Features.Todos.TodayView;
+using TodoApp.Features.Todos.TagStats;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -116,6 +117,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<PriorityBreakdownHandler>();
         ctx.Services.AddScoped<BlockTodoHandler>();
         ctx.Services.AddScoped<TodayViewHandler>();
+        ctx.Services.AddScoped<TagStatsHandler>();
         return ctx;
     }
 
@@ -6383,5 +6385,98 @@ public class HomeTests : BunitContext
 
         Assert.DoesNotContain("Future task", cut.Markup);
         Assert.Contains("Overdue task", cut.Markup);
+    }
+
+    // Tag stats tests
+
+    [Fact]
+    public async Task TagStats_Row_NotRendered_WhenNoTags()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task with no tags");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("tag-stats-row", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TagStats_Row_Rendered_WhenTagsExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+        var todoId = await addHandler.HandleAsync("Tagged task");
+        await addTag.HandleAsync(todoId, "work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("tag-stats-row", cut.Markup);
+        Assert.Contains("By tag:", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TagStats_ShowsTagNameAndCounts()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+
+        var id1 = await addHandler.HandleAsync("Active work task");
+        var id2 = await addHandler.HandleAsync("Completed work task");
+        await completeHandler.HandleAsync(id2);
+        await addTag.HandleAsync(id1, "work");
+        await addTag.HandleAsync(id2, "work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("tag-stats-row", cut.Markup);
+        Assert.Contains("#work", cut.Markup);
+        // 1 completed out of 2 total = 50%
+        Assert.Contains("1/2", cut.Markup);
+        Assert.Contains("50%", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TagStats_ShowsMultipleTags()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+
+        var id1 = await addHandler.HandleAsync("Work task");
+        var id2 = await addHandler.HandleAsync("Personal task");
+        await addTag.HandleAsync(id1, "work");
+        await addTag.HandleAsync(id2, "personal");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("#work", cut.Markup);
+        Assert.Contains("#personal", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TagStats_ChipsHaveTooltipWithActiveAndCompletedCounts()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var addTag = new AddTagHandler(db);
+        var todoId = await addHandler.HandleAsync("Active task");
+        await addTag.HandleAsync(todoId, "project");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var chip = cut.Find(".tag-stat-chip");
+        var title = chip.GetAttribute("title");
+        Assert.NotNull(title);
+        Assert.Contains("project", title);
+        Assert.Contains("active", title);
     }
 }

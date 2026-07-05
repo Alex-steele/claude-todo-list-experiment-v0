@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 75 — [2026-07-05] — Feature: Tag Completion Stats
+
+**Description:** The stats panel now shows a "By tag:" breakdown row with a chip for each tag used in the current list. Each chip displays completed/total count and completion percentage — e.g. "#work 3/5 (60%)" — and a tooltip with the exact active/completed split. Tags are ordered by completion rate ascending, so the most incomplete tags appear first and demand attention. The row is hidden when no todos carry a tag, keeping the stats panel clean for simple lists. Multi-tagged todos count toward each of their tags.
+
+**Reason for change:** The filter tag chips (Day 68) already show how many active todos exist per tag, and the priority breakdown (Day 72) shows completion rates per priority tier. But for users who use tags as project labels, there was no completion view per project. A "#work 1/8 (12%)" chip alongside "#personal 6/7 (86%)" is immediately actionable — it reveals that one area of the list is barely being processed while another is nearly done. Tag stats give a lightweight project-level health view without requiring a separate project management system.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 335
+- Lines deleted: 0
+- Tests added: 16
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 74 — [2026-07-05] — Feature: Today Cross-List View
 
 **Description:** A new "Today" tab in the list selector shows all overdue and due-today todos across every list in one aggregated view. The chip displays a live count of urgent todos (e.g. "Today (3)") and turns red when items are waiting. Clicking it opens the Today panel, which groups urgent todos by their source list with the list name as a header and a "Go to list" shortcut. Each todo shows its title, an overdue or due-today chip, and a priority chip; users can complete or delete todos directly from the Today view. The Add a New Todo form is hidden while Today view is active, replaced by a clean read-only panel. A "Back to list" button or clicking any list chip exits the Today view.

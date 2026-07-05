@@ -43,8 +43,10 @@
 @using TodoApp.Features.Todos.PriorityBreakdown
 @using TodoApp.Features.Todos.BlockTodo
 @using TodoApp.Features.Todos.TodayView
+@using TodoApp.Features.Todos.TagStats
 @inject BlockTodoHandler BlockTodoHandler
 @inject TodayViewHandler TodayViewHandler
+@inject TagStatsHandler TagStatsHandler
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -524,6 +526,25 @@
                              Class="priority-breakdown-low"
                              title="@($"Low priority: {breakdown.Low.Active} active, {breakdown.Low.Completed} completed")">
                         Low @breakdown.Low.Completed/@breakdown.Low.Total (@breakdown.Low.CompletionPercent%)
+                    </MudChip>
+                }
+            </div>
+        }
+        @{
+            var listTodosForTagStats = _todos!.Where(t => t.ListId == _activeListId).ToList();
+            var tagStats = TagStatsHandler.Handle(listTodosForTagStats, _todoTags);
+        }
+        @if (tagStats.Count > 0)
+        {
+            <div class="d-flex align-center gap-2 mt-2 flex-wrap tag-stats-row">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1" Style="white-space:nowrap;">By tag:</MudText>
+                @foreach (var ts in tagStats)
+                {
+                    var tagStat = ts;
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary"
+                             Class="tag-stat-chip"
+                             title="@($"{tagStat.TagName}: {tagStat.Active} active, {tagStat.Completed} completed")">
+                        #@tagStat.TagName @tagStat.Completed/@tagStat.Total (@tagStat.CompletionPercent%)
                     </MudChip>
                 }
             </div>
