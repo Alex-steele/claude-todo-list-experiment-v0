@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 80 — [2026-07-07] — Feature: List Archiving
+
+**Description:** Lists can now be archived instead of deleted. Each non-default list chip in the list selector shows a small archive icon (opacity 0.5) on hover; clicking it archives the list and removes it from the active selector immediately. Archived lists are surfaced via a collapsible "Archived (N)" toggle below the chip row. Expanding it shows each archived list with two action buttons: Unarchive (restores the list to the active selector with all its todos intact) and Delete (permanently removes it via the existing delete flow). The default "Personal" list cannot be archived. The `TodoLists` table gains an `IsArchived` column (migration via `ALTER TABLE … ADD COLUMN`, ignored if already present) and `GetListsHandler` now filters to `WHERE IsArchived = 0`.
+
+**Reason for change:** The app previously only offered permanent deletion for lists. Users who want to put seasonal or completed projects aside — without losing todos or breaking their workflow — had no lighter-weight option. Archiving fills that gap: it's a reversible soft-delete that keeps the list and all its todos available for later retrieval.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 210
+- Lines deleted: 3
+- Tests added: 14
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 79 — [2026-07-07] — Feature: JSON Export
 
 **Description:** A new "Export to JSON" button (the `{}` data-object icon, between the Markdown export and the CSV import buttons) downloads the current list as a structured `.json` file. The file contains a top-level envelope with the list name, export date, and a count summary (total / active / completed), plus a `Todos` array where each item carries every field: `Id`, `Title`, `IsCompleted`, `Priority` (as a lowercase string), `DueDate`, `CompletedAt`, `CreatedAt`, `IsPinned`, `IsBlocked`, `TimeEstimate`, `ColorLabel`, and a `Tags` array of tag name strings. Null and default-value fields (`DueDate`, `Notes`, `TimeEstimate`, `ColorLabel`, `CompletedAt`) are omitted from the output to keep the JSON clean.

@@ -79,6 +79,9 @@
 @inject GetListsHandler GetListsHandler
 @inject RenameListHandler RenameListHandler
 @inject ReorderListsHandler ReorderListsHandler
+@inject ArchiveListHandler ArchiveListHandler
+@inject UnarchiveListHandler UnarchiveListHandler
+@inject GetArchivedListsHandler GetArchivedListsHandler
 @inject ReorderTodosHandler ReorderTodosHandler
 @inject MoveTodoHandler MoveTodoHandler
 @inject RestoreTodosHandler RestoreTodosHandler
@@ -149,7 +152,7 @@
                               @ondragover="@(() => _dragOverListId = listId)"
                               @ondrop="@(async () => await HandleListDrop(listId))"
                               style="@(_dragOverListId == listId && _draggingListId != listId ? "opacity: 0.5;" : "")"
-                              class="list-drag-wrapper">
+                              class="list-drag-wrapper d-inline-flex align-center">
                         <MudChip T="string"
                                  Variant="@(_activeListId == listId ? Variant.Filled : Variant.Outlined)"
                                  Color="Color.Primary"
@@ -163,6 +166,17 @@
                                 <span class="list-count-badge">@activeCount</span>
                             }
                         </MudChip>
+                        @if (list.Id != ArchiveListHandler.DefaultListId)
+                        {
+                            <MudIconButton
+                                Icon="@Icons.Material.Outlined.Inventory2"
+                                Size="Size.Small"
+                                Color="Color.Default"
+                                OnClick="@(async () => await HandleArchiveList(listId))"
+                                title="Archive list"
+                                Style="margin-left: -4px; opacity: 0.5;"
+                                Class="archive-list-btn" />
+                        }
                         </span>
                     }
                 }
@@ -188,6 +202,52 @@
                         Class="add-list-btn" />
                 }
             </div>
+            @if (_archivedLists is { Count: > 0 })
+            {
+                <div class="mt-2">
+                    <MudButton
+                        Variant="Variant.Text"
+                        Color="Color.Secondary"
+                        Size="Size.Small"
+                        StartIcon="@(_showArchivedLists ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.Inventory2)"
+                        OnClick="@(() => _showArchivedLists = !_showArchivedLists)"
+                        Class="show-archived-lists-btn">
+                        Archived (@_archivedLists.Count)
+                    </MudButton>
+                    @if (_showArchivedLists)
+                    {
+                        <div class="d-flex align-center gap-1 flex-wrap mt-1 archived-lists-row">
+                            @foreach (var archivedList in _archivedLists)
+                            {
+                                var archivedId = archivedList.Id;
+                                <div class="d-flex align-center gap-0 archived-list-item">
+                                    <MudChip T="string"
+                                             Variant="Variant.Outlined"
+                                             Color="Color.Default"
+                                             Disabled="true"
+                                             Class="archived-list-chip">
+                                        @archivedList.Name
+                                    </MudChip>
+                                    <MudIconButton
+                                        Icon="@Icons.Material.Filled.Unarchive"
+                                        Size="Size.Small"
+                                        Color="Color.Secondary"
+                                        OnClick="@(async () => await HandleUnarchiveList(archivedId))"
+                                        title="Restore list"
+                                        Class="unarchive-list-btn" />
+                                    <MudIconButton
+                                        Icon="@Icons.Material.Filled.Delete"
+                                        Size="Size.Small"
+                                        Color="Color.Error"
+                                        OnClick="@(async () => await HandleDeleteArchivedList(archivedId))"
+                                        title="Delete permanently"
+                                        Class="delete-archived-list-btn" />
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
         </MudCardContent>
     </MudCard>
 }
@@ -2171,6 +2231,8 @@ else
     private TimeEstimate _newTimeEstimate = TimeEstimate.None;
 
     private IReadOnlyList<TodoList>? _lists;
+    private IReadOnlyList<TodoList>? _archivedLists;
+    private bool _showArchivedLists;
     private int _activeListId = 1;
     private bool _creatingList;
     private string _newListName = string.Empty;
@@ -2383,6 +2445,7 @@ else
     {
         _filterCountsCache = null;
         _lists = await GetListsHandler.HandleAsync();
+        _archivedLists = await GetArchivedListsHandler.HandleAsync();
         _todos = await GetTodosHandler.HandleAsync();
         _activityStats = await ActivityStatsHandler.HandleAsync();
         _allTagNames = await GetAllTagNamesHandler.HandleAsync();
@@ -3569,6 +3632,28 @@ else
         await DeleteListHandler.HandleAsync(listId);
         if (_activeListId == listId)
             _activeListId = DeleteListHandler.DefaultListId;
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleArchiveList(int listId)
+    {
+        if (listId == ArchiveListHandler.DefaultListId) return;
+
+        await ArchiveListHandler.HandleAsync(listId);
+        if (_activeListId == listId)
+            _activeListId = DeleteListHandler.DefaultListId;
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleUnarchiveList(int listId)
+    {
+        await UnarchiveListHandler.HandleAsync(listId);
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleDeleteArchivedList(int listId)
+    {
+        await DeleteListHandler.HandleAsync(listId);
         await LoadTodosAsync();
     }
 

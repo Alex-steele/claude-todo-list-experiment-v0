@@ -210,5 +210,15 @@ public class Database(string connectionString)
         {
             // Column already exists — ignore
         }
+
+        // Migration: add IsArchived to TodoLists for list archiving
+        try
+        {
+            await conn.ExecuteAsync("ALTER TABLE TodoLists ADD COLUMN IsArchived INTEGER NOT NULL DEFAULT 0");
+        }
+        catch (SqliteException)
+        {
+            // Column already exists — ignore
+        }
     }
 }

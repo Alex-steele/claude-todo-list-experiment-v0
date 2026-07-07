@@ -122,6 +122,9 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<TagStatsHandler>();
         ctx.Services.AddScoped<MarkdownImportHandler>();
         ctx.Services.AddScoped<JsonExportHandler>();
+        ctx.Services.AddScoped<ArchiveListHandler>();
+        ctx.Services.AddScoped<UnarchiveListHandler>();
+        ctx.Services.AddScoped<GetArchivedListsHandler>();
         return ctx;
     }
 
@@ -6667,5 +6670,82 @@ public class HomeTests : BunitContext
         var cut = RenderHome(ctx);
 
         Assert.Contains("Export to JSON", cut.Markup);
+    }
+
+    // ── List Archiving ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ArchiveButton_IsRenderedForNonDefaultLists()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        await create.HandleAsync("Work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("archive-list-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ArchiveButton_IsNotRenderedForDefaultList()
+    {
+        var db = await TestDatabase.CreateAsync();
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Default list (Personal) should have no archive button
+        Assert.DoesNotContain("archive-list-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ArchivedLists_ButtonShownWhenArchivedListsExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        var archive = new ArchiveListHandler(db);
+
+        var workId = await create.HandleAsync("Work");
+        await archive.HandleAsync(workId);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("show-archived-lists-btn", cut.Markup);
+        Assert.Contains("Archived (1)", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ArchivedLists_ButtonNotShownWhenNoneArchived()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        await create.HandleAsync("Work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("show-archived-lists-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ArchiveList_ClickArchiveButton_ListDisappearsFromSelector()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        await create.HandleAsync("Work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Click the archive button for the Work list
+        cut.Find(".archive-list-btn").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            var chips = cut.FindAll(".list-chip");
+            Assert.DoesNotContain(chips, c => c.TextContent.Contains("Work") && !c.ClassList.Contains("mud-chip-disabled"));
+        });
     }
 }
