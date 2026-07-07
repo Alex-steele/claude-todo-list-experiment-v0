@@ -61,6 +61,7 @@
 @inject MarkdownExportHandler MarkdownExportHandler
 @inject ImportTodosHandler ImportTodosHandler
 @inject MarkdownImportHandler MarkdownImportHandler
+@inject JsonExportHandler JsonExportHandler
 @inject PinTodoHandler PinTodoHandler
 @inject CompleteSubtaskHandler CompleteSubtaskHandler
 @inject DeleteSubtaskHandler DeleteSubtaskHandler
@@ -960,6 +961,15 @@ else
                             OnClick="HandleExportMarkdown"
                             title="Export to Markdown"
                             Class="export-markdown-btn" />
+                    </MudTooltip>
+                    <MudTooltip Text="Export to JSON">
+                        <MudIconButton
+                            Icon="@Icons.Material.Filled.DataObject"
+                            Size="Size.Small"
+                            Color="Color.Default"
+                            OnClick="HandleExportJson"
+                            title="Export to JSON"
+                            Class="export-json-btn" />
                     </MudTooltip>
                     <MudTooltip Text="Import from CSV">
                         <MudIconButton
@@ -3165,6 +3175,16 @@ else
         var md = MarkdownExportHandler.Generate(listName, listTodos, _todoTags);
         var filename = $"todos-{DateTime.Today:yyyy-MM-dd}.md";
         await JS.InvokeVoidAsync("todoApp.downloadFile", filename, md, "text/markdown");
+    }
+
+    private async Task HandleExportJson()
+    {
+        if (_todos is null || _todos.Count == 0) return;
+        var listName = _lists?.FirstOrDefault(l => l.Id == _activeListId)?.Name ?? "Todos";
+        var listTodos = _todos.Where(t => t.ListId == _activeListId).ToList();
+        var json = JsonExportHandler.Generate(listName, listTodos, _todoTags);
+        var filename = $"todos-{DateTime.Today:yyyy-MM-dd}.json";
+        await JS.InvokeVoidAsync("todoApp.downloadFile", filename, json, "application/json");
     }
 
     private void ToggleSubtasksExpanded(int todoId)
