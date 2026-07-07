@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 78 — [2026-07-07] — Feature: Import from Markdown
+
+**Description:** A new "Import from Markdown" button (the upload-file icon, next to the existing CSV import) lets users load a `.md` file and import todos from it. The parser recognises `- [ ] Title` lines as active todos and `- [x] ~~Title~~` lines as completed todos, both in the exact format produced by the Markdown export (Day 76). Metadata in the trailing `_(...)_` block is parsed for priority (high/medium/low), due date (`due YYYY-MM-DD`, `overdue YYYY-MM-DD`, `due today`), and tags (`#tagname`). Non-todo lines (headings, blank lines, the export date line) are silently ignored. Imported todos land in the currently active list. A success snackbar confirms how many todos were imported, and a warning appears if no valid todo lines were found.
+
+**Reason for change:** The Markdown export (Day 76) introduced a human-readable export format but there was no way to re-import it. Closing this round-trip means users can export a list, edit it in any text editor or markdown tool (Obsidian, Notion, a Git repo), and import the result back without data loss. Priority, due date, and tag metadata survive the round-trip because the import parser understands the same `_(...)_` convention the exporter writes.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 490
+- Lines deleted: 0
+- Tests added: 19
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 77 — [2026-07-05] — Feature: List Drag-to-Reorder
 
 **Description:** Lists in the sidebar can now be reordered by dragging. Each list chip is wrapped in a draggable element; dragging one chip over another and releasing drops it into that position. The new order is persisted immediately to SQLite via a `SortOrder` column on `TodoLists`. Lists are returned from `GetListsHandler` in `SortOrder ASC, Id ASC` order, so the arrangement survives page refreshes and server restarts. The "Today" chip is fixed at the top and cannot be dragged. Newly created lists are appended at the end (`MAX(SortOrder) + 1`), so create-then-reorder works without breaking the initial ordering invariant.
