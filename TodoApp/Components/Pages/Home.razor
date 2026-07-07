@@ -60,6 +60,7 @@
 @inject CsvExportHandler CsvExportHandler
 @inject MarkdownExportHandler MarkdownExportHandler
 @inject ImportTodosHandler ImportTodosHandler
+@inject MarkdownImportHandler MarkdownImportHandler
 @inject PinTodoHandler PinTodoHandler
 @inject CompleteSubtaskHandler CompleteSubtaskHandler
 @inject DeleteSubtaskHandler DeleteSubtaskHandler
@@ -969,7 +970,17 @@ else
                             title="Import from CSV"
                             Class="import-csv-btn" />
                     </MudTooltip>
+                    <MudTooltip Text="Import from Markdown">
+                        <MudIconButton
+                            Icon="@Icons.Material.Filled.UploadFile"
+                            Size="Size.Small"
+                            Color="Color.Default"
+                            OnClick="HandleImportMarkdownClick"
+                            title="Import from Markdown"
+                            Class="import-markdown-btn" />
+                    </MudTooltip>
                     <InputFile id="csv-import-input" OnChange="HandleFileSelected" accept=".csv" style="display:none;" />
+                    <InputFile id="md-import-input" OnChange="HandleMarkdownFileSelected" accept=".md" style="display:none;" />
                 </div>
             </div>
             <div class="d-flex align-center gap-1 flex-wrap mt-3 priority-filter-row">
@@ -3099,6 +3110,11 @@ else
         await JS.InvokeVoidAsync("todoApp.clickElement", "#csv-import-input");
     }
 
+    private async Task HandleImportMarkdownClick()
+    {
+        await JS.InvokeVoidAsync("todoApp.clickElement", "#md-import-input");
+    }
+
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
         var file = e.File;
@@ -3114,6 +3130,23 @@ else
             Snackbar.Add($"Imported {count} todo{(count == 1 ? "" : "s")}", Severity.Success);
         else
             Snackbar.Add("No todos found to import.", Severity.Warning);
+    }
+
+    private async Task HandleMarkdownFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+
+        using var reader = new StreamReader(file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024));
+        var content = await reader.ReadToEndAsync();
+
+        var count = await MarkdownImportHandler.HandleAsync(content, _activeListId);
+        await LoadTodosAsync();
+
+        if (count > 0)
+            Snackbar.Add($"Imported {count} todo{(count == 1 ? "" : "s")} from Markdown", Severity.Success);
+        else
+            Snackbar.Add("No todos found in the Markdown file.", Severity.Warning);
     }
 
     private async Task HandleExportCsv()

@@ -120,6 +120,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<BlockTodoHandler>();
         ctx.Services.AddScoped<TodayViewHandler>();
         ctx.Services.AddScoped<TagStatsHandler>();
+        ctx.Services.AddScoped<MarkdownImportHandler>();
         return ctx;
     }
 
@@ -6594,5 +6595,48 @@ public class HomeTests : BunitContext
         var workIdx = cut.Markup.IndexOf("Work", StringComparison.Ordinal);
         var personalIdx = cut.Markup.IndexOf("Personal", StringComparison.Ordinal);
         Assert.True(workIdx < personalIdx);
+    }
+
+    // ── Markdown Import ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task MarkdownImportButton_IsRendered()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Existing todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("import-markdown-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task MarkdownImportFileInput_IsRendered()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Existing todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("md-import-input", cut.Markup);
+    }
+
+    [Fact]
+    public async Task MarkdownImportFileInput_AcceptsMdFiles()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Existing todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // The hidden file input for markdown should accept .md files
+        var inputs = cut.FindAll("input[type=file]");
+        Assert.Contains(inputs, i => i.GetAttribute("accept") == ".md");
     }
 }

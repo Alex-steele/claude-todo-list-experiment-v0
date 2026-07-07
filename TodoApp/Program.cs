@@ -117,6 +117,7 @@ builder.Services.AddScoped<PriorityBreakdownHandler>();
 builder.Services.AddScoped<BlockTodoHandler>();
 builder.Services.AddScoped<TodayViewHandler>();
 builder.Services.AddScoped<TagStatsHandler>();
+builder.Services.AddScoped<MarkdownImportHandler>();
 
 var app = builder.Build();
 
