@@ -121,6 +121,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<TodayViewHandler>();
         ctx.Services.AddScoped<TagStatsHandler>();
         ctx.Services.AddScoped<MarkdownImportHandler>();
+        ctx.Services.AddScoped<JsonExportHandler>();
         return ctx;
     }
 
@@ -6638,5 +6639,33 @@ public class HomeTests : BunitContext
         // The hidden file input for markdown should accept .md files
         var inputs = cut.FindAll("input[type=file]");
         Assert.Contains(inputs, i => i.GetAttribute("accept") == ".md");
+    }
+
+    // ── JSON Export ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task JsonExportButton_IsRendered()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Task for export");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("export-json-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task JsonExportTooltip_ShowsCorrectLabel()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("Export to JSON", cut.Markup);
     }
 }

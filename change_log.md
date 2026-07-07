@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 79 — [2026-07-07] — Feature: JSON Export
+
+**Description:** A new "Export to JSON" button (the `{}` data-object icon, between the Markdown export and the CSV import buttons) downloads the current list as a structured `.json` file. The file contains a top-level envelope with the list name, export date, and a count summary (total / active / completed), plus a `Todos` array where each item carries every field: `Id`, `Title`, `IsCompleted`, `Priority` (as a lowercase string), `DueDate`, `CompletedAt`, `CreatedAt`, `IsPinned`, `IsBlocked`, `TimeEstimate`, `ColorLabel`, and a `Tags` array of tag name strings. Null and default-value fields (`DueDate`, `Notes`, `TimeEstimate`, `ColorLabel`, `CompletedAt`) are omitted from the output to keep the JSON clean.
+
+**Reason for change:** The app already offers CSV (for spreadsheets) and Markdown (for docs/notes tools) exports. JSON completes the export story for developers and power users: it provides structured, machine-readable data that can be consumed by scripts, piped into `jq`, imported into a database, or processed by any language without a CSV parser. The schema is self-describing — field names carry meaning — making it useful for long-term archival where the format needs to be interpretable without context.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 355
+- Lines deleted: 0
+- Tests added: 13
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 78 — [2026-07-07] — Feature: Import from Markdown
 
 **Description:** A new "Import from Markdown" button (the upload-file icon, next to the existing CSV import) lets users load a `.md` file and import todos from it. The parser recognises `- [ ] Title` lines as active todos and `- [x] ~~Title~~` lines as completed todos, both in the exact format produced by the Markdown export (Day 76). Metadata in the trailing `_(...)_` block is parsed for priority (high/medium/low), due date (`due YYYY-MM-DD`, `overdue YYYY-MM-DD`, `due today`), and tags (`#tagname`). Non-todo lines (headings, blank lines, the export date line) are silently ignored. Imported todos land in the currently active list. A success snackbar confirms how many todos were imported, and a warning appears if no valid todo lines were found.
