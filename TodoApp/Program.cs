@@ -118,6 +118,7 @@ builder.Services.AddScoped<BlockTodoHandler>();
 builder.Services.AddScoped<TodayViewHandler>();
 builder.Services.AddScoped<TagStatsHandler>();
 builder.Services.AddScoped<MarkdownImportHandler>();
+builder.Services.AddScoped<JsonImportHandler>();
 builder.Services.AddScoped<JsonExportHandler>();
 builder.Services.AddScoped<ArchiveListHandler>();
 builder.Services.AddScoped<UnarchiveListHandler>();

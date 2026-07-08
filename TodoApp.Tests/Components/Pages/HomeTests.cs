@@ -121,6 +121,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<TodayViewHandler>();
         ctx.Services.AddScoped<TagStatsHandler>();
         ctx.Services.AddScoped<MarkdownImportHandler>();
+        ctx.Services.AddScoped<JsonImportHandler>();
         ctx.Services.AddScoped<JsonExportHandler>();
         ctx.Services.AddScoped<ArchiveListHandler>();
         ctx.Services.AddScoped<UnarchiveListHandler>();
@@ -6747,5 +6748,48 @@ public class HomeTests : BunitContext
             var chips = cut.FindAll(".list-chip");
             Assert.DoesNotContain(chips, c => c.TextContent.Contains("Work") && !c.ClassList.Contains("mud-chip-disabled"));
         });
+    }
+
+    // ── JSON Import ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ImportJsonButton_IsRendered()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Seed todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("import-json-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ImportJsonFileInput_IsRendered_WithJsonAccept()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Seed todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var input = cut.Find("#json-import-input");
+        Assert.Equal(".json", input.GetAttribute("accept"));
+    }
+
+    [Fact]
+    public async Task ImportJsonButton_HasTooltip_ImportFromJSON()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Seed todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var btn = cut.Find(".import-json-btn");
+        Assert.Equal("Import from JSON", btn.GetAttribute("title"));
     }
 }
