@@ -61,6 +61,7 @@
 @inject MarkdownExportHandler MarkdownExportHandler
 @inject ImportTodosHandler ImportTodosHandler
 @inject MarkdownImportHandler MarkdownImportHandler
+@inject JsonImportHandler JsonImportHandler
 @inject JsonExportHandler JsonExportHandler
 @inject PinTodoHandler PinTodoHandler
 @inject CompleteSubtaskHandler CompleteSubtaskHandler
@@ -1049,8 +1050,18 @@ else
                             title="Import from Markdown"
                             Class="import-markdown-btn" />
                     </MudTooltip>
+                    <MudTooltip Text="Import from JSON">
+                        <MudIconButton
+                            Icon="@Icons.Material.Filled.DataArray"
+                            Size="Size.Small"
+                            Color="Color.Default"
+                            OnClick="HandleImportJsonClick"
+                            title="Import from JSON"
+                            Class="import-json-btn" />
+                    </MudTooltip>
                     <InputFile id="csv-import-input" OnChange="HandleFileSelected" accept=".csv" style="display:none;" />
                     <InputFile id="md-import-input" OnChange="HandleMarkdownFileSelected" accept=".md" style="display:none;" />
+                    <InputFile id="json-import-input" OnChange="HandleJsonFileSelected" accept=".json" style="display:none;" />
                 </div>
             </div>
             <div class="d-flex align-center gap-1 flex-wrap mt-3 priority-filter-row">
@@ -3220,6 +3231,35 @@ else
             Snackbar.Add($"Imported {count} todo{(count == 1 ? "" : "s")} from Markdown", Severity.Success);
         else
             Snackbar.Add("No todos found in the Markdown file.", Severity.Warning);
+    }
+
+    private async Task HandleImportJsonClick()
+    {
+        await JS.InvokeVoidAsync("todoApp.clickElement", "#json-import-input");
+    }
+
+    private async Task HandleJsonFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+
+        using var reader = new StreamReader(file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024));
+        var content = await reader.ReadToEndAsync();
+
+        try
+        {
+            var count = await JsonImportHandler.HandleAsync(content, _activeListId);
+            await LoadTodosAsync();
+
+            if (count > 0)
+                Snackbar.Add($"Imported {count} todo{(count == 1 ? "" : "s")} from JSON", Severity.Success);
+            else
+                Snackbar.Add("No todos found in the JSON file.", Severity.Warning);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            Snackbar.Add("Invalid JSON file — could not parse.", Severity.Error);
+        }
     }
 
     private async Task HandleExportCsv()

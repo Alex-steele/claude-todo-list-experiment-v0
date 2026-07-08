@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 81 — [2026-07-08] — Feature: JSON Import
+
+**Description:** A new "Import from JSON" button (the `[]` data-array icon, after the Markdown import) lets users load a `.json` file and import todos from it. The parser reads the envelope format produced by the JSON Export handler (Day 79): it deserialises the `Todos` array and inserts each item into the active list, preserving `Title`, `IsCompleted`, `Priority` (high/medium/low/none), `DueDate`, `CompletedAt`, `IsPinned`, `IsBlocked`, `TimeEstimate`, `ColorLabel`, `Tags`, and `Notes`. Invalid JSON throws a `JsonException` which the UI catches and surfaces as an error snackbar. An empty or missing `Todos` array returns zero and shows a warning. The feature completes a full JSON round-trip alongside the existing Markdown export→import round-trip.
+
+**Reason for change:** Day 79 added JSON export but left no way to re-import the file. A developer who exports a list, processes it with a script, and wants to re-import the result had no path back. JSON import closes that loop: the schema is already well-defined (the export envelope), the parsing is straightforward (`System.Text.Json`), and the UI pattern mirrors the Markdown import added in Day 78. Together, export and import make JSON a fully usable interchange format for the app's data.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 165
+- Lines deleted: 0
+- Tests added: 17
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 80 — [2026-07-07] — Feature: List Archiving
 
 **Description:** Lists can now be archived instead of deleted. Each non-default list chip in the list selector shows a small archive icon (opacity 0.5) on hover; clicking it archives the list and removes it from the active selector immediately. Archived lists are surfaced via a collapsible "Archived (N)" toggle below the chip row. Expanding it shows each archived list with two action buttons: Unarchive (restores the list to the active selector with all its todos intact) and Delete (permanently removes it via the existing delete flow). The default "Personal" list cannot be archived. The `TodoLists` table gains an `IsArchived` column (migration via `ALTER TABLE … ADD COLUMN`, ignored if already present) and `GetListsHandler` now filters to `WHERE IsArchived = 0`.
