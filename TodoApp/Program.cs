@@ -42,6 +42,7 @@ using TodoApp.Features.Todos.TagStats;
 using TodoApp.Features.Todos.TodayView;
 using TodoApp.Features.Todos.Links;
 using TodoApp.Features.Todos.RescheduleTodos;
+using TodoApp.Features.Todos.SetPriority;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -127,6 +128,7 @@ builder.Services.AddScoped<UnarchiveListHandler>();
 builder.Services.AddScoped<GetArchivedListsHandler>();
 builder.Services.AddScoped<SetTodoUrlHandler>();
 builder.Services.AddScoped<RescheduleOverdueTodosHandler>();
+builder.Services.AddScoped<SetPriorityHandler>();
 
 var app = builder.Build();
 

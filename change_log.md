@@ -1,5 +1,18 @@
 # Change Log
 
+## Day 85 — [2026-07-09] — Feature: Quick Priority Toggle
+
+**Description:** Priority is now editable in a single click directly from the todo list, without opening the full edit form. Todos with a set priority (Low, Medium, or High) show a clickable colored chip beside the title; each click cycles the priority upward (Low → Medium → High → None). Todos with no priority show a faint flag icon that sets the priority to Low on click, completing the cycle from the other end (None → Low). The `SetPriorityHandler` is a focused new handler that updates only the `Priority` column; no database migration is needed.
+
+**Files changed:**
+- `TodoApp/Features/Todos/SetPriority/SetPriorityHandler.cs` — new handler, updates Priority only
+- `TodoApp/Program.cs` — registered `SetPriorityHandler`
+- `TodoApp/Components/Pages/Home.razor` — clickable priority chip (`todo-priority-chip`), faint flag button (`todo-set-priority-btn`) for None-priority active todos, `NextPriority` helper, `HandleCyclePriority` method
+
+**Tests added:** 7 unit tests (`SetPriorityHandlerTests`), 6 bUnit tests (`HomeTests`)
+
+---
+
 ## Day 84 — [2026-07-09] — Feature: No Due Date Filter
 
 **Description:** Adds a "No date" chip to the date filter row, letting users instantly see all active todos that have no due date assigned. The chip shows a count badge (e.g. "No date (5)") when any such todos exist. Selecting the chip filters the list to only undated, non-completed todos; clicking the "Any" chip resets back to the full list. The new `NoDueDate = 4` value extends `TodoDateFilter`, the filter case is handled in `FilterSortTodosHandler`, and `FilterCountsHandler` computes the count for the badge. No database changes are required.

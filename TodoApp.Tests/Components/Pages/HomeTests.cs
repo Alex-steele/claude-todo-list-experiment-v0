@@ -51,6 +51,7 @@ using TodoApp.Features.Todos.TodayView;
 using TodoApp.Features.Todos.TagStats;
 using TodoApp.Features.Todos.Links;
 using TodoApp.Features.Todos.RescheduleTodos;
+using TodoApp.Features.Todos.SetPriority;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -130,6 +131,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<GetArchivedListsHandler>();
         ctx.Services.AddScoped<SetTodoUrlHandler>();
         ctx.Services.AddScoped<RescheduleOverdueTodosHandler>();
+        ctx.Services.AddScoped<SetPriorityHandler>();
         return ctx;
     }
 
@@ -6201,6 +6203,94 @@ public class HomeTests : BunitContext
         Assert.DoesNotContain("priority-breakdown-high", cut.Markup);
         Assert.DoesNotContain("priority-breakdown-low", cut.Markup);
         Assert.Contains("priority-breakdown-medium", cut.Markup);
+    }
+
+    // ---- Quick Priority Toggle (Day 85) ----
+
+    [Fact]
+    public async Task PriorityChip_RenderedForHighPriorityTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Important task", priority: TodoPriority.High);
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        Assert.NotEmpty(cut.FindAll(".todo-priority-chip"));
+    }
+
+    [Fact]
+    public async Task SetPriorityBtn_RenderedForNonePriorityTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Normal task");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        Assert.NotEmpty(cut.FindAll(".todo-set-priority-btn"));
+    }
+
+    [Fact]
+    public async Task PriorityChip_Click_CyclesToNextPriority()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task", priority: TodoPriority.Low);
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-priority-chip").Click();
+
+        // Low → Medium
+        Assert.DoesNotContain("todo-set-priority-btn", cut.Markup);
+        var chip = cut.Find(".todo-priority-chip");
+        Assert.Contains("Medium", chip.TextContent);
+    }
+
+    [Fact]
+    public async Task PriorityChip_Click_HighCyclesToNone()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task", priority: TodoPriority.High);
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-priority-chip").Click();
+
+        // High → None (chip disappears, flag button appears)
+        Assert.Empty(cut.FindAll(".todo-priority-chip"));
+        Assert.NotEmpty(cut.FindAll(".todo-set-priority-btn"));
+    }
+
+    [Fact]
+    public async Task SetPriorityBtn_Click_SetsLowPriority()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Task");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-set-priority-btn").Click();
+
+        // None → Low
+        Assert.NotEmpty(cut.FindAll(".todo-priority-chip"));
+        Assert.Contains("Low", cut.Find(".todo-priority-chip").TextContent);
+    }
+
+    [Fact]
+    public async Task PriorityChip_NotRenderedForCompletedTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Done task", priority: TodoPriority.High);
+        await completeHandler.HandleAsync(id);
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        // Completed todos are hidden in Active view; switch to All
+        Assert.DoesNotContain("todo-set-priority-btn", cut.Markup);
     }
 
     // ---- Blocked / Waiting For (Day 73) ----
