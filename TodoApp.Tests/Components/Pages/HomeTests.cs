@@ -49,6 +49,7 @@ using TodoApp.Features.Todos.PriorityBreakdown;
 using TodoApp.Features.Todos.BlockTodo;
 using TodoApp.Features.Todos.TodayView;
 using TodoApp.Features.Todos.TagStats;
+using TodoApp.Features.Todos.Links;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -126,6 +127,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<ArchiveListHandler>();
         ctx.Services.AddScoped<UnarchiveListHandler>();
         ctx.Services.AddScoped<GetArchivedListsHandler>();
+        ctx.Services.AddScoped<SetTodoUrlHandler>();
         return ctx;
     }
 
@@ -6791,5 +6793,200 @@ public class HomeTests : BunitContext
 
         var btn = cut.Find(".import-json-btn");
         Assert.Equal("Import from JSON", btn.GetAttribute("title"));
+    }
+
+    // ── URL link attachment tests ──────────────────────────────────────────
+
+    [Fact]
+    public async Task UrlButton_IsRendered_ForEachTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Task with potential link");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var btn = cut.Find(".todo-url-btn");
+        Assert.NotNull(btn);
+    }
+
+    [Fact]
+    public async Task UrlButton_HasAddLinkTitle_WhenNoUrlSet()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Task without link");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var btn = cut.Find(".todo-url-btn");
+        Assert.Equal("Add link", btn.GetAttribute("title"));
+    }
+
+    [Fact]
+    public async Task UrlButton_HasEditLinkTitle_WhenUrlIsSet()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var urlHandler = new SetTodoUrlHandler(db);
+        var id = await add.HandleAsync("Task with link");
+        await urlHandler.HandleAsync(id, "https://example.com");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var btn = cut.Find(".todo-url-btn");
+        Assert.Equal("Edit link", btn.GetAttribute("title"));
+    }
+
+    [Fact]
+    public async Task ClickingUrlButton_ShowsUrlEditor()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Task without link");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-url-btn").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            var editor = cut.Find(".todo-url-editor");
+            Assert.NotNull(editor);
+        });
+    }
+
+    [Fact]
+    public async Task UrlEditor_CancelButton_HidesEditor()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-url-btn").Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".todo-url-editor")));
+
+        cut.Find(".todo-url-cancel-btn").Click();
+
+        cut.WaitForAssertion(() =>
+            Assert.Empty(cut.FindAll(".todo-url-editor")));
+    }
+
+    [Fact]
+    public async Task TodoWithUrl_ShowsClickableLink()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var urlHandler = new SetTodoUrlHandler(db);
+        var id = await add.HandleAsync("PR review task");
+        await urlHandler.HandleAsync(id, "https://github.com/org/repo/pull/1");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var link = cut.Find(".todo-url-link");
+        Assert.NotNull(link);
+        Assert.Equal("https://github.com/org/repo/pull/1", link.GetAttribute("href"));
+        Assert.Equal("_blank", link.GetAttribute("target"));
+    }
+
+    [Fact]
+    public async Task TodoWithUrl_ShowsHostnameInLinkText()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var urlHandler = new SetTodoUrlHandler(db);
+        var id = await add.HandleAsync("Ticket task");
+        await urlHandler.HandleAsync(id, "https://github.com/org/repo/pull/1");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var link = cut.Find(".todo-url-link");
+        Assert.Contains("github.com", link.InnerHtml);
+    }
+
+    [Fact]
+    public async Task TodoWithoutUrl_NoLinkDisplayed()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Task without link");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Empty(cut.FindAll(".todo-url-link"));
+    }
+
+    [Fact]
+    public async Task SaveUrl_PersistsAndShowsLink()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-url-btn").Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".todo-url-input")));
+
+        var input = cut.Find(".todo-url-input input");
+        input.Change("https://example.com/docs");
+
+        cut.Find(".todo-url-save-btn").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            var link = cut.Find(".todo-url-link");
+            Assert.Equal("https://example.com/docs", link.GetAttribute("href"));
+        });
+    }
+
+    [Fact]
+    public async Task UrlEditor_ShowsRemoveLinkButton_WhenUrlAlreadySet()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var urlHandler = new SetTodoUrlHandler(db);
+        var id = await add.HandleAsync("Task");
+        await urlHandler.HandleAsync(id, "https://example.com");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-url-btn").Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".todo-url-editor")));
+
+        Assert.NotEmpty(cut.FindAll(".todo-url-clear-btn"));
+    }
+
+    [Fact]
+    public async Task RemoveLinkButton_ClearsUrl()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var urlHandler = new SetTodoUrlHandler(db);
+        var id = await add.HandleAsync("Task");
+        await urlHandler.HandleAsync(id, "https://example.com");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-url-btn").Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".todo-url-clear-btn")));
+
+        cut.Find(".todo-url-clear-btn").Click();
+
+        cut.WaitForAssertion(() =>
+            Assert.Empty(cut.FindAll(".todo-url-link")));
     }
 }

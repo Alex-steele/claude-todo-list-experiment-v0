@@ -40,6 +40,7 @@ using TodoApp.Features.Todos.PriorityBreakdown;
 using TodoApp.Features.Todos.BlockTodo;
 using TodoApp.Features.Todos.TagStats;
 using TodoApp.Features.Todos.TodayView;
+using TodoApp.Features.Todos.Links;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -123,6 +124,7 @@ builder.Services.AddScoped<JsonExportHandler>();
 builder.Services.AddScoped<ArchiveListHandler>();
 builder.Services.AddScoped<UnarchiveListHandler>();
 builder.Services.AddScoped<GetArchivedListsHandler>();
+builder.Services.AddScoped<SetTodoUrlHandler>();
 
 var app = builder.Build();
 

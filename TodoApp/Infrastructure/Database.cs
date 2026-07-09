@@ -157,6 +157,16 @@ public class Database(string connectionString)
             // Column already exists — ignore
         }
 
+        // Migration: add Url column for link attachments
+        try
+        {
+            await conn.ExecuteAsync("ALTER TABLE Todos ADD COLUMN Url TEXT NULL");
+        }
+        catch (SqliteException)
+        {
+            // Column already exists — ignore
+        }
+
         await conn.ExecuteAsync("""
             CREATE TABLE IF NOT EXISTS TodoTags (
                 Id      INTEGER PRIMARY KEY AUTOINCREMENT,
