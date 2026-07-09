@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 83 — [2026-07-09] — Feature: Overdue Bulk-Reschedule
+
+**Description:** The urgency banner (which appears when the current list has overdue or due-today todos) now includes two quick-action buttons when overdue todos are present: "→ Today" and "→ Tomorrow". Clicking either button bulk-updates all overdue, non-completed todos in the current list to the chosen date, dismisses the urgency banner, reloads the list, and shows a snackbar confirming how many todos were rescheduled (e.g. "Rescheduled 4 overdue todos to today"). Completed todos, future todos, and todos with no due date are never touched.
+
+**Reason for change:** A common real-world scenario is opening the app after a few days away and finding a pile of overdue tasks that all need new dates. Previously the only option was to edit each todo individually or filter to overdue and manually reschedule one by one. A single-click bulk reschedule turns a tedious multi-step chore into a two-second cleanup that lets the user get back to actual work. The feature fits naturally inside the urgency banner — the place users already look when they see overdue items.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 341
+- Lines deleted: 0
+- Tests added: 15
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 82 — [2026-07-09] — Feature: URL Link Attachment
 
 **Description:** Every todo can now have an optional URL link attached to it. A link icon button (🔗) appears in each todo's action bar; clicking it opens an inline URL editor with a text field for the URL, a Save button, a "Remove link" button (shown only when a URL is already set), and a Cancel button. Once saved, the URL is displayed as a compact clickable link in the todo body showing the hostname and path (e.g. `github.com/org/repo/pull/1`) — clicking it opens the URL in a new tab. The link icon button turns blue when a URL is attached, giving a clear visual indicator. URLs are persisted to SQLite via a new `Url` column on the `Todos` table (migration with ignore-if-exists guard).
