@@ -50,6 +50,7 @@ using TodoApp.Features.Todos.BlockTodo;
 using TodoApp.Features.Todos.TodayView;
 using TodoApp.Features.Todos.TagStats;
 using TodoApp.Features.Todos.Links;
+using TodoApp.Features.Todos.RescheduleTodos;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -128,6 +129,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<UnarchiveListHandler>();
         ctx.Services.AddScoped<GetArchivedListsHandler>();
         ctx.Services.AddScoped<SetTodoUrlHandler>();
+        ctx.Services.AddScoped<RescheduleOverdueTodosHandler>();
         return ctx;
     }
 
@@ -6988,5 +6990,107 @@ public class HomeTests : BunitContext
 
         cut.WaitForAssertion(() =>
             Assert.Empty(cut.FindAll(".todo-url-link")));
+    }
+
+    // ── Reschedule overdue tests ───────────────────────────────────────────
+
+    [Fact]
+    public async Task UrgencyBanner_ShowsRescheduleButtons_WhenOverdueTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-2));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.NotEmpty(cut.FindAll(".reschedule-today-btn"));
+        Assert.NotEmpty(cut.FindAll(".reschedule-tomorrow-btn"));
+    }
+
+    [Fact]
+    public async Task UrgencyBanner_NoRescheduleButtons_WhenNoOverdueTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Future task", dueDate: DateTime.Today.AddDays(5));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Empty(cut.FindAll(".reschedule-today-btn"));
+        Assert.Empty(cut.FindAll(".reschedule-tomorrow-btn"));
+    }
+
+    [Fact]
+    public async Task ClickRescheduleToday_UpdatesTodoDueDate()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var get = new GetTodosHandler(db);
+        var id = await add.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-3));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".reschedule-today-btn").Click();
+
+        cut.WaitForAssertion(async () =>
+        {
+            var todos = await get.HandleAsync();
+            Assert.Equal(DateTime.Today.Date, todos.Single(t => t.Id == id).DueDate!.Value.Date);
+        });
+    }
+
+    [Fact]
+    public async Task ClickRescheduleTomorrow_UpdatesTodoDueDateToTomorrow()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var get = new GetTodosHandler(db);
+        var id = await add.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-1));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".reschedule-tomorrow-btn").Click();
+
+        cut.WaitForAssertion(async () =>
+        {
+            var todos = await get.HandleAsync();
+            Assert.Equal(DateTime.Today.AddDays(1).Date, todos.Single(t => t.Id == id).DueDate!.Value.Date);
+        });
+    }
+
+    [Fact]
+    public async Task ClickRescheduleToday_DismissesUrgencyBanner()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-2));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.NotEmpty(cut.FindAll(".urgency-banner"));
+        cut.Find(".reschedule-today-btn").Click();
+
+        cut.WaitForAssertion(() =>
+            Assert.Empty(cut.FindAll(".reschedule-overdue-row")));
+    }
+
+    [Fact]
+    public async Task RescheduleRow_IsInsideUrgencyBanner()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-1));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var banner = cut.Find(".urgency-banner");
+        var row = banner.QuerySelector(".reschedule-overdue-row");
+        Assert.NotNull(row);
     }
 }

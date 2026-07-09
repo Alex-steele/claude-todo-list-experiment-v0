@@ -45,10 +45,12 @@
 @using TodoApp.Features.Todos.TodayView
 @using TodoApp.Features.Todos.TagStats
 @using TodoApp.Features.Todos.Links
+@using TodoApp.Features.Todos.RescheduleTodos
 @inject BlockTodoHandler BlockTodoHandler
 @inject TodayViewHandler TodayViewHandler
 @inject TagStatsHandler TagStatsHandler
 @inject SetTodoUrlHandler SetTodoUrlHandler
+@inject RescheduleOverdueTodosHandler RescheduleOverdueTodosHandler
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -1341,6 +1343,22 @@ else
                                Class="urgency-show-today-btn">
                         Show today's
                     </MudButton>
+                }
+                @if (urgency.Overdue > 0)
+                {
+                    <div class="w-100 d-flex align-center gap-1 flex-wrap mt-1 reschedule-overdue-row">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="white-space:nowrap;">Reschedule all overdue:</MudText>
+                        <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                                   OnClick="@(async () => await HandleRescheduleOverdue(DateTime.Today))"
+                                   Class="reschedule-today-btn">
+                            → Today
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                                   OnClick="@(async () => await HandleRescheduleOverdue(DateTime.Today.AddDays(1)))"
+                                   Class="reschedule-tomorrow-btn">
+                            → Tomorrow
+                        </MudButton>
+                    </div>
                 }
             </div>
             <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Error" Size="Size.Small"
@@ -3179,6 +3197,15 @@ else
         var listTodos = _todos.Where(t => t.ListId == _activeListId).ToList();
         var summary = DueSummaryHandler.Handle(listTodos);
         return summary.Overdue > 0 || summary.DueToday > 0 ? summary : null;
+    }
+
+    private async Task HandleRescheduleOverdue(DateTime targetDate)
+    {
+        var count = await RescheduleOverdueTodosHandler.HandleAsync(targetDate, _activeListId);
+        _dismissedUrgencyBanner = true;
+        await LoadTodosAsync();
+        var label = targetDate.Date == DateTime.Today ? "today" : "tomorrow";
+        Snackbar.Add($"Rescheduled {count} overdue todo{(count == 1 ? "" : "s")} to {label}", Severity.Success);
     }
 
     private void HandlePickForMe()
