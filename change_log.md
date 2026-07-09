@@ -1,5 +1,18 @@
 # Change Log
 
+## Day 86 — [2026-07-09] — Feature: Search Result Highlighting
+
+**Description:** When a search query is active, the matching portion of each todo title is now highlighted with a yellow tint using an inline `<mark class="search-highlight">` element. All occurrences within a title are highlighted (not just the first), and matching is case-insensitive while preserving the original casing in the rendered output. HTML special characters in titles are safely encoded before injection. When the search is cleared, titles render as plain text with no mark tags. The `SearchHighlighter` static class is a focused utility with no dependencies on the database or DI container.
+
+**Files changed:**
+- `TodoApp/Features/Todos/Search/SearchHighlighter.cs` — new static utility, wraps matched substrings in `<mark>` tags with HTML encoding
+- `TodoApp/Components/Pages/Home.razor` — added `@using` for Search namespace; title now uses `SearchHighlighter.Highlight(todo.Title, _searchQuery.Trim())`
+- `TodoApp/wwwroot/app.css` — `.search-highlight` style: `background-color: rgba(255,213,0,0.35)`, rounded corners, inherits color
+
+**Tests added:** 12 unit tests (`SearchHighlighterTests`), 5 bUnit tests (`HomeTests`); 4 existing search tests updated to account for split title markup
+
+---
+
 ## Day 85 — [2026-07-09] — Feature: Quick Priority Toggle
 
 **Description:** Priority is now editable in a single click directly from the todo list, without opening the full edit form. Todos with a set priority (Low, Medium, or High) show a clickable colored chip beside the title; each click cycles the priority upward (Low → Medium → High → None). Todos with no priority show a faint flag icon that sets the priority to Low on click, completing the cycle from the other end (None → Low). The `SetPriorityHandler` is a focused new handler that updates only the `Priority` column; no database migration is needed.

@@ -47,6 +47,7 @@
 @using TodoApp.Features.Todos.Links
 @using TodoApp.Features.Todos.RescheduleTodos
 @using TodoApp.Features.Todos.SetPriority
+@using TodoApp.Features.Todos.Search
 @inject BlockTodoHandler BlockTodoHandler
 @inject TodayViewHandler TodayViewHandler
 @inject TagStatsHandler TagStatsHandler
@@ -1742,7 +1743,7 @@ else
                                     <div class="d-flex align-center gap-2 mb-1">
                                         <MudText Typo="Typo.body1"
                                             Style="@(todo.IsCompleted ? "text-decoration: line-through; opacity: 0.5;" : "")">
-                                            @todo.Title
+                                            @SearchHighlighter.Highlight(todo.Title, _searchQuery.Trim())
                                         </MudText>
                                         @if (todo.Priority != TodoPriority.None)
                                         {
