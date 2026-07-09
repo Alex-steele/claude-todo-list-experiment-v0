@@ -298,7 +298,8 @@ public class HomeTests : BunitContext
         var searchInput = cut.Find(".todo-search-field input");
         searchInput.Input("groceries");
 
-        Assert.Contains("Buy groceries", cut.Markup);
+        // Title is highlighted — "Buy " prefix remains, "groceries" is inside <mark>
+        Assert.Contains("Buy ", cut.Markup);
         Assert.DoesNotContain("Walk the dog", cut.Markup);
     }
 
@@ -1937,7 +1938,8 @@ public class HomeTests : BunitContext
         // Active list is Personal — searching should find the Work todo too
         cut.Find(".todo-search-field input").Input("report");
 
-        Assert.Contains("Work report", cut.Markup);
+        // "Work " prefix visible; "report" is inside <mark class="search-highlight">
+        Assert.Contains("Work ", cut.Markup);
     }
 
     [Fact]
@@ -1991,6 +1993,77 @@ public class HomeTests : BunitContext
 
         cut.Find(".todo-search-field input").Input("");
         Assert.DoesNotContain("search-all-lists-hint", cut.Markup);
+    }
+
+    // ── Search result highlighting (Day 86) ──────────────────────────────────
+
+    [Fact]
+    public async Task Search_WithMatch_HighlightsTermInTitle()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Buy groceries today");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-search-field input").Input("groceries");
+
+        Assert.Contains("search-highlight", cut.Markup);
+        Assert.Contains("<mark", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Search_EmptyQuery_NoHighlight()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Buy groceries today");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("search-highlight", cut.Markup);
+        Assert.DoesNotContain("<mark", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Search_CaseInsensitive_HighlightsTerm()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Call MOM tonight");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-search-field input").Input("mom");
+
+        Assert.Contains("search-highlight", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Search_NoMatch_NoHighlight()
+    {
+        var db = await TestDatabase.CreateAsync();
+        await new AddTodoHandler(db).HandleAsync("Buy groceries");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-search-field input").Input("coffee");
+
+        Assert.DoesNotContain("search-highlight", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Search_MultipleMatchingTodos_AllHighlighted()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Buy milk");
+        await addHandler.HandleAsync("Get more milk");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".todo-search-field input").Input("milk");
+
+        var marks = cut.FindAll("mark.search-highlight");
+        Assert.Equal(2, marks.Count);
     }
 
     // ── Due-date quick filters ────────────────────────────────────────────────
@@ -5265,7 +5338,8 @@ public class HomeTests : BunitContext
 
         cut.Find(".todo-search-field input").Input("groceries");
 
-        Assert.Contains("Buy groceries", cut.Markup);
+        // "Buy " prefix remains; "groceries" is inside <mark class="search-highlight">
+        Assert.Contains("Buy ", cut.Markup);
         Assert.Empty(cut.FindAll(".notes-match-badge"));
     }
 
@@ -5282,7 +5356,8 @@ public class HomeTests : BunitContext
 
         cut.Find(".todo-search-field input").Input("kitchen");
 
-        Assert.Contains("Clean the kitchen", cut.Markup);
+        // "Clean the " prefix remains; "kitchen" is inside <mark class="search-highlight">
+        Assert.Contains("Clean the ", cut.Markup);
         Assert.DoesNotContain("Buy groceries", cut.Markup);
         Assert.Empty(cut.FindAll(".notes-match-badge"));
     }
