@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 82 — [2026-07-09] — Feature: URL Link Attachment
+
+**Description:** Every todo can now have an optional URL link attached to it. A link icon button (🔗) appears in each todo's action bar; clicking it opens an inline URL editor with a text field for the URL, a Save button, a "Remove link" button (shown only when a URL is already set), and a Cancel button. Once saved, the URL is displayed as a compact clickable link in the todo body showing the hostname and path (e.g. `github.com/org/repo/pull/1`) — clicking it opens the URL in a new tab. The link icon button turns blue when a URL is attached, giving a clear visual indicator. URLs are persisted to SQLite via a new `Url` column on the `Todos` table (migration with ignore-if-exists guard).
+
+**Reason for change:** Task management tools in real workflows are rarely self-contained — a todo often corresponds to a Jira ticket, a GitHub PR, a Confluence doc, a Figma design, or a reference URL. Without a link field, users must either embed long URLs in the todo title (ugly and hard to click) or keep the reference in a separate note (fragmented). A first-class URL field makes todos actionable: one click goes directly to the source of truth. It completes a natural gap in the todo model alongside notes, tags, and color labels.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 441
+- Lines deleted: 4
+- Tests added: 18
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 81 — [2026-07-08] — Feature: JSON Import
 
 **Description:** A new "Import from JSON" button (the `[]` data-array icon, after the Markdown import) lets users load a `.json` file and import todos from it. The parser reads the envelope format produced by the JSON Export handler (Day 79): it deserialises the `Todos` array and inserts each item into the active list, preserving `Title`, `IsCompleted`, `Priority` (high/medium/low/none), `DueDate`, `CompletedAt`, `IsPinned`, `IsBlocked`, `TimeEstimate`, `ColorLabel`, `Tags`, and `Notes`. Invalid JSON throws a `JsonException` which the UI catches and surfaces as an error snackbar. An empty or missing `Todos` array returns zero and shows a warning. The feature completes a full JSON round-trip alongside the existing Markdown export→import round-trip.

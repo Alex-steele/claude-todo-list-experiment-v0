@@ -44,9 +44,11 @@
 @using TodoApp.Features.Todos.BlockTodo
 @using TodoApp.Features.Todos.TodayView
 @using TodoApp.Features.Todos.TagStats
+@using TodoApp.Features.Todos.Links
 @inject BlockTodoHandler BlockTodoHandler
 @inject TodayViewHandler TodayViewHandler
 @inject TagStatsHandler TagStatsHandler
+@inject SetTodoUrlHandler SetTodoUrlHandler
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -2076,7 +2078,63 @@ else
                                         </div>
                                     }
                                 </div>
+                                @{
+                                    var urlTodoId = todo.Id;
+                                }
+                                @if (_settingUrlForTodoId == todo.Id)
+                                {
+                                    <div class="mt-2 todo-url-editor">
+                                        <MudTextField
+                                            @bind-Value="_urlInputValue"
+                                            Label="Link URL"
+                                            Variant="Variant.Outlined"
+                                            FullWidth="true"
+                                            Placeholder="https://..."
+                                            Class="todo-url-input" />
+                                        <div class="d-flex align-center gap-2 mt-1">
+                                            <MudButton
+                                                Variant="Variant.Filled"
+                                                Color="Color.Primary"
+                                                Size="Size.Small"
+                                                OnClick="@(async () => await HandleSaveUrl(urlTodoId))"
+                                                Class="todo-url-save-btn">Save</MudButton>
+                                            @if (!string.IsNullOrEmpty(todo.Url))
+                                            {
+                                                <MudButton
+                                                    Variant="Variant.Outlined"
+                                                    Color="Color.Error"
+                                                    Size="Size.Small"
+                                                    OnClick="@(async () => await HandleClearUrl(urlTodoId))"
+                                                    Class="todo-url-clear-btn">Remove link</MudButton>
+                                            }
+                                            <MudButton
+                                                Variant="Variant.Text"
+                                                Color="Color.Default"
+                                                Size="Size.Small"
+                                                OnClick="@(() => _settingUrlForTodoId = null)"
+                                                Class="todo-url-cancel-btn">Cancel</MudButton>
+                                        </div>
+                                    </div>
+                                }
+                                else if (!string.IsNullOrEmpty(todo.Url))
+                                {
+                                    <div class="mt-1 todo-url-display">
+                                        <a href="@todo.Url" target="_blank" rel="noopener noreferrer"
+                                           class="todo-url-link"
+                                           style="font-size:0.75rem;color:var(--mud-palette-info);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+                                            <MudIcon Icon="@Icons.Material.Filled.Link" Size="Size.Small" />
+                                            @GetDisplayUrl(todo.Url)
+                                        </a>
+                                    </div>
+                                }
                             </div>
+                            <MudIconButton
+                                Icon="@(string.IsNullOrEmpty(todo.Url) ? Icons.Material.Outlined.Link : Icons.Material.Filled.Link)"
+                                Color="@(string.IsNullOrEmpty(todo.Url) ? Color.Default : Color.Info)"
+                                Size="Size.Small"
+                                OnClick="@(() => HandleStartEditUrl(todo.Id, todo.Url ?? string.Empty))"
+                                title="@(string.IsNullOrEmpty(todo.Url) ? "Add link" : "Edit link")"
+                                Class="todo-url-btn" />
                             <MudIconButton
                                 Icon="@(string.IsNullOrEmpty(todo.Notes) ? Icons.Material.Outlined.StickyNote2 : Icons.Material.Filled.StickyNote2)"
                                 Color="@(string.IsNullOrEmpty(todo.Notes) ? Color.Default : Color.Info)"
@@ -2305,6 +2363,9 @@ else
 
     private int? _editingNotesForTodoId;
     private string _notesValue = string.Empty;
+
+    private int? _settingUrlForTodoId;
+    private string _urlInputValue = string.Empty;
 
     private string? _renamingTagName;
     private string _renameTagValue = string.Empty;
@@ -3175,6 +3236,33 @@ else
     private void HandleCancelNotes()
     {
         _editingNotesForTodoId = null;
+    }
+
+    private void HandleStartEditUrl(int todoId, string currentUrl)
+    {
+        _settingUrlForTodoId = todoId;
+        _urlInputValue = currentUrl;
+    }
+
+    private async Task HandleSaveUrl(int todoId)
+    {
+        await SetTodoUrlHandler.HandleAsync(todoId, _urlInputValue);
+        _settingUrlForTodoId = null;
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleClearUrl(int todoId)
+    {
+        await SetTodoUrlHandler.HandleAsync(todoId, null);
+        _settingUrlForTodoId = null;
+        await LoadTodosAsync();
+    }
+
+    private static string GetDisplayUrl(string url)
+    {
+        if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return uri.Host + (uri.AbsolutePath.Length > 1 ? uri.AbsolutePath : "");
+        return url.Length > 50 ? url[..50] + "…" : url;
     }
 
     private async Task HandleTogglePin(int id)
