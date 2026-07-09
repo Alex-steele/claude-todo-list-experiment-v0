@@ -5,7 +5,8 @@ namespace TodoApp.Features.Todos.FilterCounts;
 
 public record FilterCountsResult(
     IReadOnlyDictionary<TodoPriority, int> ByPriority,
-    IReadOnlyDictionary<string, int> ByTag);
+    IReadOnlyDictionary<string, int> ByTag,
+    int NoDueDate = 0);
 
 public class FilterCountsHandler
 {
@@ -30,6 +31,8 @@ public class FilterCountsHandler
             }
         }
 
-        return new FilterCountsResult(byPriority, byTag);
+        var noDueDate = active.Count(t => !t.DueDate.HasValue);
+
+        return new FilterCountsResult(byPriority, byTag, noDueDate);
     }
 }

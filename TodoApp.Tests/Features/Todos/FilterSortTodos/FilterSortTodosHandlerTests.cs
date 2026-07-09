@@ -848,4 +848,71 @@ public class FilterSortTodosHandlerTests
         Assert.Equal("Pinned no date", result[0].Title);
         Assert.Equal("Overdue",        result[1].Title);
     }
+
+    [Fact]
+    public void DateFilter_NoDueDate_ReturnsOnlyTodosWithoutDueDate()
+    {
+        var today = DateTime.Today;
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "No date"),
+            Make(2, "Has date", dueDate: today.AddDays(3)),
+            Make(3, "Also no date"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            dateFilter: TodoDateFilter.NoDueDate);
+
+        Assert.Equal(2, result.Count);
+        Assert.All(result, t => Assert.Null(t.DueDate));
+    }
+
+    [Fact]
+    public void DateFilter_NoDueDate_ExcludesCompletedTodos()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Active no date"),
+            Make(2, "Completed no date", isCompleted: true),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            dateFilter: TodoDateFilter.NoDueDate);
+
+        Assert.Single(result);
+        Assert.Equal("Active no date", result[0].Title);
+    }
+
+    [Fact]
+    public void DateFilter_NoDueDate_EmptyWhenAllTodosHaveDates()
+    {
+        var today = DateTime.Today;
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Due tomorrow", dueDate: today.AddDays(1)),
+            Make(2, "Due next week", dueDate: today.AddDays(7)),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            dateFilter: TodoDateFilter.NoDueDate);
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void DateFilter_NoDueDate_CombinesWithPriorityFilter()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "High no date",    priority: TodoPriority.High),
+            Make(2, "Low no date",     priority: TodoPriority.Low),
+            Make(3, "High with date",  priority: TodoPriority.High, dueDate: DateTime.Today.AddDays(1)),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest,
+            priorityFilter: TodoPriority.High, dateFilter: TodoDateFilter.NoDueDate);
+
+        Assert.Single(result);
+        Assert.Equal("High no date", result[0].Title);
+    }
 }

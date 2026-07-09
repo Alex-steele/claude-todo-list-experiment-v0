@@ -26,7 +26,8 @@ public enum TodoDateFilter
     None = 0,
     Overdue = 1,
     DueToday = 2,
-    DueThisWeek = 3
+    DueThisWeek = 3,
+    NoDueDate = 4
 }
 
 public enum TodoTimeEstimateFilter

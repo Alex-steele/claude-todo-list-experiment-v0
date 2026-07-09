@@ -40,6 +40,7 @@ public class FilterSortTodosHandler
             TodoDateFilter.Overdue      => priorityFiltered.Where(t => !t.IsCompleted && t.DueDate.HasValue && t.DueDate.Value.Date < today),
             TodoDateFilter.DueToday     => priorityFiltered.Where(t => !t.IsCompleted && t.DueDate.HasValue && t.DueDate.Value.Date == today),
             TodoDateFilter.DueThisWeek  => priorityFiltered.Where(t => !t.IsCompleted && t.DueDate.HasValue && t.DueDate.Value.Date >= today && t.DueDate.Value.Date < endOfWeek),
+            TodoDateFilter.NoDueDate    => priorityFiltered.Where(t => !t.IsCompleted && !t.DueDate.HasValue),
             _                           => priorityFiltered
         };
 
