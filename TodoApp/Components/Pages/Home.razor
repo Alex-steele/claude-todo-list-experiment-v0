@@ -46,11 +46,13 @@
 @using TodoApp.Features.Todos.TagStats
 @using TodoApp.Features.Todos.Links
 @using TodoApp.Features.Todos.RescheduleTodos
+@using TodoApp.Features.Todos.SetPriority
 @inject BlockTodoHandler BlockTodoHandler
 @inject TodayViewHandler TodayViewHandler
 @inject TagStatsHandler TagStatsHandler
 @inject SetTodoUrlHandler SetTodoUrlHandler
 @inject RescheduleOverdueTodosHandler RescheduleOverdueTodosHandler
+@inject SetPriorityHandler SetPriorityHandler
 @inject AddSubtaskHandler AddSubtaskHandler
 @inject EditSubtaskHandler EditSubtaskHandler
 @inject AddTagHandler AddTagHandler
@@ -1744,9 +1746,23 @@ else
                                         </MudText>
                                         @if (todo.Priority != TodoPriority.None)
                                         {
-                                            <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(todo.Priority)" Variant="Variant.Filled">
+                                            <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(todo.Priority)" Variant="Variant.Filled"
+                                                     Style="cursor:pointer;"
+                                                     title="@($"{todo.Priority} priority — click to change")"
+                                                     @onclick="@(async () => await HandleCyclePriority(todo.Id, todo.Priority))"
+                                                     Class="todo-priority-chip">
                                                 @todo.Priority.ToString()
                                             </MudChip>
+                                        }
+                                        else if (!todo.IsCompleted)
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Outlined.Flag"
+                                                           Size="Size.Small"
+                                                           Color="Color.Default"
+                                                           Style="opacity:0.25; padding:2px;"
+                                                           title="Set priority"
+                                                           OnClick="@(async () => await HandleCyclePriority(todo.Id, TodoPriority.None))"
+                                                           Class="todo-set-priority-btn" />
                                         }
                                         @if (todo.Recurrence != RecurrenceRule.None)
                                         {
@@ -3298,6 +3314,21 @@ else
         if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
             return uri.Host + (uri.AbsolutePath.Length > 1 ? uri.AbsolutePath : "");
         return url.Length > 50 ? url[..50] + "…" : url;
+    }
+
+    private static TodoPriority NextPriority(TodoPriority current) => current switch
+    {
+        TodoPriority.None   => TodoPriority.Low,
+        TodoPriority.Low    => TodoPriority.Medium,
+        TodoPriority.Medium => TodoPriority.High,
+        TodoPriority.High   => TodoPriority.None,
+        _                   => TodoPriority.None
+    };
+
+    private async Task HandleCyclePriority(int id, TodoPriority current)
+    {
+        await SetPriorityHandler.HandleAsync(id, NextPriority(current));
+        await LoadTodosAsync();
     }
 
     private async Task HandleTogglePin(int id)
