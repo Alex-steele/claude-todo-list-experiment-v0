@@ -114,4 +114,48 @@ public class FilterCountsHandlerTests
         var result = _handler.Handle(todos, new Dictionary<int, List<Tag>>());
         Assert.Equal(0, result.ByPriority.GetValueOrDefault(TodoPriority.Low));
     }
+
+    [Fact]
+    public void Handle_NoDueDate_CountsActiveTodosWithoutDueDate()
+    {
+        var todos = new[]
+        {
+            MakeTodo(1),                               // no due date
+            MakeTodo(2),                               // no due date
+            new TodoSummary(3, "With date", false, DateTime.UtcNow, TodoPriority.None, DateTime.Today)
+        };
+        var result = _handler.Handle(todos, new Dictionary<int, List<Tag>>());
+        Assert.Equal(2, result.NoDueDate);
+    }
+
+    [Fact]
+    public void Handle_NoDueDate_ExcludesCompleted()
+    {
+        var todos = new[]
+        {
+            MakeTodo(1),                                               // active, no date
+            MakeTodo(2, completed: true),                              // completed, no date
+        };
+        var result = _handler.Handle(todos, new Dictionary<int, List<Tag>>());
+        Assert.Equal(1, result.NoDueDate);
+    }
+
+    [Fact]
+    public void Handle_NoDueDate_ZeroWhenAllHaveDates()
+    {
+        var todos = new[]
+        {
+            new TodoSummary(1, "A", false, DateTime.UtcNow, TodoPriority.None, DateTime.Today),
+            new TodoSummary(2, "B", false, DateTime.UtcNow, TodoPriority.None, DateTime.Today.AddDays(1)),
+        };
+        var result = _handler.Handle(todos, new Dictionary<int, List<Tag>>());
+        Assert.Equal(0, result.NoDueDate);
+    }
+
+    [Fact]
+    public void Handle_NoDueDate_ZeroWhenEmpty()
+    {
+        var result = _handler.Handle([], new Dictionary<int, List<Tag>>());
+        Assert.Equal(0, result.NoDueDate);
+    }
 }

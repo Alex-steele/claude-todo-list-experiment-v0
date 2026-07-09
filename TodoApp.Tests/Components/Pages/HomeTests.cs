@@ -2096,6 +2096,64 @@ public class HomeTests : BunitContext
         Assert.Contains("search-all-lists-hint", cut.Markup);
     }
 
+    [Fact]
+    public async Task DateFilter_NoDueDate_ChipIsRendered()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("A task");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        Assert.NotEmpty(cut.FindAll(".date-filter-no-date"));
+    }
+
+    [Fact]
+    public async Task DateFilter_NoDueDate_ShowsOnlyTodosWithoutDueDate()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("No date task");
+        await addHandler.HandleAsync("Has date task", dueDate: DateTime.Today);
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+        cut.Find(".date-filter-no-date").Click();
+
+        Assert.Contains("No date task", cut.Markup);
+        Assert.DoesNotContain("Has date task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task DateFilter_NoDueDate_ShowsCountWhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("No date task 1");
+        await addHandler.HandleAsync("No date task 2");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        var chip = cut.Find(".date-filter-no-date");
+        Assert.Contains("(2)", chip.TextContent);
+    }
+
+    [Fact]
+    public async Task DateFilter_NoDueDate_NoCountWhenAllTodosHaveDates()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Has date", dueDate: DateTime.Today);
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        var chip = cut.Find(".date-filter-no-date");
+        Assert.DoesNotContain("(", chip.TextContent);
+    }
+
     // ── Edit priority and due date ────────────────────────────────────────────
 
     [Fact]

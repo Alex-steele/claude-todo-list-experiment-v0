@@ -1,5 +1,19 @@
 # Change Log
 
+## Day 84 — [2026-07-09] — Feature: No Due Date Filter
+
+**Description:** Adds a "No date" chip to the date filter row, letting users instantly see all active todos that have no due date assigned. The chip shows a count badge (e.g. "No date (5)") when any such todos exist. Selecting the chip filters the list to only undated, non-completed todos; clicking the "Any" chip resets back to the full list. The new `NoDueDate = 4` value extends `TodoDateFilter`, the filter case is handled in `FilterSortTodosHandler`, and `FilterCountsHandler` computes the count for the badge. No database changes are required.
+
+**Files changed:**
+- `TodoApp/Features/Todos/FilterSortTodos/FilterSortOptions.cs` — added `NoDueDate = 4` to `TodoDateFilter`
+- `TodoApp/Features/Todos/FilterSortTodos/FilterSortTodosHandler.cs` — new filter case for `NoDueDate`
+- `TodoApp/Features/Todos/FilterCounts/FilterCountsHandler.cs` — `NoDueDate` count added to `FilterCountsResult`
+- `TodoApp/Components/Pages/Home.razor` — "No date" chip in the date filter row
+
+**Tests added:** 4 unit tests (`FilterSortTodosHandlerTests`), 4 unit tests (`FilterCountsHandlerTests`), 4 bUnit tests (`HomeTests`)
+
+---
+
 ## Day 83 — [2026-07-09] — Feature: Overdue Bulk-Reschedule
 
 **Description:** The urgency banner (which appears when the current list has overdue or due-today todos) now includes two quick-action buttons when overdue todos are present: "→ Today" and "→ Tomorrow". Clicking either button bulk-updates all overdue, non-completed todos in the current list to the chosen date, dismisses the urgency banner, reloads the list, and shows a snackbar confirming how many todos were rescheduled (e.g. "Rescheduled 4 overdue todos to today"). Completed todos, future todos, and todos with no due date are never touched.

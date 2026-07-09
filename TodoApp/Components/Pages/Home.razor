@@ -1110,6 +1110,14 @@ else
                          Color="Color.Info"
                          OnClick="@(() => _dateFilter = TodoDateFilter.DueThisWeek)"
                          Class="date-filter-week">This week</MudChip>
+                @{
+                    var noDueDateCount = GetFilterCounts().NoDueDate;
+                }
+                <MudChip T="string" Size="Size.Small"
+                         Variant="@(_dateFilter == TodoDateFilter.NoDueDate ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Default"
+                         OnClick="@(() => _dateFilter = TodoDateFilter.NoDueDate)"
+                         Class="date-filter-no-date">No date@(noDueDateCount > 0 ? $" ({noDueDateCount})" : "")</MudChip>
             </div>
             @if (AllTagNames.Count > 0)
             {
