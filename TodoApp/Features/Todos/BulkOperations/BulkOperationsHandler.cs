@@ -21,6 +21,14 @@ public class BulkOperationsHandler(Database db)
     {
         if (ids.Count == 0) return;
         using var conn = db.CreateConnection();
+        var deletedAt = DateTime.UtcNow.ToString("O");
+
+        await conn.ExecuteAsync("""
+            INSERT INTO DeletedTodos (OriginalId, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate, ColorLabel, IsBlocked, Url, DeletedAt)
+            SELECT Id, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate, ColorLabel, IsBlocked, Url, @DeletedAt
+            FROM Todos WHERE Id IN @Ids
+            """, new { Ids = ids, DeletedAt = deletedAt });
+
         await conn.ExecuteAsync(
             "DELETE FROM Todos WHERE Id IN @Ids",
             new { Ids = ids });

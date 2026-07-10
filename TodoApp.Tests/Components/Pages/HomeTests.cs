@@ -52,6 +52,7 @@ using TodoApp.Features.Todos.TagStats;
 using TodoApp.Features.Todos.Links;
 using TodoApp.Features.Todos.RescheduleTodos;
 using TodoApp.Features.Todos.SetPriority;
+using TodoApp.Features.Todos.Trash;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -132,6 +133,10 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<SetTodoUrlHandler>();
         ctx.Services.AddScoped<RescheduleOverdueTodosHandler>();
         ctx.Services.AddScoped<SetPriorityHandler>();
+        ctx.Services.AddScoped<GetTrashedTodosHandler>();
+        ctx.Services.AddScoped<RestoreTrashedTodoHandler>();
+        ctx.Services.AddScoped<PermanentlyDeleteTrashedTodoHandler>();
+        ctx.Services.AddScoped<EmptyTrashHandler>();
         return ctx;
     }
 
@@ -6620,6 +6625,210 @@ public class HomeTests : BunitContext
 
         Assert.DoesNotContain("Future task", cut.Markup);
         Assert.Contains("Overdue task", cut.Markup);
+    }
+
+    // Trash tests
+
+    [Fact]
+    public async Task TrashChip_IsRendered_WhenListsExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("trash-view-chip", cut.Markup);
+        Assert.Contains("Trash", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TrashChip_ShowsCount_WhenTodosDeleted()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var deleteHandler = new DeleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Doomed task");
+        await deleteHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("Trash (1)", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TrashChip_ShowsNoCount_WhenTrashEmpty()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Still active");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("Trash (0)", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingTrashChip_ShowsTrashViewPanel()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var deleteHandler = new DeleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Deleted task");
+        await deleteHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".trash-view-chip").Click();
+
+        cut.WaitForState(() => cut.Markup.Contains("trash-view-panel"));
+        Assert.Contains("Deleted task", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TrashView_ShowsEmptyState_WhenNothingDeleted()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Untouched task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".trash-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("trash-view-panel"));
+
+        Assert.Contains("trash-view-empty", cut.Markup);
+        Assert.Contains("Trash is empty", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TrashView_HidesAddTodoCard()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var deleteHandler = new DeleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Task");
+        await deleteHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".trash-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("trash-view-panel"));
+
+        Assert.DoesNotContain("Add a New Todo", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TrashView_BackToListButton_ExitsTrashView()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var deleteHandler = new DeleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Task");
+        await deleteHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".trash-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("trash-view-panel"));
+
+        cut.Find(".trash-view-exit-btn").Click();
+        cut.WaitForState(() => !cut.Markup.Contains("trash-view-panel"));
+
+        Assert.Contains("Add a New Todo", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TrashView_RestoreButton_MovesTodoBackToActiveList()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var deleteHandler = new DeleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Bring it back");
+        await deleteHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".trash-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("trash-view-panel"));
+
+        cut.Find(".restore-trash-btn").Click();
+        cut.WaitForState(() => !cut.Markup.Contains("trash-view-panel") || cut.Markup.Contains("trash-view-empty"));
+
+        cut.Find(".trash-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("trash-view-panel"));
+        Assert.Contains("trash-view-empty", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TrashView_DeleteForeverButton_RemovesEntryPermanently()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var deleteHandler = new DeleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Gone forever");
+        await deleteHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".trash-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("trash-view-panel"));
+        Assert.Contains("Gone forever", cut.Markup);
+
+        cut.Find(".permanently-delete-trash-btn").Click();
+        cut.WaitForState(() => cut.Markup.Contains("trash-view-empty"));
+
+        Assert.DoesNotContain("Gone forever", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TrashView_EmptyTrashButton_ClearsAllEntries()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var deleteHandler = new DeleteTodoHandler(db);
+        var id1 = await addHandler.HandleAsync("Trash A");
+        var id2 = await addHandler.HandleAsync("Trash B");
+        await deleteHandler.HandleAsync(id1);
+        await deleteHandler.HandleAsync(id2);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".trash-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("trash-view-panel"));
+        Assert.Contains("empty-trash-btn", cut.Markup);
+
+        cut.Find(".empty-trash-btn").Click();
+        cut.WaitForState(() => cut.Markup.Contains("trash-view-empty"));
+
+        Assert.DoesNotContain("Trash A", cut.Markup);
+        Assert.DoesNotContain("Trash B", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TrashView_EmptyTrashButton_NotShown_WhenTrashEmpty()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Still here");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".trash-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("trash-view-panel"));
+
+        Assert.DoesNotContain("empty-trash-btn", cut.Markup);
     }
 
     // Tag stats tests

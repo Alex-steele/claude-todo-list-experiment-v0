@@ -3,6 +3,7 @@ using TodoApp.Features.Todos.AddTodo;
 using TodoApp.Features.Todos.CompleteTodo;
 using TodoApp.Features.Todos.DeleteTodo;
 using TodoApp.Features.Todos.GetTodos;
+using TodoApp.Features.Todos.Trash;
 using TodoApp.Features.Todos.UndoRedo;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
@@ -115,5 +116,26 @@ public class RestoreTodosHandlerTests
         var todos = await getTodosHandler.HandleAsync();
         Assert.Single(todos);
         Assert.Equal(id, todos[0].Id);
+    }
+
+    [Fact]
+    public async Task Restore_RemovesMatchingTrashSnapshot()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var deleteHandler = new DeleteTodoHandler(db);
+        var getTodosHandler = new GetTodosHandler(db);
+        var restoreHandler = new RestoreTodosHandler(db);
+        var getTrashedHandler = new GetTrashedTodosHandler(db);
+
+        var id = await addHandler.HandleAsync("Buy milk");
+        var todo = (await getTodosHandler.HandleAsync()).Single();
+
+        await deleteHandler.HandleAsync(id);
+        Assert.Single(await getTrashedHandler.HandleAsync());
+
+        await restoreHandler.HandleAsync([todo]);
+
+        Assert.Empty(await getTrashedHandler.HandleAsync());
     }
 }
