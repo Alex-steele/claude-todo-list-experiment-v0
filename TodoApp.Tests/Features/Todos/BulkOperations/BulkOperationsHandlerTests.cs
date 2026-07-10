@@ -7,6 +7,7 @@ using TodoApp.Features.Todos.CompleteTodo;
 using TodoApp.Features.Todos.GetTodos;
 using TodoApp.Features.Todos.Tags;
 using TodoApp.Features.Todos.TimeEstimates;
+using TodoApp.Features.Todos.Trash;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -49,6 +50,24 @@ public class BulkOperationsHandlerTests
         var todos = await getHandler.HandleAsync();
         var remaining = Assert.Single(todos);
         Assert.Equal(id3, remaining.Id);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_SnapshotsDeletedTodosToTrash()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var id1 = await addHandler.HandleAsync("Todo 1");
+        var id2 = await addHandler.HandleAsync("Todo 2");
+
+        var bulkHandler = new BulkOperationsHandler(db);
+        await bulkHandler.DeleteAsync([id1, id2]);
+
+        var getTrashedHandler = new GetTrashedTodosHandler(db);
+        var trashed = await getTrashedHandler.HandleAsync();
+        Assert.Equal(2, trashed.Count);
+        Assert.Contains(trashed, t => t.Title == "Todo 1");
+        Assert.Contains(trashed, t => t.Title == "Todo 2");
     }
 
     [Fact]

@@ -230,5 +230,27 @@ public class Database(string connectionString)
         {
             // Column already exists — ignore
         }
+
+        await conn.ExecuteAsync("""
+            CREATE TABLE IF NOT EXISTS DeletedTodos (
+                TrashId      INTEGER PRIMARY KEY AUTOINCREMENT,
+                OriginalId   INTEGER NOT NULL,
+                Title        TEXT    NOT NULL,
+                IsCompleted  INTEGER NOT NULL DEFAULT 0,
+                CreatedAt    TEXT    NOT NULL,
+                Priority     INTEGER NOT NULL DEFAULT 0,
+                DueDate      TEXT    NULL,
+                IsPinned     INTEGER NOT NULL DEFAULT 0,
+                Notes        TEXT    NULL,
+                Recurrence   INTEGER NOT NULL DEFAULT 0,
+                ListId       INTEGER NOT NULL DEFAULT 1,
+                CompletedAt  TEXT    NULL,
+                TimeEstimate INTEGER NOT NULL DEFAULT 0,
+                ColorLabel   INTEGER NOT NULL DEFAULT 0,
+                IsBlocked    INTEGER NOT NULL DEFAULT 0,
+                Url          TEXT    NULL,
+                DeletedAt    TEXT    NOT NULL
+            )
+            """);
     }
 }

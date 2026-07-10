@@ -32,6 +32,13 @@ public class RestoreTodosHandler(Database db)
                 CompletedAt = todo.CompletedAt.HasValue ? todo.CompletedAt.Value.ToString("O") : (string?)null,
                 TimeEstimate = (int)todo.TimeEstimate
             });
+
+            // Clean up the trash snapshot in case this restore happened via the
+            // ephemeral "Undo" snackbar rather than the Trash view, so the todo
+            // doesn't linger in Trash as a stale duplicate.
+            await conn.ExecuteAsync(
+                "DELETE FROM DeletedTodos WHERE OriginalId = @Id",
+                new { todo.Id });
         }
     }
 }

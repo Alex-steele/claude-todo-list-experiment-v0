@@ -30,6 +30,13 @@ public class ClearCompletedHandler(Database db)
 
         if (completed.Count == 0) return [];
 
+        var deletedAt = DateTime.UtcNow.ToString("O");
+        await conn.ExecuteAsync("""
+            INSERT INTO DeletedTodos (OriginalId, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate, ColorLabel, IsBlocked, Url, DeletedAt)
+            SELECT Id, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate, ColorLabel, IsBlocked, Url, @DeletedAt
+            FROM Todos WHERE IsCompleted = 1
+            """, new { DeletedAt = deletedAt });
+
         await conn.ExecuteAsync("DELETE FROM Todos WHERE IsCompleted = 1");
         return completed;
     }

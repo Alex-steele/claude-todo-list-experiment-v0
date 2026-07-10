@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 87 — [2026-07-10] — Feature: Trash / Recently Deleted
+
+**Description:** Deleting a todo (individually, in bulk, or via "Clear completed") no longer discards it permanently right away — it now lands in a new persistent "Trash" view, accessible via a 🗑 chip in the list selector row that shows a live count of trashed items. Opening Trash lists every deleted todo with its title, source list, priority, and a relative "Deleted X ago" timestamp, alongside per-item "Restore" and "Delete forever" buttons and an "Empty trash" action to clear everything at once. Restoring a todo re-inserts it into its original list as a fresh active item. This complements (and outlives) the existing ephemeral "Undo" snackbar — if a user closes the snackbar or comes back later, the deleted item is still recoverable from Trash. The two mechanisms stay in sync: using the snackbar's "Undo" also removes the matching Trash entry so nothing is left duplicated.
+
+**Reason for change:** The only safety net for deletion was a 5-ish-second "Undo" snackbar — miss it, refresh the page, or delete something and get distracted, and the todo (and any notes, tags, or subtasks tied to it) was gone forever with no recovery path. A real trash bin is one of the most expected safety features in any file or task manager (Finder, Gmail, Notion, Todoist all have one), and it was a conspicuous gap given how many destructive bulk actions the app already has (bulk delete, clear completed). Implementing it as a snapshot-on-delete into a new `DeletedTodos` table — rather than a soft-delete flag on `Todos` — meant zero changes were needed to any of the app's ~40 other read-side handlers and filters, keeping the change isolated to a new vertical slice plus the three call sites that perform deletion.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 839
+- Lines deleted: 6
+- Tests added: 28
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 86 — [2026-07-09] — Feature: Search Result Highlighting
 
 **Description:** When a search query is active, the matching portion of each todo title is now highlighted with a yellow tint using an inline `<mark class="search-highlight">` element. All occurrences within a title are highlighted (not just the first), and matching is case-insensitive while preserving the original casing in the rendered output. HTML special characters in titles are safely encoded before injection. When the search is cleared, titles render as plain text with no mark tags. The `SearchHighlighter` static class is a focused utility with no dependencies on the database or DI container.

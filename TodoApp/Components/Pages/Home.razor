@@ -48,6 +48,7 @@
 @using TodoApp.Features.Todos.RescheduleTodos
 @using TodoApp.Features.Todos.SetPriority
 @using TodoApp.Features.Todos.Search
+@using TodoApp.Features.Todos.Trash
 @inject BlockTodoHandler BlockTodoHandler
 @inject TodayViewHandler TodayViewHandler
 @inject TagStatsHandler TagStatsHandler
@@ -115,6 +116,10 @@
 @inject StreakNudgeHandler StreakNudgeHandler
 @inject CompletionTimeAnalyticsHandler CompletionTimeAnalyticsHandler
 @inject PriorityBreakdownHandler PriorityBreakdownHandler
+@inject GetTrashedTodosHandler GetTrashedTodosHandler
+@inject RestoreTrashedTodoHandler RestoreTrashedTodoHandler
+@inject PermanentlyDeleteTrashedTodoHandler PermanentlyDeleteTrashedTodoHandler
+@inject EmptyTrashHandler EmptyTrashHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -136,6 +141,17 @@
                          title="See all overdue and due-today todos across every list"
                          Class="today-view-chip">
                     ☀ Today@(todayCount > 0 ? $" ({todayCount})" : "")
+                </MudChip>
+                @{
+                    var trashCount = _trashedTodos?.Count ?? 0;
+                }
+                <MudChip T="string"
+                         Variant="@(_isTrashView ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Secondary"
+                         OnClick="HandleSwitchToTrashView"
+                         title="View deleted todos — restore or delete permanently"
+                         Class="trash-view-chip">
+                    🗑 Trash@(trashCount > 0 ? $" ({trashCount})" : "")
                 </MudChip>
                 @foreach (var list in _lists)
                 {
@@ -260,7 +276,7 @@
     </MudCard>
 }
 
-@if (!_isTodayView)
+@if (!_isTodayView && !_isTrashView)
 {
 <MudCard Elevation="2" Class="mb-6">
     <MudCardContent>
@@ -801,7 +817,77 @@
     </MudPaper>
 }
 
-@if (_isTodayView && _todos is not null)
+@if (_isTrashView)
+{
+    <MudPaper Elevation="1" Class="pa-4 mb-4 trash-view-panel">
+        <div class="d-flex align-center gap-2 mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Secondary" />
+            <MudText Typo="Typo.h6" Class="trash-view-title">Trash</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Deleted todos — restore or delete permanently</MudText>
+            <MudSpacer />
+            @if (_trashedTodos is { Count: > 0 })
+            {
+                <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                           OnClick="HandleEmptyTrash"
+                           Class="empty-trash-btn">Empty trash</MudButton>
+            }
+            <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small"
+                       OnClick="@(() => HandleSwitchList(_activeListId))"
+                       Class="trash-view-exit-btn">Back to list</MudButton>
+        </div>
+        @if (_trashedTodos is null)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (_trashedTodos.Count == 0)
+        {
+            <div class="d-flex flex-column align-center py-6 trash-view-empty">
+                <MudIcon Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Secondary" Style="font-size: 2.5rem;" Class="mb-2" />
+                <MudText Typo="Typo.body1" Color="Color.Secondary">Trash is empty.</MudText>
+            </div>
+        }
+        else
+        {
+            <MudPaper Elevation="0" Style="border: 1px solid var(--mud-palette-divider); border-radius: 6px;">
+                <MudList T="TrashedTodo" Dense="true">
+                    @foreach (var trashed in _trashedTodos)
+                    {
+                        var trashId = trashed.TrashId;
+                        var listName = _lists?.FirstOrDefault(l => l.Id == trashed.ListId)?.Name ?? "Unknown list";
+                        <MudListItem>
+                            <div class="d-flex align-center gap-2 flex-grow-1">
+                                <div class="flex-grow-1">
+                                    <MudText Typo="Typo.body2" Style="@(trashed.IsCompleted ? "text-decoration: line-through; opacity: 0.6;" : "")">@trashed.Title</MudText>
+                                    <div class="d-flex align-center gap-2 mt-1">
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" Class="trash-list-chip">@listName</MudChip>
+                                        @if (trashed.Priority != TodoPriority.None)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                                     Color="@(trashed.Priority == TodoPriority.High ? Color.Error : trashed.Priority == TodoPriority.Medium ? Color.Warning : Color.Info)"
+                                                     Class="trash-priority-chip">
+                                                @trashed.Priority
+                                            </MudChip>
+                                        }
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="trash-deleted-at">@FormatDeletedAt(trashed.DeletedAt)</MudText>
+                                    </div>
+                                </div>
+                                <MudIconButton Icon="@Icons.Material.Filled.RestoreFromTrash" Size="Size.Small" Color="Color.Primary"
+                                               OnClick="@(async () => await HandleRestoreFromTrash(trashId))"
+                                               title="Restore"
+                                               Class="restore-trash-btn" />
+                                <MudIconButton Icon="@Icons.Material.Filled.DeleteForever" Size="Size.Small" Color="Color.Error"
+                                               OnClick="@(async () => await HandlePermanentlyDeleteTrashed(trashId))"
+                                               title="Delete forever"
+                                               Class="permanently-delete-trash-btn" />
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+            </MudPaper>
+        }
+    </MudPaper>
+}
+else if (_isTodayView && _todos is not null)
 {
     var todayGroups = TodayViewHandler.Handle(_todos, _lists ?? []);
     <MudPaper Elevation="1" Class="pa-4 mb-4 today-view-panel">
@@ -2434,6 +2520,8 @@ else
     private bool _dismissedStreakNudge;
     private bool _blockedFilter;
     private bool _isTodayView;
+    private bool _isTrashView;
+    private IReadOnlyList<TrashedTodo>? _trashedTodos;
 
     private FilterCountsResult? _filterCountsCache;
 
@@ -2567,6 +2655,7 @@ else
         _filterPresets = await GetFilterPresetsHandler.HandleAsync();
         _templates = await GetTemplatesHandler.HandleAsync();
         _dailyGoal = await GetDailyGoalHandler.HandleAsync();
+        _trashedTodos = await GetTrashedTodosHandler.HandleAsync();
         if (_todos.Count > 0)
         {
             var ids = _todos.Select(t => t.Id).ToList();
@@ -3709,6 +3798,7 @@ else
     private void HandleSwitchList(int listId)
     {
         _isTodayView = false;
+        _isTrashView = false;
         _activeListId = listId;
         // Reset filters when switching lists
         _statusFilter = TodoStatusFilter.All;
@@ -3730,8 +3820,38 @@ else
     private void HandleSwitchToTodayView()
     {
         _isTodayView = true;
+        _isTrashView = false;
         _isFocusMode = false;
         _pickedTodoId = null;
+    }
+
+    private void HandleSwitchToTrashView()
+    {
+        _isTrashView = true;
+        _isTodayView = false;
+        _isFocusMode = false;
+        _pickedTodoId = null;
+    }
+
+    private async Task HandleRestoreFromTrash(int trashId)
+    {
+        await RestoreTrashedTodoHandler.HandleAsync(trashId);
+        await LoadTodosAsync();
+        Snackbar.Add("Todo restored", Severity.Success);
+    }
+
+    private async Task HandlePermanentlyDeleteTrashed(int trashId)
+    {
+        await PermanentlyDeleteTrashedTodoHandler.HandleAsync(trashId);
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleEmptyTrash()
+    {
+        var count = await EmptyTrashHandler.HandleAsync();
+        await LoadTodosAsync();
+        if (count > 0)
+            Snackbar.Add($"Trash emptied ({count} todo{(count == 1 ? "" : "s")} permanently deleted)", Severity.Normal);
     }
 
     private async Task HandleListDrop(int targetListId)
@@ -3869,6 +3989,19 @@ else
             1    => "Completed yesterday",
             <= 7 => $"Completed {diff} days ago",
             _    => $"Completed {local:MMM d, yyyy}"
+        };
+    }
+
+    private static string FormatDeletedAt(DateTime deletedAt)
+    {
+        var local = deletedAt.ToLocalTime();
+        var diff = (DateTime.Today - local.Date).Days;
+        return diff switch
+        {
+            0    => $"Deleted today at {local:h:mm tt}",
+            1    => "Deleted yesterday",
+            <= 7 => $"Deleted {diff} days ago",
+            _    => $"Deleted {local:MMM d, yyyy}"
         };
     }
 

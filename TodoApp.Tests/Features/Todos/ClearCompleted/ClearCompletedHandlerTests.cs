@@ -2,6 +2,7 @@ using TodoApp.Features.Todos.AddTodo;
 using TodoApp.Features.Todos.ClearCompleted;
 using TodoApp.Features.Todos.CompleteTodo;
 using TodoApp.Features.Todos.GetTodos;
+using TodoApp.Features.Todos.Trash;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -112,5 +113,26 @@ public class ClearCompletedHandlerTests
         Assert.Equal(TodoApp.Features.Todos.TodoPriority.High, restored.Priority);
         Assert.Equal(dueDate.Date, restored.DueDate?.Date);
         Assert.True(restored.IsCompleted);
+    }
+
+    [Fact]
+    public async Task ClearCompleted_SnapshotsClearedTodosToTrash()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var complete = new CompleteTodoHandler(db);
+        var handler = new ClearCompletedHandler(db);
+        var getTrashed = new GetTrashedTodosHandler(db);
+
+        var id1 = await add.HandleAsync("Task A");
+        var id2 = await add.HandleAsync("Task B");
+        await complete.HandleAsync(id1);
+        await complete.HandleAsync(id2);
+
+        await handler.HandleAsync();
+
+        var trashed = await getTrashed.HandleAsync();
+        Assert.Equal(2, trashed.Count);
+        Assert.All(trashed, t => Assert.True(t.IsCompleted));
     }
 }
