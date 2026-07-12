@@ -134,6 +134,7 @@ builder.Services.AddScoped<GetTrashedTodosHandler>();
 builder.Services.AddScoped<RestoreTrashedTodoHandler>();
 builder.Services.AddScoped<PermanentlyDeleteTrashedTodoHandler>();
 builder.Services.AddScoped<EmptyTrashHandler>();
+builder.Services.AddScoped<PurgeExpiredTrashHandler>();
 
 var app = builder.Build();
 

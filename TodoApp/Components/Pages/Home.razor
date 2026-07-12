@@ -120,6 +120,7 @@
 @inject RestoreTrashedTodoHandler RestoreTrashedTodoHandler
 @inject PermanentlyDeleteTrashedTodoHandler PermanentlyDeleteTrashedTodoHandler
 @inject EmptyTrashHandler EmptyTrashHandler
+@inject PurgeExpiredTrashHandler PurgeExpiredTrashHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -869,6 +870,7 @@
                                             </MudChip>
                                         }
                                         <MudText Typo="Typo.caption" Color="Color.Secondary" Class="trash-deleted-at">@FormatDeletedAt(trashed.DeletedAt)</MudText>
+                                        <MudText Typo="Typo.caption" Color="@(PurgeDaysRemaining(trashed.DeletedAt) <= 3 ? Color.Error : Color.Secondary)" Class="trash-purge-countdown">@FormatPurgeCountdown(trashed.DeletedAt)</MudText>
                                     </div>
                                 </div>
                                 <MudIconButton Icon="@Icons.Material.Filled.RestoreFromTrash" Size="Size.Small" Color="Color.Primary"
@@ -2602,7 +2604,10 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        var purgedCount = await PurgeExpiredTrashHandler.HandleAsync();
         await LoadTodosAsync();
+        if (purgedCount > 0)
+            Snackbar.Add($"{purgedCount} trash item{(purgedCount == 1 ? "" : "s")} older than {PurgeExpiredTrashHandler.RetentionDays} days were automatically purged", Severity.Info);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -4002,6 +4007,23 @@ else
             1    => "Deleted yesterday",
             <= 7 => $"Deleted {diff} days ago",
             _    => $"Deleted {local:MMM d, yyyy}"
+        };
+    }
+
+    private static int PurgeDaysRemaining(DateTime deletedAt)
+    {
+        var elapsedDays = (DateTime.UtcNow.Date - deletedAt.ToUniversalTime().Date).Days;
+        return Math.Max(0, PurgeExpiredTrashHandler.RetentionDays - elapsedDays);
+    }
+
+    private static string FormatPurgeCountdown(DateTime deletedAt)
+    {
+        var daysRemaining = PurgeDaysRemaining(deletedAt);
+        return daysRemaining switch
+        {
+            0 => "Purges today",
+            1 => "Purges in 1 day",
+            _ => $"Purges in {daysRemaining} days"
         };
     }
 
