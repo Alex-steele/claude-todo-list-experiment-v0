@@ -137,6 +137,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<RestoreTrashedTodoHandler>();
         ctx.Services.AddScoped<PermanentlyDeleteTrashedTodoHandler>();
         ctx.Services.AddScoped<EmptyTrashHandler>();
+        ctx.Services.AddScoped<PurgeExpiredTrashHandler>();
         return ctx;
     }
 
@@ -6829,6 +6830,98 @@ public class HomeTests : BunitContext
         cut.WaitForState(() => cut.Markup.Contains("trash-view-panel"));
 
         Assert.DoesNotContain("empty-trash-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TrashView_ShowsPurgeCountdown_ForRecentlyDeletedTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var deleteHandler = new DeleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Fresh trash");
+        await deleteHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".trash-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("trash-view-panel"));
+
+        Assert.Contains($"Purges in {PurgeExpiredTrashHandler.RetentionDays} days", cut.Markup);
+    }
+
+    [Fact]
+    public async Task TrashView_ShowsUrgentPurgeCountdown_WhenNearExpiry()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var deleteHandler = new DeleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Almost gone");
+        await deleteHandler.HandleAsync(id);
+
+        using (var conn = db.CreateConnection())
+        {
+            var almostExpired = DateTime.UtcNow.AddDays(-(PurgeExpiredTrashHandler.RetentionDays - 2)).ToString("O");
+            await conn.ExecuteAsync("UPDATE DeletedTodos SET DeletedAt = @DeletedAt", new { DeletedAt = almostExpired });
+        }
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".trash-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("trash-view-panel"));
+
+        Assert.Contains("Purges in 2 days", cut.Markup);
+        // MudBlazor renders Color.Error text with mud-error-text CSS class
+        Assert.Contains("mud-error-text", cut.Markup);
+    }
+
+    [Fact]
+    public async Task OnInitialized_AutoPurgesTrashOlderThanRetention_AndShowsSnackbar()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var deleteHandler = new DeleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Long forgotten");
+        await deleteHandler.HandleAsync(id);
+
+        using (var conn = db.CreateConnection())
+        {
+            var expired = DateTime.UtcNow.AddDays(-(PurgeExpiredTrashHandler.RetentionDays + 1)).ToString("O");
+            await conn.ExecuteAsync("UPDATE DeletedTodos SET DeletedAt = @DeletedAt", new { DeletedAt = expired });
+        }
+
+        var ctx = CreateBunitContext(db);
+        var snackbarProvider = ctx.Render<MudSnackbarProvider>();
+        var cut = RenderHome(ctx);
+
+        cut.WaitForAssertion(() => Assert.Contains("automatically purged", snackbarProvider.Markup));
+
+        cut.Find(".trash-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("trash-view-panel"));
+        Assert.DoesNotContain("Long forgotten", cut.Markup);
+        Assert.Contains("Trash is empty", cut.Markup);
+    }
+
+    [Fact]
+    public async Task OnInitialized_DoesNotPurgeRecentTrash_NoSnackbarShown()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var deleteHandler = new DeleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Keep me around");
+        await deleteHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var snackbarProvider = ctx.Render<MudSnackbarProvider>();
+        var cut = RenderHome(ctx);
+        cut.WaitForState(() => cut.Markup.Contains("trash-view-chip"));
+
+        Assert.DoesNotContain("automatically purged", snackbarProvider.Markup);
+
+        cut.Find(".trash-view-chip").Click();
+        cut.WaitForState(() => cut.Markup.Contains("trash-view-panel"));
+        Assert.Contains("Keep me around", cut.Markup);
     }
 
     // Tag stats tests

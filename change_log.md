@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 88 — [2026-07-12] — Feature: Auto-Expiring Trash (30-Day Retention)
+
+**Description:** Trash is no longer unbounded — each trashed todo now shows a "Purges in N days" countdown alongside its "Deleted X ago" timestamp, turning red once 3 days or fewer remain. Items older than 30 days are automatically and permanently purged the moment the app loads (checked once at startup), and if any were purged a snackbar reports how many ("N trash items older than 30 days were automatically purged"). Restoring or manually deleting an item before its countdown expires works exactly as before.
+
+**Reason for change:** Day 87 added a Trash view but gave it no retention policy — deleted todos, and everything snapshotted with them (notes, tags, subtasks), would sit in the `DeletedTodos` table forever unless a user remembered to manually empty it. Every real-world trash bin (Gmail, Finder, Notion) auto-expires after a fixed window; adding that here closes an obvious gap and keeps the trash table from growing without bound, while the countdown gives users fair warning before anything is gone for good.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 269
+- Lines deleted: 0
+- Tests added: 10
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 87 — [2026-07-10] — Feature: Trash / Recently Deleted
 
 **Description:** Deleting a todo (individually, in bulk, or via "Clear completed") no longer discards it permanently right away — it now lands in a new persistent "Trash" view, accessible via a 🗑 chip in the list selector row that shows a live count of trashed items. Opening Trash lists every deleted todo with its title, source list, priority, and a relative "Deleted X ago" timestamp, alongside per-item "Restore" and "Delete forever" buttons and an "Empty trash" action to clear everything at once. Restoring a todo re-inserts it into its original list as a fresh active item. This complements (and outlives) the existing ephemeral "Undo" snackbar — if a user closes the snackbar or comes back later, the deleted item is still recoverable from Trash. The two mechanisms stay in sync: using the snackbar's "Undo" also removes the matching Trash entry so nothing is left duplicated.
