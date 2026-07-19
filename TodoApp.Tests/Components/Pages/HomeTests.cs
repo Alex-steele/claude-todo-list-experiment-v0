@@ -264,6 +264,37 @@ public class HomeTests : BunitContext
     }
 
     [Fact]
+    public async Task CalendarViewButton_IsRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.NotEmpty(cut.FindAll(".calendar-view-btn"));
+    }
+
+    [Fact]
+    public async Task CalendarViewButton_NavigatesToCalendarWithActiveListId()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var calendarButton = cut.Find(".calendar-view-btn");
+        calendarButton.Click();
+
+        var nav = ctx.Services.GetRequiredService<NavigationManager>();
+        Assert.Contains("/calendar", nav.Uri);
+        Assert.Contains("listId=1", nav.Uri);
+    }
+
+    [Fact]
     public async Task FilterByCompleted_ShowsOnlyCompletedTodos()
     {
         var db = await TestDatabase.CreateAsync();

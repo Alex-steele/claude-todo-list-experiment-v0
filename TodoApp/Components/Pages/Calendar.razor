@@ -1,0 +1,135 @@
+@page "/calendar"
+@using TodoApp.Features.Todos
+@using TodoApp.Features.Todos.GetTodos
+@using TodoApp.Features.Todos.CalendarView
+@using TodoApp.Features.Lists
+@inject GetTodosHandler GetTodosHandler
+@inject GetListsHandler GetListsHandler
+@inject CalendarViewHandler CalendarViewHandler
+@inject NavigationManager Nav
+
+<PageTitle>Calendar</PageTitle>
+
+<div class="d-flex align-center justify-space-between mb-4">
+    <MudButton
+        StartIcon="@Icons.Material.Filled.ArrowBack"
+        Variant="Variant.Text"
+        Href="/"
+        Class="calendar-back-btn">
+        Back to list
+    </MudButton>
+    @if (_lists is { Count: > 1 })
+    {
+        <MudSelect T="int" Value="_activeListId" ValueChanged="HandleSwitchList" Dense="true" Class="calendar-list-select" Style="max-width: 200px;">
+            @foreach (var list in _lists)
+            {
+                <MudSelectItem T="int" Value="@list.Id">@list.Name</MudSelectItem>
+            }
+        </MudSelect>
+    }
+</div>
+
+<div class="d-flex align-center justify-space-between mb-4">
+    <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="GoToPreviousMonth" Class="calendar-prev-btn" title="Previous month" />
+    <MudText Typo="Typo.h5" Class="calendar-header">@_cursor.ToString("MMMM yyyy")</MudText>
+    <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="GoToNextMonth" Class="calendar-next-btn" title="Next month" />
+</div>
+
+<div class="d-flex justify-center mb-4">
+    <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="GoToToday" Class="calendar-today-btn">Today</MudButton>
+</div>
+
+@if (_days is null)
+{
+    <MudText>Loading…</MudText>
+}
+else if (_days.Count(d => d.Todos.Count > 0) == 0)
+{
+    <MudText Color="Color.Secondary" Class="calendar-empty-state" Align="Align.Center">No todos due this month</MudText>
+}
+
+<div class="calendar-grid">
+    @foreach (var dayName in DayHeaders)
+    {
+        <div class="calendar-day-header">@dayName</div>
+    }
+    @for (var i = 0; i < LeadingBlanks; i++)
+    {
+        <div class="calendar-day calendar-day-blank"></div>
+    }
+    @if (_days is not null)
+    {
+        @foreach (var day in _days)
+        {
+            var isToday = day.Date == DateTime.Today;
+            var hasOverdue = day.Date < DateTime.Today && day.Todos.Any(t => !t.IsCompleted);
+            var cssClass = "calendar-day" + (isToday ? " calendar-day-today" : "") + (hasOverdue ? " calendar-day-overdue" : "");
+            <div class="@cssClass">
+                <div class="calendar-day-number">@day.Date.Day</div>
+                @foreach (var todo in day.Todos.Take(3))
+                {
+                    <div class="calendar-day-todo @(todo.IsCompleted ? "calendar-day-todo-completed" : "")" title="@todo.Title">
+                        <span class="calendar-priority-dot calendar-priority-@todo.Priority.ToString().ToLowerInvariant()"></span>
+                        @todo.Title
+                    </div>
+                }
+                @if (day.Todos.Count > 3)
+                {
+                    <div class="calendar-day-more">+@(day.Todos.Count - 3) more</div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "listId")]
+    public int? ListId { get; set; }
+
+    private static readonly string[] DayHeaders = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    private IReadOnlyList<TodoList>? _lists;
+    private int _activeListId = 1;
+    private DateTime _cursor = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private IReadOnlyList<CalendarDay>? _days;
+
+    private int LeadingBlanks => (int)_cursor.DayOfWeek;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _activeListId = ListId is > 0 ? ListId.Value : 1;
+        _lists = await GetListsHandler.HandleAsync();
+        await LoadDaysAsync();
+    }
+
+    private async Task LoadDaysAsync()
+    {
+        var todos = await GetTodosHandler.HandleAsync();
+        _days = CalendarViewHandler.Handle(todos, _activeListId, _cursor.Year, _cursor.Month);
+    }
+
+    private async Task GoToPreviousMonth()
+    {
+        _cursor = _cursor.AddMonths(-1);
+        await LoadDaysAsync();
+    }
+
+    private async Task GoToNextMonth()
+    {
+        _cursor = _cursor.AddMonths(1);
+        await LoadDaysAsync();
+    }
+
+    private async Task GoToToday()
+    {
+        _cursor = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        await LoadDaysAsync();
+    }
+
+    private async Task HandleSwitchList(int listId)
+    {
+        _activeListId = listId;
+        await LoadDaysAsync();
+    }
+}

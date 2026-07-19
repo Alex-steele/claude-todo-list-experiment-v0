@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 89 — [2026-07-19] — Feature: Calendar View
+
+**Description:** Adds a new "Calendar view" (📅 icon, in the toolbar next to the export buttons) that opens a dedicated `/calendar` page showing a full month grid for the active list. Each day cell shows up to three todos due that day (with a priority-colored dot and strikethrough for completed items, "+N more" when a day is packed), today's cell is outlined, and days with incomplete overdue todos get a red left border. Prev/Next month arrows, a "Today" shortcut, a list switcher, and a "Back to list" link round out the page. An empty state reads "No todos due this month" when the grid has nothing to show.
+
+**Reason for change:** With 88 days of due-date-aware features (overdue banners, "No date" filter, bulk reschedule, today view) the app had no way to see due dates laid out spatially across a month — the only view was a flat, single-list-at-a-time feed. A calendar is the natural next step once due dates carry real weight in the app, and it's also a good forcing function for the encouraged vertical-slice refactor: rather than bolting more UI onto the already 4,000+ line `Home.razor`, this feature lives entirely in its own route, its own component, and a new pure `CalendarViewHandler` slice (modeled on the existing `TodayViewHandler`/`DueSummaryHandler` pattern of operating on already-fetched `TodoSummary` lists rather than hitting the database directly).
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 550
+- Lines deleted: 0
+- Tests added: 14
+- Tests removed: 0
+- Test failures before green: 4
+
 ## Day 88 — [2026-07-12] — Feature: Auto-Expiring Trash (30-Day Retention)
 
 **Description:** Trash is no longer unbounded — each trashed todo now shows a "Purges in N days" countdown alongside its "Deleted X ago" timestamp, turning red once 3 days or fewer remain. Items older than 30 days are automatically and permanently purged the moment the app loads (checked once at startup), and if any were purged a snackbar reports how many ("N trash items older than 30 days were automatically purged"). Restoring or manually deleting an item before its countdown expires works exactly as before.

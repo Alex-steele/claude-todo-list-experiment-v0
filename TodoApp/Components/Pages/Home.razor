@@ -123,6 +123,7 @@
 @inject PurgeExpiredTrashHandler PurgeExpiredTrashHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 @implements IAsyncDisposable
 
 <PageTitle>My Todo List</PageTitle>
@@ -1100,6 +1101,15 @@ else
                         <MudSelectItem Value="@TodoSortOrder.TimeEstimateDesc">Longest first</MudSelectItem>
                         <MudSelectItem Value="@TodoSortOrder.Manual">Custom order</MudSelectItem>
                     </MudSelect>
+                    <MudTooltip Text="Calendar view">
+                        <MudIconButton
+                            Icon="@Icons.Material.Filled.CalendarMonth"
+                            Size="Size.Small"
+                            Color="Color.Default"
+                            OnClick="HandleOpenCalendar"
+                            title="Calendar view"
+                            Class="calendar-view-btn" />
+                    </MudTooltip>
                     <MudTooltip Text="Export to CSV">
                         <MudIconButton
                             Icon="@Icons.Material.Filled.FileDownload"
@@ -3509,6 +3519,11 @@ else
         {
             Snackbar.Add("Invalid JSON file — could not parse.", Severity.Error);
         }
+    }
+
+    private void HandleOpenCalendar()
+    {
+        Nav.NavigateTo($"/calendar?listId={_activeListId}");
     }
 
     private async Task HandleExportCsv()
