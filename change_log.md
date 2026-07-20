@@ -1,5 +1,22 @@
 # Change Log
 
+## Day 91 — [2026-07-21] — Feature: Drag-to-Reschedule on Calendar
+
+**Description:** Todos shown on the calendar (Day 89) can now be rescheduled by dragging them from one day cell to another. Each todo chip in a day cell is draggable; dropping it on a different day updates its due date to that day via the existing `SetDueDateHandler`, the cell refreshes immediately, and a snackbar confirms ("Rescheduled to Jul 22"). The target cell highlights while a todo is dragged over it. Dropping back onto the same day is a no-op — no update, no snackbar.
+
+**Reason for change:** Day 90 made the calendar a place to create todos, but rescheduling an existing one still meant opening the todo in the list view and editing its due date by hand — a detour from a view whose entire point is showing due dates spatially. Drag-and-drop is the obvious interaction once todos are laid out on a grid (this mirrors the drag-to-reorder pattern already used for lists and todos), and it reuses `SetDueDateHandler` as-is, so the change stays entirely inside the `CalendarView` page and slice.
+
+**Removals:** None
+
+**Bug found during live verification:** Manually exercising the Day 90 quick-add feature in a real browser (not just bUnit) surfaced a live bug: the quick-add `MudTextField` bound its value without `Immediate="true"`, so pressing Enter without first blurring the field never committed the typed title — the todo silently failed to save. bUnit's tests passed because `.Change()` fires a synthetic "change" DOM event directly, masking the real-browser behavior where a bare Enter keypress does not. Fixed by adding `Immediate="true"` and switching the affected bUnit tests to bUnit's `.Input()` (which fires "input", matching `Immediate` binding) instead of `.Change()`.
+
+**Stats:**
+- Lines added: 119
+- Lines deleted: 5
+- Tests added: 3
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 90 — [2026-07-20] — Feature: Quick-Add Todo from Calendar
 
 **Description:** The calendar view (added Day 89) was read-only — it could show what was due on a day but not create new work. Each day cell now shows a "+" button on hover; clicking it opens an inline text field right in that cell. Typing a title and pressing Enter creates a new todo in the active list with its due date set to that cell's date, and the cell refreshes to show it immediately. Pressing Escape or submitting an empty title cancels without creating anything.

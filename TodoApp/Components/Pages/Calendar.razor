@@ -4,12 +4,15 @@
 @using TodoApp.Features.Todos.GetTodos
 @using TodoApp.Features.Todos.CalendarView
 @using TodoApp.Features.Todos.AddTodo
+@using TodoApp.Features.Todos.SetDueDate
 @using TodoApp.Features.Lists
 @inject GetTodosHandler GetTodosHandler
 @inject GetListsHandler GetListsHandler
 @inject CalendarViewHandler CalendarViewHandler
 @inject AddTodoHandler AddTodoHandler
+@inject SetDueDateHandler SetDueDateHandler
 @inject NavigationManager Nav
+@inject ISnackbar Snackbar
 
 <PageTitle>Calendar</PageTitle>
 
@@ -66,9 +69,13 @@ else if (_days.Count(d => d.Todos.Count > 0) == 0)
         {
             var isToday = day.Date == DateTime.Today;
             var hasOverdue = day.Date < DateTime.Today && day.Todos.Any(t => !t.IsCompleted);
-            var cssClass = "calendar-day" + (isToday ? " calendar-day-today" : "") + (hasOverdue ? " calendar-day-overdue" : "");
+            var isDragOver = _draggingTodoId is not null && _dragOverDate == day.Date;
+            var cssClass = "calendar-day" + (isToday ? " calendar-day-today" : "") + (hasOverdue ? " calendar-day-overdue" : "") + (isDragOver ? " calendar-day-drag-over" : "");
             var cellDate = day.Date;
-            <div class="@cssClass">
+            <div class="@cssClass"
+                 @ondragover:preventDefault
+                 @ondragover="@(() => _dragOverDate = cellDate)"
+                 @ondrop="@(async () => await HandleDropOnDay(cellDate))">
                 <div class="d-flex align-center justify-space-between calendar-day-number-row">
                     <div class="calendar-day-number">@day.Date.Day</div>
                     @if (_addingForDate != cellDate)
@@ -88,12 +95,18 @@ else if (_days.Count(d => d.Todos.Count > 0) == 0)
                         Placeholder="New todo..."
                         Variant="Variant.Outlined"
                         Margin="Margin.Dense"
+                        Immediate="true"
                         OnKeyUp="@(async (KeyboardEventArgs e) => await HandleAddInputKeyUp(e, cellDate))"
                         Class="calendar-day-add-input" />
                 }
                 @foreach (var todo in day.Todos.Take(3))
                 {
-                    <div class="calendar-day-todo @(todo.IsCompleted ? "calendar-day-todo-completed" : "")" title="@todo.Title">
+                    var todoId = todo.Id;
+                    <div class="calendar-day-todo @(todo.IsCompleted ? "calendar-day-todo-completed" : "")"
+                         title="@todo.Title"
+                         draggable="true"
+                         @ondragstart="@(() => _draggingTodoId = todoId)"
+                         @ondragend="@(() => { _draggingTodoId = null; _dragOverDate = null; })">
                         <span class="calendar-priority-dot calendar-priority-@todo.Priority.ToString().ToLowerInvariant()"></span>
                         @todo.Title
                     </div>
@@ -120,6 +133,8 @@ else if (_days.Count(d => d.Todos.Count > 0) == 0)
     private IReadOnlyList<CalendarDay>? _days;
     private DateTime? _addingForDate;
     private string _newTodoTitle = string.Empty;
+    private int? _draggingTodoId;
+    private DateTime? _dragOverDate;
 
     private int LeadingBlanks => (int)_cursor.DayOfWeek;
 
@@ -185,6 +200,23 @@ else if (_days.Count(d => d.Todos.Count > 0) == 0)
         await AddTodoHandler.HandleAsync(_newTodoTitle, dueDate: date, listId: _activeListId);
         _addingForDate = null;
         _newTodoTitle = string.Empty;
+        await LoadDaysAsync();
+    }
+
+    private async Task HandleDropOnDay(DateTime date)
+    {
+        if (_draggingTodoId is not { } draggedId)
+            return;
+
+        _draggingTodoId = null;
+        _dragOverDate = null;
+
+        var draggedTodo = _days?.SelectMany(d => d.Todos).FirstOrDefault(t => t.Id == draggedId);
+        if (draggedTodo is not null && draggedTodo.DueDate?.Date == date)
+            return;
+
+        await SetDueDateHandler.HandleAsync(draggedId, date);
+        Snackbar.Add($"Rescheduled to {date:MMM d}", Severity.Normal);
         await LoadDaysAsync();
     }
 }

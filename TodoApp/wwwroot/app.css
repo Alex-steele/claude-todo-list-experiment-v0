@@ -117,6 +117,15 @@ h1:focus {
     border-left: 3px solid #b32121;
 }
 
+.calendar-day-drag-over {
+    background-color: var(--mud-palette-action-hover-rgba, rgba(25, 118, 210, 0.08));
+    border-color: var(--mud-palette-primary, #1b6ec2);
+}
+
+.calendar-day-todo {
+    cursor: grab;
+}
+
 .calendar-day-number-row {
     margin-bottom: 2px;
 }

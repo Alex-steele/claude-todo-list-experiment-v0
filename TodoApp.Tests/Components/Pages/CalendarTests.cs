@@ -8,6 +8,7 @@ using TodoApp.Features.Lists;
 using TodoApp.Features.Todos.AddTodo;
 using TodoApp.Features.Todos.CalendarView;
 using TodoApp.Features.Todos.GetTodos;
+using TodoApp.Features.Todos.SetDueDate;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -25,6 +26,7 @@ public class CalendarTests : BunitContext
         ctx.Services.AddScoped<GetListsHandler>();
         ctx.Services.AddScoped<CalendarViewHandler>();
         ctx.Services.AddScoped<AddTodoHandler>();
+        ctx.Services.AddScoped<SetDueDateHandler>();
         return ctx;
     }
 
@@ -170,7 +172,7 @@ public class CalendarTests : BunitContext
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".calendar-day-add-btn")));
         cut.FindAll(".calendar-day-add-btn")[0].Click();
 
-        cut.Find(".calendar-day-add-input input").Change("Renew passport");
+        cut.Find(".calendar-day-add-input input").Input("Renew passport");
         cut.Find(".calendar-day-add-input input").KeyUp(Key.Enter);
 
         cut.WaitForAssertion(() => Assert.Contains("Renew passport", cut.Markup), TimeSpan.FromSeconds(5));
@@ -187,7 +189,7 @@ public class CalendarTests : BunitContext
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".calendar-day-add-btn")));
         cut.FindAll(".calendar-day-add-btn")[0].Click();
 
-        cut.Find(".calendar-day-add-input input").Change("Should not be saved");
+        cut.Find(".calendar-day-add-input input").Input("Should not be saved");
         cut.Find(".calendar-day-add-input input").KeyUp(Key.Escape);
 
         Assert.Empty(cut.FindAll(".calendar-day-add-input"));
@@ -210,5 +212,76 @@ public class CalendarTests : BunitContext
         Assert.Empty(cut.FindAll(".calendar-day-add-input"));
         var todos = await getTodosHandler.HandleAsync();
         Assert.Empty(todos);
+    }
+
+    // Drag-to-reschedule tests
+
+    [Fact]
+    public async Task Calendar_TodoOnDayCell_IsDraggable()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var dueDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        await addHandler.HandleAsync("Renew passport", dueDate: dueDate);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderCalendar(ctx);
+
+        cut.WaitForAssertion(() => Assert.Contains("Renew passport", cut.Markup));
+
+        var todoElement = cut.Find(".calendar-day-todo");
+        Assert.Equal("true", todoElement.GetAttribute("draggable"));
+    }
+
+    [Fact]
+    public async Task Calendar_DragTodoToAnotherDay_UpdatesDueDate()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var getTodosHandler = new GetTodosHandler(db);
+        var firstOfMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        await addHandler.HandleAsync("Renew passport", dueDate: firstOfMonth);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderCalendar(ctx);
+
+        cut.WaitForAssertion(() => Assert.Contains("Renew passport", cut.Markup));
+
+        cut.Find(".calendar-day-todo").DragStart();
+
+        // Re-query after DragStart triggers a render, per bUnit's stale-element guidance.
+        // dayCells[0] is day 1 (where the todo lives), dayCells[1] is day 2 (drop target).
+        var dayCells = cut.FindAll(".calendar-day-number");
+        dayCells[1].Closest(".calendar-day")!.Drop();
+
+        await cut.WaitForAssertionAsync(async () =>
+        {
+            var todos = await getTodosHandler.HandleAsync();
+            var todo = Assert.Single(todos);
+            Assert.Equal(firstOfMonth.AddDays(1), todo.DueDate!.Value.Date);
+        }, TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task Calendar_DropOnSameDay_LeavesDueDateUnchanged()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var getTodosHandler = new GetTodosHandler(db);
+        var firstOfMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        await addHandler.HandleAsync("Renew passport", dueDate: firstOfMonth);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderCalendar(ctx);
+
+        cut.WaitForAssertion(() => Assert.Contains("Renew passport", cut.Markup));
+
+        var todoElement = cut.Find(".calendar-day-todo");
+        todoElement.DragStart();
+        todoElement.Closest(".calendar-day")!.Drop();
+
+        var todos = await getTodosHandler.HandleAsync();
+        var todo = Assert.Single(todos);
+        Assert.Equal(firstOfMonth, todo.DueDate!.Value.Date);
     }
 }
