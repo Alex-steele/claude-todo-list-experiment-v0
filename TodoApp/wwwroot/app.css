@@ -117,10 +117,36 @@ h1:focus {
     border-left: 3px solid #b32121;
 }
 
+.calendar-day-number-row {
+    margin-bottom: 2px;
+}
+
 .calendar-day-number {
     font-size: 0.8rem;
     font-weight: 600;
-    margin-bottom: 2px;
+}
+
+.calendar-day-add-btn {
+    opacity: 0;
+    padding: 2px !important;
+    transition: opacity 0.1s ease-in-out;
+}
+
+.calendar-day:hover .calendar-day-add-btn {
+    opacity: 0.7;
+}
+
+.calendar-day-add-btn:hover {
+    opacity: 1 !important;
+}
+
+.calendar-day-add-input {
+    margin-bottom: 4px;
+}
+
+.calendar-day-add-input input {
+    font-size: 0.72rem;
+    padding: 2px 6px;
 }
 
 .calendar-day-todo {

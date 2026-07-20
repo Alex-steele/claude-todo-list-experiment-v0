@@ -24,6 +24,7 @@ public class CalendarTests : BunitContext
         ctx.Services.AddScoped<GetTodosHandler>();
         ctx.Services.AddScoped<GetListsHandler>();
         ctx.Services.AddScoped<CalendarViewHandler>();
+        ctx.Services.AddScoped<AddTodoHandler>();
         return ctx;
     }
 
@@ -142,5 +143,72 @@ public class CalendarTests : BunitContext
         var cutForOtherList = RenderCalendar(ctx2, otherListId);
         cutForOtherList.WaitForAssertion(() => Assert.Contains("Work list todo", cutForOtherList.Markup));
         Assert.DoesNotContain("Personal list todo", cutForOtherList.Markup);
+    }
+
+    // Quick-add-from-calendar tests
+
+    [Fact]
+    public async Task Calendar_ClickingAddButtonOnDay_ShowsInlineInput()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderCalendar(ctx);
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".calendar-day-add-btn")));
+        cut.FindAll(".calendar-day-add-btn")[0].Click();
+
+        Assert.NotEmpty(cut.FindAll(".calendar-day-add-input"));
+    }
+
+    [Fact]
+    public async Task Calendar_AddTodoViaInlineForm_CreatesTodoDueOnThatDay()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderCalendar(ctx);
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".calendar-day-add-btn")));
+        cut.FindAll(".calendar-day-add-btn")[0].Click();
+
+        cut.Find(".calendar-day-add-input input").Change("Renew passport");
+        cut.Find(".calendar-day-add-input input").KeyUp(Key.Enter);
+
+        cut.WaitForAssertion(() => Assert.Contains("Renew passport", cut.Markup), TimeSpan.FromSeconds(5));
+        Assert.Empty(cut.FindAll(".calendar-day-add-input"));
+    }
+
+    [Fact]
+    public async Task Calendar_EscapeKey_CancelsInlineAddWithoutCreatingTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderCalendar(ctx);
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".calendar-day-add-btn")));
+        cut.FindAll(".calendar-day-add-btn")[0].Click();
+
+        cut.Find(".calendar-day-add-input input").Change("Should not be saved");
+        cut.Find(".calendar-day-add-input input").KeyUp(Key.Escape);
+
+        Assert.Empty(cut.FindAll(".calendar-day-add-input"));
+        Assert.DoesNotContain("Should not be saved", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Calendar_EnterWithEmptyTitle_DoesNotCreateTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var getTodosHandler = new GetTodosHandler(db);
+        var ctx = CreateBunitContext(db);
+        var cut = RenderCalendar(ctx);
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".calendar-day-add-btn")));
+        cut.FindAll(".calendar-day-add-btn")[0].Click();
+
+        cut.Find(".calendar-day-add-input input").KeyUp(Key.Enter);
+
+        Assert.Empty(cut.FindAll(".calendar-day-add-input"));
+        var todos = await getTodosHandler.HandleAsync();
+        Assert.Empty(todos);
     }
 }
