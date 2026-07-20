@@ -1,11 +1,14 @@
 @page "/calendar"
+@using Microsoft.AspNetCore.Components.Web
 @using TodoApp.Features.Todos
 @using TodoApp.Features.Todos.GetTodos
 @using TodoApp.Features.Todos.CalendarView
+@using TodoApp.Features.Todos.AddTodo
 @using TodoApp.Features.Lists
 @inject GetTodosHandler GetTodosHandler
 @inject GetListsHandler GetListsHandler
 @inject CalendarViewHandler CalendarViewHandler
+@inject AddTodoHandler AddTodoHandler
 @inject NavigationManager Nav
 
 <PageTitle>Calendar</PageTitle>
@@ -64,8 +67,30 @@ else if (_days.Count(d => d.Todos.Count > 0) == 0)
             var isToday = day.Date == DateTime.Today;
             var hasOverdue = day.Date < DateTime.Today && day.Todos.Any(t => !t.IsCompleted);
             var cssClass = "calendar-day" + (isToday ? " calendar-day-today" : "") + (hasOverdue ? " calendar-day-overdue" : "");
+            var cellDate = day.Date;
             <div class="@cssClass">
-                <div class="calendar-day-number">@day.Date.Day</div>
+                <div class="d-flex align-center justify-space-between calendar-day-number-row">
+                    <div class="calendar-day-number">@day.Date.Day</div>
+                    @if (_addingForDate != cellDate)
+                    {
+                        <MudIconButton
+                            Icon="@Icons.Material.Filled.Add"
+                            Size="Size.Small"
+                            OnClick="@(() => HandleStartAdd(cellDate))"
+                            Class="calendar-day-add-btn"
+                            title="Add todo on this day" />
+                    }
+                </div>
+                @if (_addingForDate == cellDate)
+                {
+                    <MudTextField
+                        @bind-Value="_newTodoTitle"
+                        Placeholder="New todo..."
+                        Variant="Variant.Outlined"
+                        Margin="Margin.Dense"
+                        OnKeyUp="@(async (KeyboardEventArgs e) => await HandleAddInputKeyUp(e, cellDate))"
+                        Class="calendar-day-add-input" />
+                }
                 @foreach (var todo in day.Todos.Take(3))
                 {
                     <div class="calendar-day-todo @(todo.IsCompleted ? "calendar-day-todo-completed" : "")" title="@todo.Title">
@@ -93,6 +118,8 @@ else if (_days.Count(d => d.Todos.Count > 0) == 0)
     private int _activeListId = 1;
     private DateTime _cursor = new(DateTime.Today.Year, DateTime.Today.Month, 1);
     private IReadOnlyList<CalendarDay>? _days;
+    private DateTime? _addingForDate;
+    private string _newTodoTitle = string.Empty;
 
     private int LeadingBlanks => (int)_cursor.DayOfWeek;
 
@@ -130,6 +157,34 @@ else if (_days.Count(d => d.Todos.Count > 0) == 0)
     private async Task HandleSwitchList(int listId)
     {
         _activeListId = listId;
+        await LoadDaysAsync();
+    }
+
+    private void HandleStartAdd(DateTime date)
+    {
+        _addingForDate = date;
+        _newTodoTitle = string.Empty;
+    }
+
+    private async Task HandleAddInputKeyUp(KeyboardEventArgs e, DateTime date)
+    {
+        if (e.Key == "Enter")
+            await HandleSaveAdd(date);
+        else if (e.Key == "Escape")
+            _addingForDate = null;
+    }
+
+    private async Task HandleSaveAdd(DateTime date)
+    {
+        if (string.IsNullOrWhiteSpace(_newTodoTitle))
+        {
+            _addingForDate = null;
+            return;
+        }
+
+        await AddTodoHandler.HandleAsync(_newTodoTitle, dueDate: date, listId: _activeListId);
+        _addingForDate = null;
+        _newTodoTitle = string.Empty;
         await LoadDaysAsync();
     }
 }

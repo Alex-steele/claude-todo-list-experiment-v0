@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 90 — [2026-07-20] — Feature: Quick-Add Todo from Calendar
+
+**Description:** The calendar view (added Day 89) was read-only — it could show what was due on a day but not create new work. Each day cell now shows a "+" button on hover; clicking it opens an inline text field right in that cell. Typing a title and pressing Enter creates a new todo in the active list with its due date set to that cell's date, and the cell refreshes to show it immediately. Pressing Escape or submitting an empty title cancels without creating anything.
+
+**Reason for change:** Once a user is looking at a month laid out spatially, the natural next action is "I need to do something on the 15th" — but the only way to add it was to leave the calendar, go back to the list view, and set a due date by hand. Letting the calendar accept input as well as display it closes that loop and makes the view a genuine planning surface rather than a read-only summary. It also keeps the new logic entirely inside the existing `CalendarView` slice and page (reusing the existing `AddTodoHandler`) rather than adding cross-slice coupling.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 151
+- Lines deleted: 2
+- Tests added: 4
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 89 — [2026-07-19] — Feature: Calendar View
 
 **Description:** Adds a new "Calendar view" (📅 icon, in the toolbar next to the export buttons) that opens a dedicated `/calendar` page showing a full month grid for the active list. Each day cell shows up to three todos due that day (with a priority-colored dot and strikethrough for completed items, "+N more" when a day is packed), today's cell is outlined, and days with incomplete overdue todos get a red left border. Prev/Next month arrows, a "Today" shortcut, a list switcher, and a "Back to list" link round out the page. An empty state reads "No todos due this month" when the grid has nothing to show.
