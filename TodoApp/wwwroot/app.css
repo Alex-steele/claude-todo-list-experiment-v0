@@ -122,6 +122,20 @@ h1:focus {
     border-color: var(--mud-palette-primary, #1b6ec2);
 }
 
+.subtask-row {
+    border-radius: 4px;
+}
+
+.subtask-drag-over {
+    background-color: var(--mud-palette-action-hover-rgba, rgba(25, 118, 210, 0.08));
+    outline: 1px dashed var(--mud-palette-primary, #1b6ec2);
+}
+
+.subtask-drag-handle {
+    cursor: grab;
+    opacity: 0.5;
+}
+
 .calendar-day-selected {
     background-color: var(--mud-palette-action-selected, rgba(25, 118, 210, 0.06));
     border-color: var(--mud-palette-primary, #1b6ec2);

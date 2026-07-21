@@ -91,6 +91,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<CompleteSubtaskHandler>();
         ctx.Services.AddScoped<DeleteSubtaskHandler>();
         ctx.Services.AddScoped<GetSubtasksHandler>();
+        ctx.Services.AddScoped<ReorderSubtasksHandler>();
         ctx.Services.AddScoped<CreateRecurringInstanceHandler>();
         ctx.Services.AddScoped<GetListsHandler>();
         ctx.Services.AddScoped<CreateListHandler>();
@@ -3413,6 +3414,109 @@ public class HomeTests : BunitContext
 
         Assert.DoesNotContain("subtask-edit-input", cut.Markup);
         Assert.Contains("Original title", cut.Markup);
+    }
+
+    // Subtask drag-to-reorder tests
+
+    [Fact]
+    public async Task SubtaskRow_IsNotDraggable_WhenOnlyOneSubtask()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addSubtask = new AddSubtaskHandler(db);
+
+        var todoId = await addTodo.HandleAsync("Main task");
+        await addSubtask.HandleAsync(todoId, "Only step");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".subtasks-toggle-btn").Click();
+
+        var row = cut.Find(".subtask-row");
+        Assert.Equal("false", row.GetAttribute("draggable"));
+        Assert.DoesNotContain("subtask-drag-handle", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SubtaskRows_AreDraggable_WhenMultipleSubtasksExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addSubtask = new AddSubtaskHandler(db);
+
+        var todoId = await addTodo.HandleAsync("Main task");
+        await addSubtask.HandleAsync(todoId, "First");
+        await addSubtask.HandleAsync(todoId, "Second");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".subtasks-toggle-btn").Click();
+
+        var rows = cut.FindAll(".subtask-row");
+        Assert.Equal(2, rows.Count);
+        Assert.All(rows, row => Assert.Equal("true", row.GetAttribute("draggable")));
+        Assert.Contains("subtask-drag-handle", cut.Markup);
+    }
+
+    [Fact]
+    public async Task DraggingSubtask_OntoAnother_PersistsNewOrder()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addSubtask = new AddSubtaskHandler(db);
+        var getSubtasks = new GetSubtasksHandler(db);
+
+        var todoId = await addTodo.HandleAsync("Main task");
+        await addSubtask.HandleAsync(todoId, "First");
+        await addSubtask.HandleAsync(todoId, "Second");
+        await addSubtask.HandleAsync(todoId, "Third");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".subtasks-toggle-btn").Click();
+
+        var rows = cut.FindAll(".subtask-row");
+        rows[0].DragStart();
+
+        // Re-query after DragStart triggers a render, per bUnit's stale-element guidance.
+        rows = cut.FindAll(".subtask-row");
+        rows[2].Drop();
+
+        await cut.WaitForAssertionAsync(async () =>
+        {
+            var subtasks = await getSubtasks.HandleAsync([todoId]);
+            var titles = subtasks[todoId].Select(s => s.Title).ToList();
+            Assert.Equal(["Second", "Third", "First"], titles);
+        }, TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task DroppingSubtask_OnSameRow_LeavesOrderUnchanged()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addTodo = new AddTodoHandler(db);
+        var addSubtask = new AddSubtaskHandler(db);
+        var getSubtasks = new GetSubtasksHandler(db);
+
+        var todoId = await addTodo.HandleAsync("Main task");
+        await addSubtask.HandleAsync(todoId, "First");
+        await addSubtask.HandleAsync(todoId, "Second");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".subtasks-toggle-btn").Click();
+
+        cut.FindAll(".subtask-row")[0].DragStart();
+
+        // Re-query after DragStart triggers a render, per bUnit's stale-element guidance.
+        cut.FindAll(".subtask-row")[0].Drop();
+
+        var subtasks = await getSubtasks.HandleAsync([todoId]);
+        Assert.Equal(["First", "Second"], subtasks[todoId].Select(s => s.Title));
     }
 
     // Tag autocomplete tests

@@ -12,7 +12,7 @@ public class GetSubtasksHandler(Database db)
 
         using var conn = db.CreateConnection();
         var rows = await conn.QueryAsync<(int Id, int TodoId, string Title, int IsCompleted, string CreatedAt)>(
-            "SELECT Id, TodoId, Title, IsCompleted, CreatedAt FROM Subtasks WHERE TodoId IN @Ids ORDER BY Id",
+            "SELECT Id, TodoId, Title, IsCompleted, CreatedAt FROM Subtasks WHERE TodoId IN @Ids ORDER BY SortOrder, Id",
             new { Ids = ids });
 
         return rows

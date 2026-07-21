@@ -89,6 +89,7 @@ builder.Services.AddScoped<EditSubtaskHandler>();
 builder.Services.AddScoped<CompleteSubtaskHandler>();
 builder.Services.AddScoped<DeleteSubtaskHandler>();
 builder.Services.AddScoped<GetSubtasksHandler>();
+builder.Services.AddScoped<ReorderSubtasksHandler>();
 builder.Services.AddScoped<CreateRecurringInstanceHandler>();
 builder.Services.AddScoped<GetListsHandler>();
 builder.Services.AddScoped<CreateListHandler>();
