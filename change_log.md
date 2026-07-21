@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 92 — [2026-07-21] — Feature: Calendar Day-Detail Panel
+
+**Description:** Day cells on the calendar only ever showed up to three todos, with a "+N more" label for anything beyond that and no way to see the rest. Clicking a day's date number (or its "+N more" label) now opens a day-detail panel below the grid listing every todo due that day, each with a checkbox to toggle completion and a delete button. Completing or deleting a todo from the panel updates both the panel and the month grid immediately. Clicking the same day number again, or the panel's close button, collapses it. Selecting a different day, navigating months, jumping to Today, or switching lists all close the panel since it no longer applies.
+
+**Reason for change:** Day 89 introduced the calendar as a read-only preview (top 3 todos per day) and Days 90–91 made it a place to create and reschedule todos, but there was still no way to actually see or act on everything due on a busy day short of leaving the calendar for the list view. A day-detail panel closes that gap and reuses the existing `CompleteTodoHandler` and `DeleteTodoHandler` as-is, so the change stays entirely inside the `CalendarView` page and slice — no new handler was needed since `CalendarViewHandler` already returns the full (untruncated) per-day todo list that the grid was only rendering three of.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 251
+- Lines deleted: 3
+- Tests added: 7
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 91 — [2026-07-21] — Feature: Drag-to-Reschedule on Calendar
 
 **Description:** Todos shown on the calendar (Day 89) can now be rescheduled by dragging them from one day cell to another. Each todo chip in a day cell is draggable; dropping it on a different day updates its due date to that day via the existing `SetDueDateHandler`, the cell refreshes immediately, and a snackbar confirms ("Rescheduled to Jul 22"). The target cell highlights while a todo is dragged over it. Dropping back onto the same day is a no-op — no update, no snackbar.

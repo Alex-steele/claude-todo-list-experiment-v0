@@ -7,6 +7,8 @@ using TodoApp.Components.Pages;
 using TodoApp.Features.Lists;
 using TodoApp.Features.Todos.AddTodo;
 using TodoApp.Features.Todos.CalendarView;
+using TodoApp.Features.Todos.CompleteTodo;
+using TodoApp.Features.Todos.DeleteTodo;
 using TodoApp.Features.Todos.GetTodos;
 using TodoApp.Features.Todos.SetDueDate;
 using TodoApp.Tests.Infrastructure;
@@ -27,6 +29,8 @@ public class CalendarTests : BunitContext
         ctx.Services.AddScoped<CalendarViewHandler>();
         ctx.Services.AddScoped<AddTodoHandler>();
         ctx.Services.AddScoped<SetDueDateHandler>();
+        ctx.Services.AddScoped<CompleteTodoHandler>();
+        ctx.Services.AddScoped<DeleteTodoHandler>();
         return ctx;
     }
 
@@ -283,5 +287,152 @@ public class CalendarTests : BunitContext
         var todos = await getTodosHandler.HandleAsync();
         var todo = Assert.Single(todos);
         Assert.Equal(firstOfMonth, todo.DueDate!.Value.Date);
+    }
+
+    // Day-detail panel tests
+
+    [Fact]
+    public async Task Calendar_ClickingDayNumber_OpensDetailPanelListingAllTodosForThatDay()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var firstOfMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        await addHandler.HandleAsync("Renew passport", dueDate: firstOfMonth);
+        await addHandler.HandleAsync("Pay rent", dueDate: firstOfMonth);
+        await addHandler.HandleAsync("Call dentist", dueDate: firstOfMonth);
+        await addHandler.HandleAsync("Water plants", dueDate: firstOfMonth);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderCalendar(ctx);
+
+        cut.WaitForAssertion(() => Assert.Contains("+1 more", cut.Markup));
+
+        cut.Find(".calendar-day-number-btn").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains(firstOfMonth.ToString("dddd, MMMM d"), cut.Markup);
+            Assert.Equal(4, cut.FindAll(".calendar-day-detail-row").Count);
+            Assert.Contains("Water plants", cut.Markup);
+        });
+    }
+
+    [Fact]
+    public async Task Calendar_ClickingSameDayNumberTwice_ClosesDetailPanel()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var firstOfMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        await addHandler.HandleAsync("Renew passport", dueDate: firstOfMonth);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderCalendar(ctx);
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".calendar-day-number-btn")));
+        cut.Find(".calendar-day-number-btn").Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".calendar-day-detail")));
+
+        cut.Find(".calendar-day-number-btn").Click();
+        Assert.Empty(cut.FindAll(".calendar-day-detail"));
+    }
+
+    [Fact]
+    public async Task Calendar_CloseButtonOnDetailPanel_HidesPanel()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderCalendar(ctx);
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".calendar-day-number-btn")));
+        cut.Find(".calendar-day-number-btn").Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".calendar-day-detail")));
+
+        cut.Find(".calendar-day-detail-close").Click();
+        Assert.Empty(cut.FindAll(".calendar-day-detail"));
+    }
+
+    [Fact]
+    public async Task Calendar_ClickingMoreLink_OpensDetailPanelForThatDay()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var firstOfMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        await addHandler.HandleAsync("Todo 1", dueDate: firstOfMonth);
+        await addHandler.HandleAsync("Todo 2", dueDate: firstOfMonth);
+        await addHandler.HandleAsync("Todo 3", dueDate: firstOfMonth);
+        await addHandler.HandleAsync("Todo 4", dueDate: firstOfMonth);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderCalendar(ctx);
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".calendar-day-more")));
+        cut.Find(".calendar-day-more").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(4, cut.FindAll(".calendar-day-detail-row").Count));
+    }
+
+    [Fact]
+    public async Task Calendar_DetailPanelForEmptyDay_ShowsEmptyMessage()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderCalendar(ctx);
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".calendar-day-number-btn")));
+        cut.Find(".calendar-day-number-btn").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("No todos due this day", cut.Markup));
+    }
+
+    [Fact]
+    public async Task Calendar_TogglingCheckboxInDetailPanel_CompletesTodoAndUpdatesGrid()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var getTodosHandler = new GetTodosHandler(db);
+        var firstOfMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        await addHandler.HandleAsync("Renew passport", dueDate: firstOfMonth);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderCalendar(ctx);
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".calendar-day-number-btn")));
+        cut.Find(".calendar-day-number-btn").Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".calendar-day-detail-checkbox input")));
+
+        cut.Find(".calendar-day-detail-checkbox input").Change(true);
+
+        await cut.WaitForAssertionAsync(async () =>
+        {
+            var todos = await getTodosHandler.HandleAsync();
+            Assert.True(Assert.Single(todos).IsCompleted);
+        });
+        cut.WaitForAssertion(() => Assert.Contains("calendar-day-todo-completed", cut.Markup));
+    }
+
+    [Fact]
+    public async Task Calendar_DeletingTodoFromDetailPanel_RemovesItFromPanelAndGrid()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var getTodosHandler = new GetTodosHandler(db);
+        var firstOfMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        await addHandler.HandleAsync("Renew passport", dueDate: firstOfMonth);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderCalendar(ctx);
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".calendar-day-number-btn")));
+        cut.Find(".calendar-day-number-btn").Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".calendar-day-detail-delete")));
+
+        cut.Find(".calendar-day-detail-delete").Click();
+
+        await cut.WaitForAssertionAsync(async () =>
+        {
+            var todos = await getTodosHandler.HandleAsync();
+            Assert.Empty(todos);
+        });
+        cut.WaitForAssertion(() => Assert.DoesNotContain("Renew passport", cut.Markup));
     }
 }

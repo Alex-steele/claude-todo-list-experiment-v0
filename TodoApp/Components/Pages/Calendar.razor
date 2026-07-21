@@ -5,12 +5,16 @@
 @using TodoApp.Features.Todos.CalendarView
 @using TodoApp.Features.Todos.AddTodo
 @using TodoApp.Features.Todos.SetDueDate
+@using TodoApp.Features.Todos.CompleteTodo
+@using TodoApp.Features.Todos.DeleteTodo
 @using TodoApp.Features.Lists
 @inject GetTodosHandler GetTodosHandler
 @inject GetListsHandler GetListsHandler
 @inject CalendarViewHandler CalendarViewHandler
 @inject AddTodoHandler AddTodoHandler
 @inject SetDueDateHandler SetDueDateHandler
+@inject CompleteTodoHandler CompleteTodoHandler
+@inject DeleteTodoHandler DeleteTodoHandler
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
@@ -70,14 +74,15 @@ else if (_days.Count(d => d.Todos.Count > 0) == 0)
             var isToday = day.Date == DateTime.Today;
             var hasOverdue = day.Date < DateTime.Today && day.Todos.Any(t => !t.IsCompleted);
             var isDragOver = _draggingTodoId is not null && _dragOverDate == day.Date;
-            var cssClass = "calendar-day" + (isToday ? " calendar-day-today" : "") + (hasOverdue ? " calendar-day-overdue" : "") + (isDragOver ? " calendar-day-drag-over" : "");
+            var isSelected = _selectedDate == day.Date;
+            var cssClass = "calendar-day" + (isToday ? " calendar-day-today" : "") + (hasOverdue ? " calendar-day-overdue" : "") + (isDragOver ? " calendar-day-drag-over" : "") + (isSelected ? " calendar-day-selected" : "");
             var cellDate = day.Date;
             <div class="@cssClass"
                  @ondragover:preventDefault
                  @ondragover="@(() => _dragOverDate = cellDate)"
                  @ondrop="@(async () => await HandleDropOnDay(cellDate))">
                 <div class="d-flex align-center justify-space-between calendar-day-number-row">
-                    <div class="calendar-day-number">@day.Date.Day</div>
+                    <div class="calendar-day-number calendar-day-number-btn" @onclick="@(() => HandleSelectDay(cellDate))">@day.Date.Day</div>
                     @if (_addingForDate != cellDate)
                     {
                         <MudIconButton
@@ -113,12 +118,41 @@ else if (_days.Count(d => d.Todos.Count > 0) == 0)
                 }
                 @if (day.Todos.Count > 3)
                 {
-                    <div class="calendar-day-more">+@(day.Todos.Count - 3) more</div>
+                    <div class="calendar-day-more" @onclick="@(() => HandleSelectDay(cellDate))">+@(day.Todos.Count - 3) more</div>
                 }
             </div>
         }
     }
 </div>
+
+@if (_selectedDate is { } selectedDate)
+{
+    var selectedDay = _days?.FirstOrDefault(d => d.Date == selectedDate);
+    <MudPaper Class="calendar-day-detail pa-3 mt-4" Outlined="true">
+        <div class="d-flex align-center justify-space-between mb-2">
+            <MudText Typo="Typo.subtitle1" Class="calendar-day-detail-header">@selectedDate.ToString("dddd, MMMM d")</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="HandleCloseDayDetail" Class="calendar-day-detail-close" title="Close" />
+        </div>
+        @if (selectedDay is null || selectedDay.Todos.Count == 0)
+        {
+            <MudText Color="Color.Secondary" Class="calendar-day-detail-empty">No todos due this day</MudText>
+        }
+        else
+        {
+            @foreach (var todo in selectedDay.Todos)
+            {
+                var todoId = todo.Id;
+                <div class="d-flex align-center calendar-day-detail-row">
+                    <MudCheckBox T="bool" Value="@todo.IsCompleted" ValueChanged="@(() => HandleToggleComplete(todoId))" Class="calendar-day-detail-checkbox" Dense="true" />
+                    <span class="calendar-priority-dot calendar-priority-@todo.Priority.ToString().ToLowerInvariant()"></span>
+                    <span class="@("calendar-day-detail-title" + (todo.IsCompleted ? " calendar-day-todo-completed" : ""))">@todo.Title</span>
+                    <MudSpacer />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => HandleDeleteFromDetail(todoId))" Class="calendar-day-detail-delete" title="Delete" />
+                </div>
+            }
+        }
+    </MudPaper>
+}
 
 @code {
     [Parameter]
@@ -135,6 +169,7 @@ else if (_days.Count(d => d.Todos.Count > 0) == 0)
     private string _newTodoTitle = string.Empty;
     private int? _draggingTodoId;
     private DateTime? _dragOverDate;
+    private DateTime? _selectedDate;
 
     private int LeadingBlanks => (int)_cursor.DayOfWeek;
 
@@ -154,24 +189,51 @@ else if (_days.Count(d => d.Todos.Count > 0) == 0)
     private async Task GoToPreviousMonth()
     {
         _cursor = _cursor.AddMonths(-1);
+        _selectedDate = null;
         await LoadDaysAsync();
     }
 
     private async Task GoToNextMonth()
     {
         _cursor = _cursor.AddMonths(1);
+        _selectedDate = null;
         await LoadDaysAsync();
     }
 
     private async Task GoToToday()
     {
         _cursor = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        _selectedDate = null;
         await LoadDaysAsync();
     }
 
     private async Task HandleSwitchList(int listId)
     {
         _activeListId = listId;
+        _selectedDate = null;
+        await LoadDaysAsync();
+    }
+
+    private void HandleSelectDay(DateTime date)
+    {
+        _selectedDate = _selectedDate == date ? null : date;
+    }
+
+    private void HandleCloseDayDetail()
+    {
+        _selectedDate = null;
+    }
+
+    private async Task HandleToggleComplete(int todoId)
+    {
+        await CompleteTodoHandler.HandleAsync(todoId);
+        await LoadDaysAsync();
+    }
+
+    private async Task HandleDeleteFromDetail(int todoId)
+    {
+        await DeleteTodoHandler.HandleAsync(todoId);
+        Snackbar.Add("Todo deleted", Severity.Normal);
         await LoadDaysAsync();
     }
 
