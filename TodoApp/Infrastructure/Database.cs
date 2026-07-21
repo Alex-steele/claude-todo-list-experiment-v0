@@ -185,6 +185,18 @@ public class Database(string connectionString)
             )
             """);
 
+        // Migration: add SortOrder column for subtask drag-to-reorder
+        try
+        {
+            await conn.ExecuteAsync("ALTER TABLE Subtasks ADD COLUMN SortOrder INTEGER NOT NULL DEFAULT 0");
+            // Seed existing rows so they have a stable initial order matching insertion order
+            await conn.ExecuteAsync("UPDATE Subtasks SET SortOrder = Id WHERE SortOrder = 0");
+        }
+        catch (SqliteException)
+        {
+            // Column already exists — ignore
+        }
+
         await conn.ExecuteAsync("""
             CREATE TABLE IF NOT EXISTS FilterPresets (
                 Id          INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -75,6 +75,7 @@
 @inject CompleteSubtaskHandler CompleteSubtaskHandler
 @inject DeleteSubtaskHandler DeleteSubtaskHandler
 @inject GetSubtasksHandler GetSubtasksHandler
+@inject ReorderSubtasksHandler ReorderSubtasksHandler
 @inject GetTodoTagsHandler GetTodoTagsHandler
 @inject GetAllTagNamesHandler GetAllTagNamesHandler
 @inject GetTodosHandler GetTodosHandler
@@ -2136,7 +2137,18 @@ else
                                             @foreach (var subtask in todoSubtasks)
                                             {
                                                 var stId = subtask.Id;
-                                                <div class="d-flex align-center gap-1">
+                                                <div class="d-flex align-center gap-1 subtask-row @(_dragOverSubtaskId == stId ? "subtask-drag-over" : "")"
+                                                     draggable="@(todoSubtasks.Count > 1 ? "true" : "false")"
+                                                     @ondragstart="@(() => _draggingSubtaskId = stId)"
+                                                     @ondragover:preventDefault
+                                                     @ondragover="@(() => _dragOverSubtaskId = stId)"
+                                                     @ondrop="@(async () => await HandleSubtaskDrop(todo.Id, stId))">
+                                                    @if (todoSubtasks.Count > 1)
+                                                    {
+                                                        <MudIcon Icon="@Icons.Material.Filled.DragIndicator"
+                                                                 Size="Size.Small"
+                                                                 Class="subtask-drag-handle" />
+                                                    }
                                                     <MudCheckBox
                                                         Value="@subtask.IsCompleted"
                                                         ValueChanged="@(async (bool _) => await HandleToggleSubtask(stId))"
@@ -2557,6 +2569,8 @@ else
     private string _newSubtaskTitle = string.Empty;
     private int? _editingSubtaskId;
     private string _editSubtaskTitle = string.Empty;
+    private int? _draggingSubtaskId;
+    private int? _dragOverSubtaskId;
 
     private IReadOnlyList<string> AllTagNames =>
         _todoTags.Values.SelectMany(tags => tags.Select(t => t.Name))
@@ -3611,6 +3625,31 @@ else
     private async Task HandleDeleteSubtask(int subtaskId)
     {
         await DeleteSubtaskHandler.HandleAsync(subtaskId);
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleSubtaskDrop(int todoId, int targetSubtaskId)
+    {
+        if (_draggingSubtaskId is null || _draggingSubtaskId == targetSubtaskId)
+        {
+            _draggingSubtaskId = null;
+            _dragOverSubtaskId = null;
+            return;
+        }
+
+        var subtasks = _subtasks.GetValueOrDefault(todoId, []);
+        var dragged = subtasks.FirstOrDefault(s => s.Id == _draggingSubtaskId.Value);
+        var target  = subtasks.FirstOrDefault(s => s.Id == targetSubtaskId);
+        if (dragged is null || target is null) { _draggingSubtaskId = null; _dragOverSubtaskId = null; return; }
+
+        var reordered = subtasks.Where(s => s.Id != _draggingSubtaskId.Value).ToList();
+        var insertAt  = reordered.IndexOf(target);
+        reordered.Insert(insertAt, dragged);
+
+        _draggingSubtaskId = null;
+        _dragOverSubtaskId = null;
+
+        await ReorderSubtasksHandler.HandleAsync(reordered.Select(s => s.Id).ToList());
         await LoadTodosAsync();
     }
 

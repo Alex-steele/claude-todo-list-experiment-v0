@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 93 — [2026-07-21] — Feature: Subtask Drag-to-Reorder
+
+**Description:** Subtasks within a todo can now be reordered by dragging. Each subtask row shows a drag-handle icon whenever a todo has 2 or more subtasks; dragging one subtask onto another moves it to that position, persists immediately, and survives a page reload. Todos with a single subtask show no handle since there is nothing to reorder. The checkbox, edit, and delete controls on each subtask row are unaffected.
+
+**Reason for change:** Subtasks already supported add (Day 19), complete (Day 19), delete (Day 19), and rename (Day 42), but not reordering — the one CRUD-adjacent operation still missing. Todos and lists already support drag-to-reorder (Days 27 and 77), so subtasks were the last place in the app where a user could not put items in the order they actually intend to tackle them (e.g., moving a blocking step to the top of a checklist). The feature reuses the exact `SortOrder` + `ReorderXHandler` pattern already established by `ReorderTodosHandler` and `ReorderListsHandler`, so it required no new architectural concepts — just a `SortOrder` column on `Subtasks`, a new `ReorderSubtasksHandler` in the existing `Subtasks` slice, and the same drag/drop markup already used for todos.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 307
+- Lines deleted: 5
+- Tests added: 9
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 92 — [2026-07-21] — Feature: Calendar Day-Detail Panel
 
 **Description:** Day cells on the calendar only ever showed up to three todos, with a "+N more" label for anything beyond that and no way to see the rest. Clicking a day's date number (or its "+N more" label) now opens a day-detail panel below the grid listing every todo due that day, each with a checkbox to toggle completion and a delete button. Completing or deleting a todo from the panel updates both the panel and the month grid immediately. Clicking the same day number again, or the panel's close button, collapses it. Selecting a different day, navigating months, jumping to Today, or switching lists all close the panel since it no longer applies.
