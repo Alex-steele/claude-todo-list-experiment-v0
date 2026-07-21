@@ -122,6 +122,11 @@ h1:focus {
     border-color: var(--mud-palette-primary, #1b6ec2);
 }
 
+.calendar-day-selected {
+    background-color: var(--mud-palette-action-selected, rgba(25, 118, 210, 0.06));
+    border-color: var(--mud-palette-primary, #1b6ec2);
+}
+
 .calendar-day-todo {
     cursor: grab;
 }
@@ -133,6 +138,14 @@ h1:focus {
 .calendar-day-number {
     font-size: 0.8rem;
     font-weight: 600;
+}
+
+.calendar-day-number-btn {
+    cursor: pointer;
+}
+
+.calendar-day-number-btn:hover {
+    text-decoration: underline;
 }
 
 .calendar-day-add-btn {
@@ -174,6 +187,28 @@ h1:focus {
 .calendar-day-more {
     font-size: 0.68rem;
     opacity: 0.6;
+    cursor: pointer;
+}
+
+.calendar-day-more:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+
+.calendar-day-detail-row {
+    padding: 2px 0;
+}
+
+.calendar-day-detail-title {
+    font-size: 0.85rem;
+}
+
+.calendar-day-detail-checkbox {
+    margin-right: 2px;
+}
+
+.calendar-day-detail-empty {
+    font-size: 0.85rem;
 }
 
 .calendar-priority-dot {
