@@ -1111,6 +1111,15 @@ else
                             title="Calendar view"
                             Class="calendar-view-btn" />
                     </MudTooltip>
+                    <MudTooltip Text="Analytics">
+                        <MudIconButton
+                            Icon="@Icons.Material.Filled.BarChart"
+                            Size="Size.Small"
+                            Color="Color.Default"
+                            OnClick="HandleOpenAnalytics"
+                            title="Analytics"
+                            Class="analytics-view-btn" />
+                    </MudTooltip>
                     <MudTooltip Text="Export to CSV">
                         <MudIconButton
                             Icon="@Icons.Material.Filled.FileDownload"
@@ -3538,6 +3547,11 @@ else
     private void HandleOpenCalendar()
     {
         Nav.NavigateTo($"/calendar?listId={_activeListId}");
+    }
+
+    private void HandleOpenAnalytics()
+    {
+        Nav.NavigateTo($"/analytics?listId={_activeListId}");
     }
 
     private async Task HandleExportCsv()

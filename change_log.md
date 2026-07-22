@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 94 — [2026-07-22] — Feature: Analytics Dashboard (Completions by Day of Week)
+
+**Description:** A new "Analytics" page (📊 icon in the toolbar, next to the Calendar icon) shows a bar chart of how many todos in the active list have been completed on each day of the week (Sunday–Saturday). The day with the most completions is highlighted in green and called out below the chart ("Your most productive day is Wednesday"), so users can see which day they're most productive on. A list switcher lets users view the breakdown for any list, and an empty state explains the feature when no todos have been completed yet.
+
+**Reason for change:** The app already had rich but scattered productivity signals — streaks, a 14-day heatmap, completion-time averages, priority and tag completion rates — all living as chips inside the Home page's stats panel. None of them answered a simple, recurring question: "which day of the week am I actually productive on?" That's a genuinely new insight (not derivable from any existing chip) and a natural fit for its own dedicated page, following the same pattern established by the Calendar view (Day 89) — a focused route with its own vertical slice (`DayOfWeekStatsHandler`) rather than more chips bolted onto the already 4,000+ line `Home.razor`.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 510
+- Lines deleted: 0
+- Tests added: 14
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 93 — [2026-07-21] — Feature: Subtask Drag-to-Reorder
 
 **Description:** Subtasks within a todo can now be reordered by dragging. Each subtask row shows a drag-handle icon whenever a todo has 2 or more subtasks; dragging one subtask onto another moves it to that position, persists immediately, and survives a page reload. Todos with a single subtask show no handle since there is nothing to reorder. The checkbox, edit, and delete controls on each subtask row are unaffected.
