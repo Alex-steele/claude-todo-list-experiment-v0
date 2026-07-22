@@ -46,6 +46,27 @@ window.todoApp.copyToClipboard = function (text) {
     return navigator.clipboard.writeText(text);
 };
 
+window.todoApp.getReminderPreference = function () {
+    return localStorage.getItem('todoApp:remindersEnabled') === 'true';
+};
+
+window.todoApp.saveReminderPreference = function (enabled) {
+    localStorage.setItem('todoApp:remindersEnabled', enabled.toString());
+};
+
+window.todoApp.requestNotificationPermission = async function () {
+    if (!('Notification' in window)) return 'unsupported';
+    if (Notification.permission === 'granted') return 'granted';
+    if (Notification.permission === 'denied') return 'denied';
+    return await Notification.requestPermission();
+};
+
+window.todoApp.showNotification = function (title, body) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body: body });
+    }
+};
+
 window.todoApp._handleKeyDown = function (e) {
     const tag = e.target.tagName.toLowerCase();
     if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;

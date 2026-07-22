@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 95 — [2026-07-22] — Feature: Due Date Browser Notifications
+
+**Description:** A new 🔔 toggle in the toolbar (next to Analytics) lets users enable native browser notifications for overdue and due-today todos. Clicking it requests browser Notification permission; once granted, the app immediately checks the active list and — if anything is due — fires a single OS-level notification (e.g. "You have 2 overdue and 1 due today."), then re-checks automatically on every future page load if the preference (stored in localStorage) is still enabled. If permission is denied, a snackbar explains how to fix it and the toggle stays off.
+
+**Reason for change:** The app already surfaces overdue/due-today todos via an in-page urgency banner (Day 67) and a cross-list Today view (Day 74), but both require the user to actually have the tab open and looking at it. A real OS notification reaches the user even if the app is backgrounded or minimized, which is the natural next step for a due-date-aware todo app and closes a long-standing gap relative to the "notifications" item in the feature roadmap. It reuses the existing `DueSummaryHandler` for counting, so the new `Reminders` slice only had to add the message formatting and the permission/notification plumbing.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 296
+- Lines deleted: 0
+- Tests added: 12
+- Tests removed: 0
+- Test failures before green: 5
+
 ## Day 94 — [2026-07-22] — Feature: Analytics Dashboard (Completions by Day of Week)
 
 **Description:** A new "Analytics" page (📊 icon in the toolbar, next to the Calendar icon) shows a bar chart of how many todos in the active list have been completed on each day of the week (Sunday–Saturday). The day with the most completions is highlighted in green and called out below the chart ("Your most productive day is Wednesday"), so users can see which day they're most productive on. A list switcher lets users view the breakdown for any list, and an empty state explains the feature when no todos have been completed yet.
