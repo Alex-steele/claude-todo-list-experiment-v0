@@ -49,6 +49,7 @@
 @using TodoApp.Features.Todos.SetPriority
 @using TodoApp.Features.Todos.Search
 @using TodoApp.Features.Todos.Trash
+@using TodoApp.Features.Todos.Reminders
 @inject BlockTodoHandler BlockTodoHandler
 @inject TodayViewHandler TodayViewHandler
 @inject TagStatsHandler TagStatsHandler
@@ -122,6 +123,7 @@
 @inject PermanentlyDeleteTrashedTodoHandler PermanentlyDeleteTrashedTodoHandler
 @inject EmptyTrashHandler EmptyTrashHandler
 @inject PurgeExpiredTrashHandler PurgeExpiredTrashHandler
+@inject ReminderMessageHandler ReminderMessageHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject NavigationManager Nav
@@ -1119,6 +1121,15 @@ else
                             OnClick="HandleOpenAnalytics"
                             title="Analytics"
                             Class="analytics-view-btn" />
+                    </MudTooltip>
+                    <MudTooltip Text="@(_remindersEnabled ? "Reminders enabled — click to disable" : "Enable due date reminders")">
+                        <MudIconButton
+                            Icon="@(_remindersEnabled ? Icons.Material.Filled.NotificationsActive : Icons.Material.Filled.NotificationsNone)"
+                            Size="Size.Small"
+                            Color="@(_remindersEnabled ? Color.Primary : Color.Default)"
+                            OnClick="HandleToggleReminders"
+                            title="@(_remindersEnabled ? "Reminders enabled" : "Enable due date reminders")"
+                            Class="reminders-toggle-btn" />
                     </MudTooltip>
                     <MudTooltip Text="Export to CSV">
                         <MudIconButton
@@ -2558,6 +2569,9 @@ else
 
     private FilterCountsResult? _filterCountsCache;
 
+    private bool _remindersEnabled;
+    private bool _reminderShownThisSession;
+
     private bool HasNonDefaultFormValues =>
         _newPriority != TodoPriority.None ||
         _newTimeEstimate != TimeEstimate.None ||
@@ -2650,6 +2664,13 @@ else
             _dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("todoApp.registerKeyboardShortcuts", _dotNetRef);
             _shortcutsRegistered = true;
+
+            _remindersEnabled = await JS.InvokeAsync<bool>("todoApp.getReminderPreference");
+            if (_remindersEnabled)
+            {
+                StateHasChanged();
+                await CheckAndShowReminderAsync();
+            }
         }
     }
 
@@ -3552,6 +3573,44 @@ else
     private void HandleOpenAnalytics()
     {
         Nav.NavigateTo($"/analytics?listId={_activeListId}");
+    }
+
+    private async Task HandleToggleReminders()
+    {
+        if (_remindersEnabled)
+        {
+            _remindersEnabled = false;
+            await JS.InvokeVoidAsync("todoApp.saveReminderPreference", false);
+            return;
+        }
+
+        var permission = await JS.InvokeAsync<string>("todoApp.requestNotificationPermission");
+        if (permission == "granted")
+        {
+            _remindersEnabled = true;
+            await JS.InvokeVoidAsync("todoApp.saveReminderPreference", true);
+            Snackbar.Add("Due date reminders enabled", Severity.Success);
+            await CheckAndShowReminderAsync();
+        }
+        else
+        {
+            Snackbar.Add("Notification permission denied — enable it in your browser settings to use reminders.", Severity.Warning);
+        }
+    }
+
+    private async Task CheckAndShowReminderAsync()
+    {
+        if (!_remindersEnabled || _reminderShownThisSession || _todos is null)
+            return;
+
+        var listTodos = _todos.Where(t => t.ListId == _activeListId).ToList();
+        var summary = DueSummaryHandler.Handle(listTodos);
+        var message = ReminderMessageHandler.Handle(summary);
+        if (message is not null)
+        {
+            _reminderShownThisSession = true;
+            await JS.InvokeVoidAsync("todoApp.showNotification", "Todo reminder", message);
+        }
     }
 
     private async Task HandleExportCsv()

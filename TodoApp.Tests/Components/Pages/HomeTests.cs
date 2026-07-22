@@ -53,6 +53,7 @@ using TodoApp.Features.Todos.Links;
 using TodoApp.Features.Todos.RescheduleTodos;
 using TodoApp.Features.Todos.SetPriority;
 using TodoApp.Features.Todos.Trash;
+using TodoApp.Features.Todos.Reminders;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -139,6 +140,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<PermanentlyDeleteTrashedTodoHandler>();
         ctx.Services.AddScoped<EmptyTrashHandler>();
         ctx.Services.AddScoped<PurgeExpiredTrashHandler>();
+        ctx.Services.AddScoped<ReminderMessageHandler>();
         return ctx;
     }
 
@@ -7752,5 +7754,145 @@ public class HomeTests : BunitContext
         var banner = cut.Find(".urgency-banner");
         var row = banner.QuerySelector(".reschedule-overdue-row");
         Assert.NotNull(row);
+    }
+
+    // ── Due date reminders ───────────────────────────────────────────────────
+
+    [Fact]
+    public async Task RemindersToggleButton_IsRendered_WithInitialDisabledState()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Some todo");
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderHome(ctx);
+
+        var toggleBtn = cut.Find(".reminders-toggle-btn");
+        Assert.Equal("Enable due date reminders", toggleBtn.GetAttribute("title"));
+    }
+
+    [Fact]
+    public async Task RemindersToggleButton_ClickWithPermissionGranted_EnablesRemindersAndSavesPreference()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Some todo");
+        var ctx = CreateBunitContext(db);
+        ctx.JSInterop.Setup<string>("todoApp.requestNotificationPermission").SetResult("granted");
+        ctx.JSInterop.SetupVoid("todoApp.saveReminderPreference", _ => true).SetVoidResult();
+
+        var cut = RenderHome(ctx);
+        cut.Find(".reminders-toggle-btn").Click();
+
+        cut.WaitForAssertion(() =>
+            Assert.Equal("Reminders enabled", cut.Find(".reminders-toggle-btn").GetAttribute("title")));
+
+        var saveInvocations = ctx.JSInterop.Invocations["todoApp.saveReminderPreference"];
+        Assert.Equal(true, saveInvocations[0].Arguments[0]);
+    }
+
+    [Fact]
+    public async Task RemindersToggleButton_ClickWithPermissionDenied_StaysDisabledAndShowsWarningSnackbar()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Some todo");
+        var ctx = CreateBunitContext(db);
+        ctx.JSInterop.Setup<string>("todoApp.requestNotificationPermission").SetResult("denied");
+        var snackbarProvider = ctx.Render<MudSnackbarProvider>();
+
+        var cut = RenderHome(ctx);
+        cut.Find(".reminders-toggle-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Notification permission denied", snackbarProvider.Markup));
+        Assert.Equal("Enable due date reminders", cut.Find(".reminders-toggle-btn").GetAttribute("title"));
+    }
+
+    [Fact]
+    public async Task RemindersToggleButton_ClickTwice_SecondClickDisablesAndSavesPreference()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Some todo");
+        var ctx = CreateBunitContext(db);
+        ctx.JSInterop.Setup<string>("todoApp.requestNotificationPermission").SetResult("granted");
+        ctx.JSInterop.SetupVoid("todoApp.saveReminderPreference", _ => true).SetVoidResult();
+
+        var cut = RenderHome(ctx);
+        cut.Find(".reminders-toggle-btn").Click();
+        cut.WaitForAssertion(() =>
+            Assert.Equal("Reminders enabled", cut.Find(".reminders-toggle-btn").GetAttribute("title")));
+
+        cut.Find(".reminders-toggle-btn").Click();
+
+        Assert.Equal("Enable due date reminders", cut.Find(".reminders-toggle-btn").GetAttribute("title"));
+        var saveInvocations = ctx.JSInterop.Invocations["todoApp.saveReminderPreference"];
+        Assert.Equal(false, saveInvocations[^1].Arguments[0]);
+    }
+
+    [Fact]
+    public async Task EnablingReminders_WithOverdueTodos_ShowsBrowserNotification()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Overdue task", dueDate: DateTime.Today.AddDays(-1));
+
+        var ctx = CreateBunitContext(db);
+        ctx.JSInterop.Setup<string>("todoApp.requestNotificationPermission").SetResult("granted");
+        ctx.JSInterop.SetupVoid("todoApp.saveReminderPreference", _ => true).SetVoidResult();
+        ctx.JSInterop.SetupVoid("todoApp.showNotification", _ => true).SetVoidResult();
+
+        var cut = RenderHome(ctx);
+        cut.Find(".reminders-toggle-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.NotEmpty(ctx.JSInterop.Invocations["todoApp.showNotification"]));
+
+        var invocation = ctx.JSInterop.Invocations["todoApp.showNotification"][0];
+        Assert.Equal("Todo reminder", invocation.Arguments[0]);
+        Assert.Equal("You have 1 overdue.", invocation.Arguments[1]);
+    }
+
+    [Fact]
+    public async Task EnablingReminders_WithNoOverdueOrDueTodayTodos_DoesNotShowNotification()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Someday task");
+
+        var ctx = CreateBunitContext(db);
+        ctx.JSInterop.Setup<string>("todoApp.requestNotificationPermission").SetResult("granted");
+        ctx.JSInterop.SetupVoid("todoApp.saveReminderPreference", _ => true).SetVoidResult();
+        ctx.JSInterop.SetupVoid("todoApp.showNotification", _ => true).SetVoidResult();
+
+        var cut = RenderHome(ctx);
+        cut.Find(".reminders-toggle-btn").Click();
+
+        cut.WaitForAssertion(() =>
+            Assert.Equal("Reminders enabled", cut.Find(".reminders-toggle-btn").GetAttribute("title")));
+        Assert.Empty(ctx.JSInterop.Invocations["todoApp.showNotification"]);
+    }
+
+    [Fact]
+    public async Task RemindersEnabledFromStoredPreference_AutomaticallyShowsNotificationOnLoad()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Due today task", dueDate: DateTime.Today);
+
+        var ctx = CreateBunitContext(db);
+        ctx.JSInterop.Setup<bool>("todoApp.getReminderPreference").SetResult(true);
+        ctx.JSInterop.SetupVoid("todoApp.showNotification", _ => true).SetVoidResult();
+
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.NotEmpty(ctx.JSInterop.Invocations["todoApp.showNotification"]));
+
+        var invocation = ctx.JSInterop.Invocations["todoApp.showNotification"][0];
+        Assert.Equal("You have 1 due today.", invocation.Arguments[1]);
+        Assert.Equal("Reminders enabled", cut.Find(".reminders-toggle-btn").GetAttribute("title"));
     }
 }
