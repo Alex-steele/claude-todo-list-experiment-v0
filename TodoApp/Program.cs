@@ -45,6 +45,7 @@ using TodoApp.Features.Todos.RescheduleTodos;
 using TodoApp.Features.Todos.SetPriority;
 using TodoApp.Features.Todos.Trash;
 using TodoApp.Features.Todos.CalendarView;
+using TodoApp.Features.Todos.DayOfWeekStats;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -138,6 +139,7 @@ builder.Services.AddScoped<PermanentlyDeleteTrashedTodoHandler>();
 builder.Services.AddScoped<EmptyTrashHandler>();
 builder.Services.AddScoped<PurgeExpiredTrashHandler>();
 builder.Services.AddScoped<CalendarViewHandler>();
+builder.Services.AddScoped<DayOfWeekStatsHandler>();
 
 var app = builder.Build();
 

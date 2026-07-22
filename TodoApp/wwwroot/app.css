@@ -248,3 +248,59 @@ h1:focus {
 .calendar-priority-none {
     background-color: transparent;
 }
+
+.dow-chart {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 8px;
+    height: 200px;
+    padding: 0 8px;
+}
+
+.dow-bar-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 1;
+    height: 100%;
+}
+
+.dow-bar-count {
+    font-size: 0.72rem;
+    opacity: 0.7;
+    margin-bottom: 2px;
+}
+
+.dow-bar-track {
+    display: flex;
+    align-items: flex-end;
+    height: 140px;
+    width: 100%;
+}
+
+.dow-bar {
+    width: 100%;
+    min-height: 0;
+    background-color: var(--mud-palette-primary, #1b6ec2);
+    opacity: 0.55;
+    border-radius: 4px 4px 0 0;
+    transition: height 0.15s ease-in-out;
+}
+
+.dow-bar-best {
+    opacity: 1;
+    background-color: var(--mud-palette-success, #2e7d32);
+}
+
+.dow-bar-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 4px;
+    opacity: 0.8;
+}
+
+.dow-best-day-callout {
+    font-size: 0.9rem;
+}

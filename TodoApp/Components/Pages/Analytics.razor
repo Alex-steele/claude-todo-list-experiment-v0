@@ -1,0 +1,111 @@
+@page "/analytics"
+@using TodoApp.Features.Todos.GetTodos
+@using TodoApp.Features.Todos.DayOfWeekStats
+@using TodoApp.Features.Lists
+@inject GetTodosHandler GetTodosHandler
+@inject GetListsHandler GetListsHandler
+@inject DayOfWeekStatsHandler DayOfWeekStatsHandler
+@inject NavigationManager Nav
+
+<PageTitle>Analytics</PageTitle>
+
+<div class="d-flex align-center justify-space-between mb-4">
+    <MudButton
+        StartIcon="@Icons.Material.Filled.ArrowBack"
+        Variant="Variant.Text"
+        Href="/"
+        Class="analytics-back-btn">
+        Back to list
+    </MudButton>
+    <MudText Typo="Typo.h5" Class="analytics-header">Analytics</MudText>
+    @if (_lists is { Count: > 1 })
+    {
+        <MudSelect T="int" Value="_activeListId" ValueChanged="HandleSwitchList" Dense="true" Class="analytics-list-select" Style="max-width: 200px;">
+            @foreach (var list in _lists)
+            {
+                <MudSelectItem T="int" Value="@list.Id">@list.Name</MudSelectItem>
+            }
+        </MudSelect>
+    }
+    else
+    {
+        <div style="width: 120px;"></div>
+    }
+</div>
+
+@if (_stats is null)
+{
+    <MudText>Loading…</MudText>
+}
+else if (!_stats.HasData)
+{
+    <MudText Color="Color.Secondary" Class="analytics-empty-state" Align="Align.Center">
+        Complete some todos to see your productivity patterns here.
+    </MudText>
+}
+else
+{
+    var maxCount = _stats.Counts.Max(c => c.Count);
+    <MudText Typo="Typo.subtitle1" Class="mb-2">Completions by day of week</MudText>
+    <div class="dow-chart">
+        @foreach (var entry in _stats.Counts)
+        {
+            var isBest = _stats.BestDay == entry.Day;
+            var heightPct = maxCount > 0 ? Math.Max(entry.Count * 100 / maxCount, entry.Count > 0 ? 4 : 0) : 0;
+            var cssClass = "dow-bar" + (isBest ? " dow-bar-best" : "");
+            <div class="dow-bar-column">
+                <div class="dow-bar-count">@entry.Count</div>
+                <div class="dow-bar-track">
+                    <div class="@cssClass" style="height: @(heightPct)%;" title="@($"{entry.Day}: {entry.Count} completed")"></div>
+                </div>
+                <div class="dow-bar-label">@DayAbbrev(entry.Day)</div>
+            </div>
+        }
+    </div>
+    @if (_stats.BestDay is { } bestDay)
+    {
+        <MudText Color="Color.Secondary" Class="dow-best-day-callout mt-3" Align="Align.Center">
+            Your most productive day is <strong>@bestDay</strong>.
+        </MudText>
+    }
+}
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "listId")]
+    public int? ListId { get; set; }
+
+    private IReadOnlyList<TodoList>? _lists;
+    private int _activeListId = 1;
+    private DayOfWeekStatsResult? _stats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _activeListId = ListId is > 0 ? ListId.Value : 1;
+        _lists = await GetListsHandler.HandleAsync();
+        await LoadStatsAsync();
+    }
+
+    private async Task LoadStatsAsync()
+    {
+        var todos = await GetTodosHandler.HandleAsync();
+        _stats = DayOfWeekStatsHandler.Handle(todos, _activeListId);
+    }
+
+    private async Task HandleSwitchList(int listId)
+    {
+        _activeListId = listId;
+        await LoadStatsAsync();
+    }
+
+    private static string DayAbbrev(DayOfWeek day) => day switch
+    {
+        DayOfWeek.Sunday => "Sun",
+        DayOfWeek.Monday => "Mon",
+        DayOfWeek.Tuesday => "Tue",
+        DayOfWeek.Wednesday => "Wed",
+        DayOfWeek.Thursday => "Thu",
+        DayOfWeek.Friday => "Fri",
+        _ => "Sat"
+    };
+}
