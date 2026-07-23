@@ -490,6 +490,7 @@
             Disabled="_isSubmitting">
             <MudSelectItem Value="@RecurrenceRule.None">Does not repeat</MudSelectItem>
             <MudSelectItem Value="@RecurrenceRule.Daily">Daily</MudSelectItem>
+            <MudSelectItem Value="@RecurrenceRule.Weekday">Every weekday (Mon–Fri)</MudSelectItem>
             <MudSelectItem Value="@RecurrenceRule.Weekly">Weekly</MudSelectItem>
             <MudSelectItem Value="@RecurrenceRule.Monthly">Monthly</MudSelectItem>
         </MudSelect>
@@ -3279,6 +3280,7 @@ else
     private static string GetRecurrenceLabel(RecurrenceRule rule) => rule switch
     {
         RecurrenceRule.Daily   => "Daily",
+        RecurrenceRule.Weekday => "Weekdays",
         RecurrenceRule.Weekly  => "Weekly",
         RecurrenceRule.Monthly => "Monthly",
         _                      => string.Empty

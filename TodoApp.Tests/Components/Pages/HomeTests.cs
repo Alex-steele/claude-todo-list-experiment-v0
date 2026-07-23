@@ -1580,6 +1580,47 @@ public class HomeTests : BunitContext
         });
     }
 
+    [Fact]
+    public async Task AddTodo_WithWeekdayRecurrence_ShowsWeekdaysBadge()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Daily standup", recurrence: RecurrenceRule.Weekday);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("recurrence-badge", cut.Markup);
+        Assert.Contains("Weekdays", cut.Markup);
+    }
+
+    [Fact]
+    public async Task CompleteRecurringWeekdayTodo_NextInstanceStaysInSameList()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var createList = new CreateListHandler(db);
+        var addHandler = new AddTodoHandler(db);
+        var workListId = await createList.HandleAsync("Work");
+        await addHandler.HandleAsync("Standup", recurrence: RecurrenceRule.Weekday, listId: workListId);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Switch to the "Work" list (index 1 — Personal is the default at index 0)
+        cut.FindAll(".list-chip")[1].Click();
+
+        var checkboxInput = cut.Find(".mud-checkbox input");
+        checkboxInput.Change(true);
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            // The recurring instance must land back in "Work", not the default list —
+            // both the completed original and its successor should still be visible here.
+            var todos = cut.FindAll(".mud-list-item");
+            Assert.Equal(2, todos.Count);
+        });
+    }
+
     // Natural language quick-add tests
 
     [Fact]
