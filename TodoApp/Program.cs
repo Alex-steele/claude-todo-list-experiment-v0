@@ -131,6 +131,7 @@ builder.Services.AddScoped<JsonExportHandler>();
 builder.Services.AddScoped<ArchiveListHandler>();
 builder.Services.AddScoped<UnarchiveListHandler>();
 builder.Services.AddScoped<GetArchivedListsHandler>();
+builder.Services.AddScoped<SetListColorHandler>();
 builder.Services.AddScoped<SetTodoUrlHandler>();
 builder.Services.AddScoped<RescheduleOverdueTodosHandler>();
 builder.Services.AddScoped<SetPriorityHandler>();

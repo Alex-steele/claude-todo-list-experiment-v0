@@ -22,6 +22,89 @@ public class ListHandlerTests
     }
 
     [Fact]
+    public async Task GetLists_DefaultList_HasNoColor()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var handler = new GetListsHandler(db);
+
+        var lists = await handler.HandleAsync();
+
+        Assert.Equal(ListColor.None, lists[0].Color);
+    }
+
+    // SetListColorHandler tests
+
+    [Fact]
+    public async Task SetListColor_UpdatesColor()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        var setColor = new SetListColorHandler(db);
+        var get = new GetListsHandler(db);
+
+        var id = await create.HandleAsync("Work");
+        await setColor.HandleAsync(id, ListColor.Blue);
+
+        var lists = await get.HandleAsync();
+        Assert.Equal(ListColor.Blue, lists.Single(l => l.Id == id).Color);
+    }
+
+    [Fact]
+    public async Task SetListColor_CanClearBackToNone()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        var setColor = new SetListColorHandler(db);
+        var get = new GetListsHandler(db);
+
+        var id = await create.HandleAsync("Work");
+        await setColor.HandleAsync(id, ListColor.Green);
+        await setColor.HandleAsync(id, ListColor.None);
+
+        var lists = await get.HandleAsync();
+        Assert.Equal(ListColor.None, lists.Single(l => l.Id == id).Color);
+    }
+
+    [Fact]
+    public async Task SetListColor_NotFound_Throws()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var setColor = new SetListColorHandler(db);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => setColor.HandleAsync(999, ListColor.Red));
+    }
+
+    [Fact]
+    public async Task SetListColor_DefaultList_CanBeColored()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var setColor = new SetListColorHandler(db);
+        var get = new GetListsHandler(db);
+
+        await setColor.HandleAsync(1, ListColor.Purple);
+
+        var lists = await get.HandleAsync();
+        Assert.Equal(ListColor.Purple, lists.Single(l => l.Id == 1).Color);
+    }
+
+    [Fact]
+    public async Task SetListColor_DoesNotAffectOtherLists()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        var setColor = new SetListColorHandler(db);
+        var get = new GetListsHandler(db);
+
+        var workId = await create.HandleAsync("Work");
+        var shoppingId = await create.HandleAsync("Shopping");
+        await setColor.HandleAsync(workId, ListColor.Red);
+
+        var lists = await get.HandleAsync();
+        Assert.Equal(ListColor.Red, lists.Single(l => l.Id == workId).Color);
+        Assert.Equal(ListColor.None, lists.Single(l => l.Id == shoppingId).Color);
+    }
+
+    [Fact]
     public async Task CreateList_AddsNewList()
     {
         var db = await TestDatabase.CreateAsync();

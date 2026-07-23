@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 96 — [2026-07-23] — Feature: List Color Customization
+
+**Description:** Each list (including the default one) can now be tagged with a color from a six-swatch palette (red, orange, yellow, green, blue, purple) via a new palette icon next to its archive button. Colored lists show a small colored dot in their chip and a matching left-border accent, making it easy to visually distinguish lists at a glance when several are open in the toolbar. Clearing the color returns the list to its default appearance.
+
+**Reason for change:** With 96 days of features, users likely accumulate several lists (Work, Personal, Shopping, etc.), and the list switcher was purely textual — every list looked identical apart from its name and active/count state. Todos already support a similar color-label picker (Day ~40s), so this brings the same lightweight visual-distinction tool up to the list level, reusing the exact same palette/picker interaction pattern (`_colorPickingListId` mirrors `_colorPickingTodoId`) for consistency. It lives entirely in the existing `Features/Lists` vertical slice — a new `ListColor` enum and `SetListColorHandler`, following the same shape as `ColorLabel`/`SetColorLabelHandler` for todos.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 296
+- Lines deleted: 7
+- Tests added: 12
+- Tests removed: 0
+- Test failures before green: 2
+
 ## Day 95 — [2026-07-22] — Feature: Due Date Browser Notifications
 
 **Description:** A new 🔔 toggle in the toolbar (next to Analytics) lets users enable native browser notifications for overdue and due-today todos. Clicking it requests browser Notification permission; once granted, the app immediately checks the active list and — if anything is due — fires a single OS-level notification (e.g. "You have 2 overdue and 1 due today."), then re-checks automatically on every future page load if the preference (stored in localStorage) is still enabled. If permission is denied, a snackbar explains how to fix it and the toggle stays off.

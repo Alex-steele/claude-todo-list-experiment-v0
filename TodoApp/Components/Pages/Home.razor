@@ -93,6 +93,7 @@
 @inject ArchiveListHandler ArchiveListHandler
 @inject UnarchiveListHandler UnarchiveListHandler
 @inject GetArchivedListsHandler GetArchivedListsHandler
+@inject SetListColorHandler SetListColorHandler
 @inject ReorderTodosHandler ReorderTodosHandler
 @inject MoveTodoHandler MoveTodoHandler
 @inject RestoreTodosHandler RestoreTodosHandler
@@ -188,13 +189,53 @@
                                  OnClick="@(() => HandleSwitchList(listId))"
                                  OnClose="@(list.Id != DeleteListHandler.DefaultListId ? EventCallback.Factory.Create<MudChip<string>>(this, async (MudChip<string> _) => await HandleDeleteList(listId)) : new EventCallback<MudChip<string>>())"
                                  Class="list-chip"
+                                 Style="@(list.Color != ListColor.None ? $"border-left: 4px solid {GetListColorCss(list.Color)};" : "")"
                                  @ondblclick="@(() => HandleStartRenameList(listId, list.Name))">
+                            @if (list.Color != ListColor.None)
+                            {
+                                <span class="list-color-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:@GetListColorCss(list.Color);margin-right:4px;"></span>
+                            }
                             @list.Name
                             @if (activeCount > 0)
                             {
                                 <span class="list-count-badge">@activeCount</span>
                             }
                         </MudChip>
+                        @if (_colorPickingListId == listId)
+                        {
+                            <div class="d-flex gap-1 align-center list-color-picker-palette">
+                                <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#9e9e9e;cursor:pointer;border:2px solid transparent;"
+                                      title="Clear color"
+                                      class="list-color-picker-none"
+                                      @onclick="@(async () => await HandleSetListColor(listId, ListColor.None))"></span>
+                                @foreach (var lc in new[] { ListColor.Red, ListColor.Orange, ListColor.Yellow, ListColor.Green, ListColor.Blue, ListColor.Purple })
+                                {
+                                    var pickerColor = lc;
+                                    <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:@GetListColorCss(pickerColor);cursor:pointer;border:2px solid @(list.Color == pickerColor ? "var(--mud-palette-primary)" : "transparent");"
+                                          title="@pickerColor"
+                                          class="list-color-picker-dot list-color-picker-@(pickerColor.ToString().ToLower())"
+                                          @onclick="@(async () => await HandleSetListColor(listId, pickerColor))"></span>
+                                }
+                                <MudIconButton
+                                    Icon="@Icons.Material.Filled.Close"
+                                    Size="Size.Small"
+                                    Color="Color.Default"
+                                    OnClick="@(() => _colorPickingListId = null)"
+                                    title="Cancel"
+                                    Class="list-color-picker-cancel-btn" />
+                            </div>
+                        }
+                        else
+                        {
+                            <MudIconButton
+                                Icon="@Icons.Material.Filled.Palette"
+                                Size="Size.Small"
+                                Color="Color.Default"
+                                OnClick="@(() => _colorPickingListId = listId)"
+                                title="Set list color"
+                                Style="margin-left: -4px; opacity: 0.5;"
+                                Class="list-color-btn" />
+                        }
                         @if (list.Id != ArchiveListHandler.DefaultListId)
                         {
                             <MudIconButton
@@ -2482,6 +2523,7 @@ else
     private string _renameListValue = string.Empty;
     private int? _draggingListId;
     private int? _dragOverListId;
+    private int? _colorPickingListId;
 
     private int? _draggingId;
     private int? _dragOverId;
@@ -4081,6 +4123,24 @@ else
             _activeListId = DeleteListHandler.DefaultListId;
         await LoadTodosAsync();
     }
+
+    private async Task HandleSetListColor(int listId, ListColor color)
+    {
+        await SetListColorHandler.HandleAsync(listId, color);
+        _colorPickingListId = null;
+        await LoadTodosAsync();
+    }
+
+    private static string GetListColorCss(ListColor color) => color switch
+    {
+        ListColor.Red    => "#ef5350",
+        ListColor.Orange => "#ff9800",
+        ListColor.Yellow => "#ffc107",
+        ListColor.Green  => "#4caf50",
+        ListColor.Blue   => "#2196f3",
+        ListColor.Purple => "#9c27b0",
+        _                 => "transparent"
+    };
 
     private async Task HandleArchiveList(int listId)
     {

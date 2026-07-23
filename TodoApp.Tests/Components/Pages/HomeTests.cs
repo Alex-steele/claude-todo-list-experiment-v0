@@ -141,6 +141,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<EmptyTrashHandler>();
         ctx.Services.AddScoped<PurgeExpiredTrashHandler>();
         ctx.Services.AddScoped<ReminderMessageHandler>();
+        ctx.Services.AddScoped<SetListColorHandler>();
         return ctx;
     }
 
@@ -7414,6 +7415,110 @@ public class HomeTests : BunitContext
             var chips = cut.FindAll(".list-chip");
             Assert.DoesNotContain(chips, c => c.TextContent.Contains("Work") && !c.ClassList.Contains("mud-chip-disabled"));
         });
+    }
+
+    // ── List Color ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ListColorButton_IsRenderedForEachList()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        await create.HandleAsync("Work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("list-color-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ListColorDot_NotShownByDefault()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        await create.HandleAsync("Work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("list-color-dot", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ListColorButton_Click_OpensColorPalette()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        await create.HandleAsync("Work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Index 1: the default "Personal" list (index 0) also has a color button
+        cut.FindAll(".list-color-btn")[1].Click();
+
+        Assert.Contains("list-color-picker-palette", cut.Markup);
+        Assert.Contains("list-color-picker-blue", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ListColorPicker_SelectColor_PersistsAndShowsDot()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        await create.HandleAsync("Work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.FindAll(".list-color-btn")[1].Click();
+        cut.Find(".list-color-picker-blue").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("list-color-dot", cut.Markup));
+
+        var getHandler = new GetListsHandler(db);
+        var lists = await getHandler.HandleAsync();
+        Assert.Equal(ListColor.Blue, lists.Single(l => l.Name == "Work").Color);
+    }
+
+    [Fact]
+    public async Task ListColorPicker_ClearColor_RemovesDot()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        var setColor = new SetListColorHandler(db);
+        var workId = await create.HandleAsync("Work");
+        await setColor.HandleAsync(workId, ListColor.Green);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("list-color-dot", cut.Markup);
+
+        cut.FindAll(".list-color-btn")[1].Click();
+        cut.Find(".list-color-picker-none").Click();
+
+        cut.WaitForAssertion(() => Assert.DoesNotContain("list-color-dot", cut.Markup));
+    }
+
+    [Fact]
+    public async Task ListColorPicker_CancelButton_ClosesPaletteWithoutChange()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var create = new CreateListHandler(db);
+        await create.HandleAsync("Work");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.FindAll(".list-color-btn")[1].Click();
+        Assert.Contains("list-color-picker-palette", cut.Markup);
+
+        cut.Find(".list-color-picker-cancel-btn").Click();
+
+        Assert.DoesNotContain("list-color-picker-palette", cut.Markup);
+        Assert.DoesNotContain("list-color-dot", cut.Markup);
     }
 
     // ── JSON Import ──────────────────────────────────────────────────────────
