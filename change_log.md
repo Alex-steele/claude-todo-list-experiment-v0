@@ -1,5 +1,22 @@
 # Change Log
 
+## Day 97 — [2026-07-23] — Feature: "Every Weekday" Recurrence
+
+**Description:** Recurring todos gained a fourth repeat option — "Every weekday (Mon–Fri)" — alongside the existing Daily, Weekly, and Monthly choices. A weekday-recurring todo due on a Friday automatically schedules its next instance for the following Monday (skipping the weekend) instead of Saturday, matching how people actually think about workday routines like standups or daily check-ins.
+
+**Reason for change:** Daily recurrence was the closest existing option for a workday routine, but it silently spawns a due-Saturday/due-Sunday instance every week, which users then have to manually reschedule or ignore — a common complaint with naive "daily" recurrence in other todo apps. Adding weekday-aware recurrence closes that gap using the exact same `RecurrenceRule` enum and `CreateRecurringInstanceHandler.ComputeNextDueDate` switch already used by Daily/Weekly/Monthly, so it required no new architectural concepts.
+
+**Bug fixed during this work:** While extending `CreateRecurringInstanceHandler`, found that spawning the next instance of *any* recurring todo (Daily/Weekly/Monthly, not just the new Weekday option) always inserted it into the default list, silently moving recurring todos out of whatever non-default list they were created in. The `INSERT` was missing the `ListId` column even though `TodoSummary.ListId` was already available on the completed todo. Fixed by threading `completed.ListId` through the insert; covered by a new `Handle_PreservesListId` test and an end-to-end bUnit test (`CompleteRecurringWeekdayTodo_NextInstanceStaysInSameList`).
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 140
+- Lines deleted: 4
+- Tests added: 7
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 96 — [2026-07-23] — Feature: List Color Customization
 
 **Description:** Each list (including the default one) can now be tagged with a color from a six-swatch palette (red, orange, yellow, green, blue, purple) via a new palette icon next to its archive button. Colored lists show a small colored dot in their chip and a matching left-border accent, making it easy to visually distinguish lists at a glance when several are open in the toolbar. Clearing the color returns the list to its default appearance.

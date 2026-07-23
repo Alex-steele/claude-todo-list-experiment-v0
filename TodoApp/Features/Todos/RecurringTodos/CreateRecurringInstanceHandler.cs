@@ -15,8 +15,8 @@ public class CreateRecurringInstanceHandler(Database db)
 
         using var conn = db.CreateConnection();
         var id = await conn.ExecuteScalarAsync<int>("""
-            INSERT INTO Todos (Title, CreatedAt, Priority, DueDate, Recurrence, Notes)
-            VALUES (@Title, @CreatedAt, @Priority, @DueDate, @Recurrence, @Notes);
+            INSERT INTO Todos (Title, CreatedAt, Priority, DueDate, Recurrence, Notes, ListId)
+            VALUES (@Title, @CreatedAt, @Priority, @DueDate, @Recurrence, @Notes, @ListId);
             SELECT last_insert_rowid();
             """, new
         {
@@ -25,7 +25,8 @@ public class CreateRecurringInstanceHandler(Database db)
             Priority = (int)completed.Priority,
             DueDate = nextDueDate.HasValue ? nextDueDate.Value.ToString("O") : (string?)null,
             Recurrence = (int)completed.Recurrence,
-            completed.Notes
+            completed.Notes,
+            completed.ListId
         });
 
         return id;
@@ -44,7 +45,16 @@ public class CreateRecurringInstanceHandler(Database db)
             RecurrenceRule.Daily   => baseDate.AddDays(1),
             RecurrenceRule.Weekly  => baseDate.AddDays(7),
             RecurrenceRule.Monthly => baseDate.AddMonths(1),
+            RecurrenceRule.Weekday => NextWeekday(baseDate),
             _                      => (DateTime?)null
         };
+    }
+
+    private static DateTime NextWeekday(DateTime baseDate)
+    {
+        var next = baseDate.AddDays(1);
+        while (next.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+            next = next.AddDays(1);
+        return next;
     }
 }

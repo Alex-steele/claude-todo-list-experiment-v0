@@ -1,3 +1,4 @@
+using TodoApp.Features.Lists;
 using TodoApp.Features.Todos;
 using TodoApp.Features.Todos.AddTodo;
 using TodoApp.Features.Todos.CompleteTodo;
@@ -163,5 +164,86 @@ public class CreateRecurringInstanceHandlerTests
         var pastDueDate = DateTime.Today.AddDays(-5);
         var next = CreateRecurringInstanceHandler.ComputeNextDueDate(pastDueDate, RecurrenceRule.Daily);
         Assert.Equal(DateTime.Today.AddDays(1).Date, next!.Value.Date);
+    }
+
+    // Weekday recurrence tests
+
+    [Fact]
+    public void ComputeNextDueDate_Weekday_FridaySkipsWeekendToMonday()
+    {
+        var friday = NextDateForDayOfWeek(DayOfWeek.Friday);
+        var next = CreateRecurringInstanceHandler.ComputeNextDueDate(friday, RecurrenceRule.Weekday);
+        Assert.Equal(DayOfWeek.Monday, next!.Value.DayOfWeek);
+        Assert.Equal(friday.AddDays(3).Date, next.Value.Date);
+    }
+
+    [Fact]
+    public void ComputeNextDueDate_Weekday_SaturdaySkipsToMonday()
+    {
+        var saturday = NextDateForDayOfWeek(DayOfWeek.Saturday);
+        var next = CreateRecurringInstanceHandler.ComputeNextDueDate(saturday, RecurrenceRule.Weekday);
+        Assert.Equal(DayOfWeek.Monday, next!.Value.DayOfWeek);
+        Assert.Equal(saturday.AddDays(2).Date, next.Value.Date);
+    }
+
+    [Fact]
+    public void ComputeNextDueDate_Weekday_MondayAdvancesToTuesday()
+    {
+        var monday = NextDateForDayOfWeek(DayOfWeek.Monday);
+        var next = CreateRecurringInstanceHandler.ComputeNextDueDate(monday, RecurrenceRule.Weekday);
+        Assert.Equal(monday.AddDays(1).Date, next!.Value.Date);
+    }
+
+    [Fact]
+    public async Task Handle_AdvancesDueDateByInterval_Weekday()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var getHandler = new GetTodosHandler(db);
+        var recurHandler = new CreateRecurringInstanceHandler(db);
+
+        var friday = NextDateForDayOfWeek(DayOfWeek.Friday);
+        var id = await addHandler.HandleAsync("Standup", dueDate: friday, recurrence: RecurrenceRule.Weekday);
+        var todos = await getHandler.HandleAsync();
+        var todo = todos.First(t => t.Id == id);
+
+        await recurHandler.HandleAsync(todo);
+
+        var after = await getHandler.HandleAsync();
+        var newTodo = after.First(t => t.Id != id);
+        Assert.Equal(DayOfWeek.Monday, newTodo.DueDate!.Value.DayOfWeek);
+        Assert.Equal(RecurrenceRule.Weekday, newTodo.Recurrence);
+    }
+
+    private static DateTime NextDateForDayOfWeek(DayOfWeek day)
+    {
+        // Anchor safely in the future so ComputeNextDueDate's overdue-adjustment branch never kicks in.
+        var date = DateTime.Today.AddDays(14);
+        while (date.DayOfWeek != day)
+            date = date.AddDays(1);
+        return date;
+    }
+
+    // ListId propagation
+
+    [Fact]
+    public async Task Handle_PreservesListId()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var createList = new CreateListHandler(db);
+        var addHandler = new AddTodoHandler(db);
+        var getHandler = new GetTodosHandler(db);
+        var recurHandler = new CreateRecurringInstanceHandler(db);
+
+        var workListId = await createList.HandleAsync("Work");
+        var id = await addHandler.HandleAsync("Work task", recurrence: RecurrenceRule.Daily, listId: workListId);
+        var todos = await getHandler.HandleAsync();
+        var todo = todos.First(t => t.Id == id);
+
+        await recurHandler.HandleAsync(todo);
+
+        var after = await getHandler.HandleAsync();
+        var newTodo = after.First(t => t.Id != id);
+        Assert.Equal(workListId, newTodo.ListId);
     }
 }
