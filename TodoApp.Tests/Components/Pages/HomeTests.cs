@@ -818,6 +818,130 @@ public class HomeTests : BunitContext
         Assert.Contains("keyboard-shortcuts-panel", cut.Markup);
     }
 
+    // ── Keyboard todo focus/navigation ──────────────────────────────────────
+
+    [Fact]
+    public async Task FocusNextTodo_JSInvokable_WithNoPriorFocus_HighlightsMostRecentTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Alpha");
+        await addHandler.HandleAsync("Beta");
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.InvokeAsync(() => cut.Instance.FocusNextTodo());
+
+        // Default sort is Newest first, so "Beta" (added last) should be focused first.
+        Assert.Contains("Beta", cut.Find(".keyboard-focused-todo").TextContent);
+    }
+
+    [Fact]
+    public async Task FocusNextTodo_JSInvokable_CalledRepeatedly_AdvancesThenWrapsAround()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Alpha");
+        await addHandler.HandleAsync("Beta");
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.InvokeAsync(() => cut.Instance.FocusNextTodo()); // Beta
+        await cut.InvokeAsync(() => cut.Instance.FocusNextTodo()); // Alpha
+        Assert.Contains("Alpha", cut.Find(".keyboard-focused-todo").TextContent);
+
+        await cut.InvokeAsync(() => cut.Instance.FocusNextTodo()); // wraps back to Beta
+        Assert.Contains("Beta", cut.Find(".keyboard-focused-todo").TextContent);
+    }
+
+    [Fact]
+    public async Task FocusPreviousTodo_JSInvokable_WithNoPriorFocus_HighlightsOldestTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Alpha");
+        await addHandler.HandleAsync("Beta");
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.InvokeAsync(() => cut.Instance.FocusPreviousTodo());
+
+        // Default sort is Newest first, so ArrowUp with nothing focused wraps to the oldest ("Alpha").
+        Assert.Contains("Alpha", cut.Find(".keyboard-focused-todo").TextContent);
+    }
+
+    [Fact]
+    public async Task FocusNextTodo_JSInvokable_WithNoTodos_DoesNotThrowOrHighlightAnything()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.InvokeAsync(() => cut.Instance.FocusNextTodo());
+
+        Assert.Empty(cut.FindAll(".keyboard-focused-todo"));
+    }
+
+    [Fact]
+    public async Task ToggleFocusedTodoComplete_JSInvokable_CompletesTheFocusedTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Finish report");
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.InvokeAsync(() => cut.Instance.FocusNextTodo());
+        await cut.InvokeAsync(() => cut.Instance.ToggleFocusedTodoComplete());
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.NotEmpty(cut.FindAll(".completed-at-text")));
+    }
+
+    [Fact]
+    public async Task ToggleFocusedTodoComplete_JSInvokable_WithNoFocus_DoesNothing()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Finish report");
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.InvokeAsync(() => cut.Instance.ToggleFocusedTodoComplete());
+
+        Assert.Empty(cut.FindAll(".completed-at-text"));
+    }
+
+    [Fact]
+    public async Task ClearTodoFocus_JSInvokable_RemovesHighlight()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Alpha");
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.InvokeAsync(() => cut.Instance.FocusNextTodo());
+        Assert.NotEmpty(cut.FindAll(".keyboard-focused-todo"));
+
+        await cut.InvokeAsync(() => cut.Instance.ClearTodoFocus());
+        Assert.Empty(cut.FindAll(".keyboard-focused-todo"));
+    }
+
+    [Fact]
+    public async Task ShortcutsHelpPanel_ListsArrowKeyAndEnterAndEscapeShortcuts()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".keyboard-shortcuts-btn").Click();
+
+        Assert.Contains("Move todo focus", cut.Markup);
+        Assert.Contains("Toggle focused todo complete", cut.Markup);
+        Assert.Contains("Clear todo focus", cut.Markup);
+    }
+
     // Tag tests
 
     [Fact]
