@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 99 — [2026-07-25] — Feature: Calendar (.ics) Export
+
+**Description:** A new toolbar button next to the existing CSV/Markdown/JSON export icons lets users export their active list's due dates as a standard `.ics` calendar file. Each todo with a due date becomes a calendar event (all-day, titled with the todo's title, carrying its notes as a description and tags as categories), so the file can be imported straight into Google Calendar, Apple Calendar, or Outlook. Completed todos are marked `STATUS:COMPLETED` so calendar apps can distinguish them from pending ones.
+
+**Reason for change:** The app already had three export formats (CSV, Markdown, JSON) built on the exact same `Todos/Export` vertical slice and toolbar pattern, but none of them let a user get their due dates into the calendar app they actually check every day — a common, concrete want for any todo app with due dates. Following the established `CsvExportHandler`/`MarkdownExportHandler`/`JsonExportHandler` shape (a stateless `Generate` method plus a `todoApp.downloadFile` JS call) meant no new architectural concepts were needed, just a fourth sibling handler and button.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 290
+- Lines deleted: 0
+- Tests added: 16
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 98 — [2026-07-25] — Feature: Keyboard Navigation for the Todo List
 
 **Description:** The existing keyboard-shortcuts panel (N, /, ?) gains four new shortcuts for navigating the active list without a mouse: ↑/↓ move a highlighted "focus" up and down the currently displayed todos (wrapping around at either end), Enter toggles the focused todo's completion state, and Escape clears the focus highlight. The focused row gets a visible primary-colored outline and background tint. Shortcuts panel help text was updated to document the new keys.

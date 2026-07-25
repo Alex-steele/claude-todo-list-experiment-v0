@@ -79,6 +79,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<ClearCompletedHandler>();
         ctx.Services.AddScoped<CsvExportHandler>();
         ctx.Services.AddScoped<MarkdownExportHandler>();
+        ctx.Services.AddScoped<IcsExportHandler>();
         ctx.Services.AddScoped<PinTodoHandler>();
         ctx.Services.AddScoped<UpdateNotesHandler>();
         ctx.Services.AddScoped<AddTagHandler>();
@@ -7503,6 +7504,63 @@ public class HomeTests : BunitContext
         var cut = RenderHome(ctx);
 
         Assert.Contains("Export to JSON", cut.Markup);
+    }
+
+    // ── ICS (Calendar) Export ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task IcsExportButton_IsRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Task for calendar export");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("export-ics-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task IcsExportButton_IsNotRendered_WhenNoTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("export-ics-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task IcsExportTooltip_ShowsCorrectLabel()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("Export due dates to Calendar (.ics)", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingIcsExportButton_DoesNotThrow()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // JSInterop is in Loose mode — JS call completes without error
+        var ex = await Record.ExceptionAsync(async () =>
+        {
+            cut.Find(".export-ics-btn").Click();
+            await Task.Delay(50);
+        });
+        Assert.Null(ex);
     }
 
     // ── List Archiving ───────────────────────────────────────────────────────
