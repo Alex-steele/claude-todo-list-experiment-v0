@@ -80,5 +80,17 @@ window.todoApp._handleKeyDown = function (e) {
     } else if (e.key === '?') {
         e.preventDefault();
         window._todoAppDotNetRef?.invokeMethodAsync('ToggleShortcutsHelp');
+    } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        window._todoAppDotNetRef?.invokeMethodAsync('FocusNextTodo');
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        window._todoAppDotNetRef?.invokeMethodAsync('FocusPreviousTodo');
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        window._todoAppDotNetRef?.invokeMethodAsync('ToggleFocusedTodoComplete');
+    } else if (e.key === 'Escape') {
+        e.preventDefault();
+        window._todoAppDotNetRef?.invokeMethodAsync('ClearTodoFocus');
     }
 };

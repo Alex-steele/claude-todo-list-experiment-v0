@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 98 — [2026-07-25] — Feature: Keyboard Navigation for the Todo List
+
+**Description:** The existing keyboard-shortcuts panel (N, /, ?) gains four new shortcuts for navigating the active list without a mouse: ↑/↓ move a highlighted "focus" up and down the currently displayed todos (wrapping around at either end), Enter toggles the focused todo's completion state, and Escape clears the focus highlight. The focused row gets a visible primary-colored outline and background tint. Shortcuts panel help text was updated to document the new keys.
+
+**Reason for change:** The app already had a keyboard-shortcuts entry point (Day ~70s) but it only covered three actions (new todo, search, help) — there was no way to act on an existing todo without reaching for the mouse, which is the more common day-to-day interaction for a todo list. This closes that gap using the same JS-keydown-listener → `[JSInvokable]` C# method pattern already established by `FocusNewTodoInput`/`FocusSearchInput`/`ToggleShortcutsHelp`, so no new architectural concepts were needed — just new methods on the existing `Home` component and a small extension to `keyboard-shortcuts.js`.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 217
+- Lines deleted: 0
+- Tests added: 8
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 97 — [2026-07-23] — Feature: "Every Weekday" Recurrence
 
 **Description:** Recurring todos gained a fourth repeat option — "Every weekday (Mon–Fri)" — alongside the existing Daily, Weekly, and Monthly choices. A weekday-recurring todo due on a Friday automatically schedules its next instance for the following Monday (skipping the weekend) instead of Saturday, matching how people actually think about workday routines like standups or daily check-ins.
