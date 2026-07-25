@@ -72,6 +72,7 @@
 @inject MarkdownImportHandler MarkdownImportHandler
 @inject JsonImportHandler JsonImportHandler
 @inject JsonExportHandler JsonExportHandler
+@inject IcsExportHandler IcsExportHandler
 @inject PinTodoHandler PinTodoHandler
 @inject CompleteSubtaskHandler CompleteSubtaskHandler
 @inject DeleteSubtaskHandler DeleteSubtaskHandler
@@ -1211,6 +1212,15 @@ else
                             OnClick="HandleExportJson"
                             title="Export to JSON"
                             Class="export-json-btn" />
+                    </MudTooltip>
+                    <MudTooltip Text="Export due dates to Calendar (.ics)">
+                        <MudIconButton
+                            Icon="@Icons.Material.Filled.Event"
+                            Size="Size.Small"
+                            Color="Color.Default"
+                            OnClick="HandleExportIcs"
+                            title="Export due dates to Calendar (.ics)"
+                            Class="export-ics-btn" />
                     </MudTooltip>
                     <MudTooltip Text="Import from CSV">
                         <MudIconButton
@@ -3763,6 +3773,15 @@ else
         var json = JsonExportHandler.Generate(listName, listTodos, _todoTags);
         var filename = $"todos-{DateTime.Today:yyyy-MM-dd}.json";
         await JS.InvokeVoidAsync("todoApp.downloadFile", filename, json, "application/json");
+    }
+
+    private async Task HandleExportIcs()
+    {
+        if (_todos is null || _todos.Count == 0) return;
+        var listTodos = _todos.Where(t => t.ListId == _activeListId).ToList();
+        var ics = IcsExportHandler.Generate(listTodos, _todoTags);
+        var filename = $"todos-{DateTime.Today:yyyy-MM-dd}.ics";
+        await JS.InvokeVoidAsync("todoApp.downloadFile", filename, ics, "text/calendar");
     }
 
     private void ToggleSubtasksExpanded(int todoId)

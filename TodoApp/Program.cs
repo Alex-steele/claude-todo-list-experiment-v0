@@ -79,6 +79,7 @@ builder.Services.AddScoped<ClearCompletedHandler>();
 builder.Services.AddScoped<UpdateNotesHandler>();
 builder.Services.AddScoped<CsvExportHandler>();
 builder.Services.AddScoped<MarkdownExportHandler>();
+builder.Services.AddScoped<IcsExportHandler>();
 builder.Services.AddScoped<ImportTodosHandler>();
 builder.Services.AddScoped<PinTodoHandler>();
 builder.Services.AddScoped<AddTagHandler>();
