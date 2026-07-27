@@ -47,6 +47,7 @@ using TodoApp.Features.Todos.Trash;
 using TodoApp.Features.Todos.CalendarView;
 using TodoApp.Features.Todos.DayOfWeekStats;
 using TodoApp.Features.Todos.Reminders;
+using TodoApp.Features.Todos.TimeTracking;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -144,6 +145,8 @@ builder.Services.AddScoped<PurgeExpiredTrashHandler>();
 builder.Services.AddScoped<CalendarViewHandler>();
 builder.Services.AddScoped<DayOfWeekStatsHandler>();
 builder.Services.AddScoped<ReminderMessageHandler>();
+builder.Services.AddScoped<StartTimerHandler>();
+builder.Services.AddScoped<StopTimerHandler>();
 
 var app = builder.Build();
 

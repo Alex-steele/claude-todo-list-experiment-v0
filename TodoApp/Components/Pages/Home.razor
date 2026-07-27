@@ -50,6 +50,7 @@
 @using TodoApp.Features.Todos.Search
 @using TodoApp.Features.Todos.Trash
 @using TodoApp.Features.Todos.Reminders
+@using TodoApp.Features.Todos.TimeTracking
 @inject BlockTodoHandler BlockTodoHandler
 @inject TodayViewHandler TodayViewHandler
 @inject TagStatsHandler TagStatsHandler
@@ -126,6 +127,8 @@
 @inject EmptyTrashHandler EmptyTrashHandler
 @inject PurgeExpiredTrashHandler PurgeExpiredTrashHandler
 @inject ReminderMessageHandler ReminderMessageHandler
+@inject StartTimerHandler StartTimerHandler
+@inject StopTimerHandler StopTimerHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject NavigationManager Nav
@@ -1960,6 +1963,40 @@ else
                                                 ~@GetTimeEstimateLabel(todo.TimeEstimate)
                                             </MudChip>
                                         }
+                                        @{
+                                            var isTimerRunning = todo.TimerStartedAt.HasValue;
+                                            var elapsedSeconds = TimeTrackingCalculator.GetElapsedSeconds(todo, DateTime.UtcNow);
+                                        }
+                                        @if (elapsedSeconds > 0)
+                                        {
+                                            <MudChip T="string" Size="Size.Small"
+                                                     Color="@(isTimerRunning ? Color.Success : Color.Default)"
+                                                     Variant="Variant.Outlined"
+                                                     Class="time-spent-badge"
+                                                     title="Time logged on this todo">
+                                                @(isTimerRunning ? "⏱ " : "")@TimeTrackingCalculator.FormatDuration(elapsedSeconds)
+                                            </MudChip>
+                                        }
+                                        @if (isTimerRunning)
+                                        {
+                                            <MudIconButton
+                                                Icon="@Icons.Material.Filled.Stop"
+                                                Size="Size.Small"
+                                                Color="Color.Success"
+                                                OnClick="@(() => HandleStopTimer(todo.Id))"
+                                                title="Stop timer"
+                                                Class="todo-stop-timer-btn" />
+                                        }
+                                        else if (!todo.IsCompleted)
+                                        {
+                                            <MudIconButton
+                                                Icon="@Icons.Material.Filled.PlayArrow"
+                                                Size="Size.Small"
+                                                Color="Color.Default"
+                                                OnClick="@(() => HandleStartTimer(todo.Id))"
+                                                title="Start timer"
+                                                Class="todo-start-timer-btn" />
+                                        }
                                         @if (!todo.IsCompleted)
                                         {
                                             var ageDays = (DateTime.Today - todo.CreatedAt.Date).Days;
@@ -2593,6 +2630,8 @@ else
     private bool _shortcutsRegistered;
     private int? _focusedTodoId;
 
+    private System.Threading.Timer? _timerTick;
+
     private Dictionary<int, List<Tag>> _todoTags = new();
     private IReadOnlyList<string> _allTagNames = [];
     private int? _addingTagForTodoId;
@@ -2748,6 +2787,7 @@ else
             catch { /* ignore disposal errors */ }
         }
         _dotNetRef?.Dispose();
+        _timerTick?.Dispose();
     }
 
     [JSInvokable]
@@ -2855,6 +2895,25 @@ else
         {
             _todoTags = [];
             _subtasks = [];
+        }
+
+        UpdateTimerTick();
+    }
+
+    private void UpdateTimerTick()
+    {
+        var anyTimerRunning = _todos is not null && _todos.Any(t => t.TimerStartedAt.HasValue);
+        if (anyTimerRunning && _timerTick is null)
+        {
+            _timerTick = new System.Threading.Timer(_ =>
+            {
+                InvokeAsync(StateHasChanged);
+            }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        }
+        else if (!anyTimerRunning && _timerTick is not null)
+        {
+            _timerTick.Dispose();
+            _timerTick = null;
         }
     }
 
@@ -3623,6 +3682,18 @@ else
     private async Task HandleToggleBlocked(int id)
     {
         await BlockTodoHandler.HandleAsync(id);
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleStartTimer(int id)
+    {
+        await StartTimerHandler.HandleAsync(id);
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleStopTimer(int id)
+    {
+        await StopTimerHandler.HandleAsync(id);
         await LoadTodosAsync();
     }
 

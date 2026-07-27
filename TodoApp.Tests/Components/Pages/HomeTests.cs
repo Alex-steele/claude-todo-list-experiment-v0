@@ -54,6 +54,7 @@ using TodoApp.Features.Todos.RescheduleTodos;
 using TodoApp.Features.Todos.SetPriority;
 using TodoApp.Features.Todos.Trash;
 using TodoApp.Features.Todos.Reminders;
+using TodoApp.Features.Todos.TimeTracking;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -143,6 +144,8 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<PurgeExpiredTrashHandler>();
         ctx.Services.AddScoped<ReminderMessageHandler>();
         ctx.Services.AddScoped<SetListColorHandler>();
+        ctx.Services.AddScoped<StartTimerHandler>();
+        ctx.Services.AddScoped<StopTimerHandler>();
         return ctx;
     }
 
@@ -8222,5 +8225,106 @@ public class HomeTests : BunitContext
         var invocation = ctx.JSInterop.Invocations["todoApp.showNotification"][0];
         Assert.Equal("You have 1 due today.", invocation.Arguments[1]);
         Assert.Equal("Reminders enabled", cut.Find(".reminders-toggle-btn").GetAttribute("title"));
+    }
+
+    // Time tracking timer tests
+
+    [Fact]
+    public async Task StartTimer_ShowsRunningBadgeAndStopButton()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Write report");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.NotEmpty(cut.FindAll(".todo-start-timer-btn"));
+        Assert.Empty(cut.FindAll(".todo-stop-timer-btn"));
+
+        cut.Find(".todo-start-timer-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            Assert.NotEmpty(cut.FindAll(".todo-stop-timer-btn"));
+            Assert.Empty(cut.FindAll(".todo-start-timer-btn"));
+            Assert.Contains("⏱", cut.Find(".time-spent-badge").TextContent);
+        });
+    }
+
+    [Fact]
+    public async Task StopTimer_AccumulatesElapsedTimeAndRestoresStartButton()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Write report");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-start-timer-btn").Click();
+        await cut.WaitForAssertionAsync(() => Assert.NotEmpty(cut.FindAll(".todo-stop-timer-btn")));
+
+        await Task.Delay(1100);
+
+        cut.Find(".todo-stop-timer-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            Assert.NotEmpty(cut.FindAll(".todo-start-timer-btn"));
+            Assert.Empty(cut.FindAll(".todo-stop-timer-btn"));
+            var badgeText = cut.Find(".time-spent-badge").TextContent;
+            Assert.DoesNotContain("⏱", badgeText);
+            Assert.DoesNotContain("0s", badgeText);
+        });
+    }
+
+    [Fact]
+    public async Task StartingTimerOnAnotherTodo_StopsThePreviouslyRunningTimer()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("First task");
+        await addHandler.HandleAsync("Second task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Newest-first ordering: "Second task" is index 0, "First task" is index 1.
+        // Start "First task"'s timer first.
+        cut.FindAll(".todo-start-timer-btn")[1].Click();
+        await cut.WaitForAssertionAsync(() => Assert.Single(cut.FindAll(".todo-stop-timer-btn")));
+
+        // Now only "Second task" has a start button left (index 0) — starting it should
+        // stop "First task"'s timer, leaving "Second task" as the sole running timer.
+        cut.FindAll(".todo-start-timer-btn")[0].Click();
+
+        await cut.WaitForAssertionAsync(() => Assert.Single(cut.FindAll(".todo-stop-timer-btn")));
+
+        // "First task" renders after "Second task" in the markup — the still-running
+        // stop button must belong to "Second task"'s row, not "First task"'s.
+        var firstTaskIdx = cut.Markup.IndexOf("First task", StringComparison.Ordinal);
+        var markupBeforeFirstTask = cut.Markup[..firstTaskIdx];
+        var markupFromFirstTask = cut.Markup[firstTaskIdx..];
+        Assert.Contains("Stop timer", markupBeforeFirstTask);
+        Assert.DoesNotContain("Stop timer", markupFromFirstTask);
+    }
+
+    [Fact]
+    public async Task CompletedTodo_DoesNotShowStartTimerButton()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var todoId = await addHandler.HandleAsync("Finished task");
+        await completeHandler.HandleAsync(todoId);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        // Default status filter is "All", so the completed todo is visible.
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Finished task", cut.Markup));
+        Assert.Empty(cut.FindAll(".todo-start-timer-btn"));
+        Assert.Empty(cut.FindAll(".todo-stop-timer-btn"));
     }
 }
