@@ -1,5 +1,22 @@
 # Change Log
 
+## Day 100 — [2026-07-27] — Feature: Time Tracking Timer
+
+**Description:** Each active todo now has a start/stop timer button next to its title. Clicking play begins tracking time spent on that todo (showing a live green "⏱ 1m" badge that ticks up once per second); clicking stop banks the elapsed time into a static badge (e.g. "12m", "1h 4m"). Only one timer can run at a time — starting a new todo's timer automatically stops and banks whatever timer was previously running. Time already logged survives delete/restore through the trash.
+
+**Reason for change:** The app already tracked due dates, time *estimates*, and completion timestamps, but had no way to record how long a task actually took — a natural next step once estimates existed, and a common want for anyone using the list to track billable or focus time. It's implemented as its own `Features/Todos/TimeTracking` vertical slice (`StartTimerHandler`, `StopTimerHandler`, `TimeTrackingCalculator`) rather than folding timer logic into `GetTodosHandler` or `Home.razor`, keeping the slice boundary clean; `Home.razor` only consumes the calculator and the two handlers, plus a small `System.Threading.Timer` to re-render once a second while a timer is running so the badge visibly counts up instead of only updating on unrelated reloads.
+
+**Bug fixed during this work:** `StartTimerHandler`, `StopTimerHandler`, and `GetTodosHandler` all parsed the stored `TimerStartedAt` timestamp with a bare `DateTime.Parse`, which silently converts a "Z"-suffixed round-tripped UTC string to local `Kind` instead of preserving it. Subtracting that from `DateTime.UtcNow` produced a large negative span that `Math.Max(0, …)` clamped to zero — meaning the timer would never visibly count up (or bank any elapsed time) for any user not physically in the UTC timezone. Caught by handler and bUnit tests that used a real ~1 second delay and asserted elapsed time was non-zero; fixed by parsing with `DateTimeStyles.RoundtripKind` in all three call sites.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 560
+- Lines deleted: 25
+- Tests added: 16
+- Tests removed: 0
+- Test failures before green: 7
+
 ## Day 99 — [2026-07-25] — Feature: Calendar (.ics) Export
 
 **Description:** A new toolbar button next to the existing CSV/Markdown/JSON export icons lets users export their active list's due dates as a standard `.ics` calendar file. Each todo with a due date becomes a calendar event (all-day, titled with the todo's title, carrying its notes as a description and tags as categories), so the file can be imported straight into Google Calendar, Apple Calendar, or Outlook. Completed todos are marked `STATUS:COMPLETED` so calendar apps can distinguish them from pending ones.

@@ -11,8 +11,8 @@ public class DeleteTodoHandler(Database db)
         var deletedAt = DateTime.UtcNow.ToString("O");
 
         var snapshotted = await conn.ExecuteAsync("""
-            INSERT INTO DeletedTodos (OriginalId, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate, ColorLabel, IsBlocked, Url, DeletedAt)
-            SELECT Id, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate, ColorLabel, IsBlocked, Url, @DeletedAt
+            INSERT INTO DeletedTodos (OriginalId, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate, ColorLabel, IsBlocked, Url, DeletedAt, TimeSpentSeconds)
+            SELECT Id, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate, ColorLabel, IsBlocked, Url, @DeletedAt, TimeSpentSeconds
             FROM Todos WHERE Id = @Id
             """, new { Id = id, DeletedAt = deletedAt });
 

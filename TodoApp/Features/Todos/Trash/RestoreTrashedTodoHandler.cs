@@ -10,8 +10,8 @@ public class RestoreTrashedTodoHandler(Database db)
         using var conn = db.CreateConnection();
 
         var restored = await conn.ExecuteAsync("""
-            INSERT INTO Todos (Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate, ColorLabel, IsBlocked, Url)
-            SELECT Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate, ColorLabel, IsBlocked, Url
+            INSERT INTO Todos (Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate, ColorLabel, IsBlocked, Url, TimeSpentSeconds)
+            SELECT Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate, ColorLabel, IsBlocked, Url, TimeSpentSeconds
             FROM DeletedTodos WHERE TrashId = @TrashId
             """, new { TrashId = trashId });
 
