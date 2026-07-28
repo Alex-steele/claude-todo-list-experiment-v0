@@ -1,5 +1,22 @@
 # Change Log
 
+## Day 101 — [2026-07-28] — Feature: Time Report
+
+**Description:** A new "Time report" toolbar icon (⏳, next to Analytics) opens a `/time-report` page showing the total time tracked across the active list and a bar-style breakdown of the top 10 todos by time spent, longest first, with a green pulse marking any todo whose timer is still running. A list switcher lets users view the breakdown for any list, and an empty state explains the feature before any time has been logged.
+
+**Reason for change:** Day 100 added per-todo start/stop timers, but the only way to see accumulated time was scanning individual badges in the list — there was no aggregate view of where tracked time actually went. This closes that gap the same way Day 94's Analytics page closed the "which day am I productive" gap: a focused, list-scoped route with its own vertical slice (`Features/Todos/TimeReport/TimeReportHandler`, a pure function over `IReadOnlyList<TodoSummary>` reusing `TimeTrackingCalculator.GetElapsedSeconds`/`FormatDuration` from the Day 100 `TimeTracking` slice) rather than more chips bolted onto `Home.razor`.
+
+**Bug fixed during this work:** `dotnet test` on `main` (before any Day 101 changes) already failed `HomeTests.StartTimer_ShowsRunningBadgeAndStopButton` consistently, not just under load — reproduced the same failure on a clean `main` checkout. The `.time-spent-badge` chip only rendered when `elapsedSeconds > 0`, but a freshly started timer has `TimerStartedAt == now`, so elapsed time is `0` until the `System.Threading.Timer` powering the live-updating badge ticks a full second later. The badge (and the "⏱" running indicator) was therefore invisible for up to a second after clicking start, racing against the test's wait timeout. Fixed by changing the guard to `elapsedSeconds > 0 || isTimerRunning` in `Home.razor` so the badge appears immediately when a timer starts, showing "⏱ 0s" until the first tick.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 503
+- Lines deleted: 1
+- Tests added: 14
+- Tests removed: 0
+- Test failures before green: 1
+
 ## Day 100 — [2026-07-27] — Feature: Time Tracking Timer
 
 **Description:** Each active todo now has a start/stop timer button next to its title. Clicking play begins tracking time spent on that todo (showing a live green "⏱ 1m" badge that ticks up once per second); clicking stop banks the elapsed time into a static badge (e.g. "12m", "1h 4m"). Only one timer can run at a time — starting a new todo's timer automatically stops and banks whatever timer was previously running. Time already logged survives delete/restore through the trash.
