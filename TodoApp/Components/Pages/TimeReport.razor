@@ -1,0 +1,106 @@
+@page "/time-report"
+@using TodoApp.Features.Todos.GetTodos
+@using TodoApp.Features.Todos.TimeReport
+@using TodoApp.Features.Todos.TimeTracking
+@using TodoApp.Features.Lists
+@inject GetTodosHandler GetTodosHandler
+@inject GetListsHandler GetListsHandler
+@inject TimeReportHandler TimeReportHandler
+@inject NavigationManager Nav
+
+<PageTitle>Time Report</PageTitle>
+
+<div class="d-flex align-center justify-space-between mb-4">
+    <MudButton
+        StartIcon="@Icons.Material.Filled.ArrowBack"
+        Variant="Variant.Text"
+        Href="/"
+        Class="time-report-back-btn">
+        Back to list
+    </MudButton>
+    <MudText Typo="Typo.h5" Class="time-report-header">Time Report</MudText>
+    @if (_lists is { Count: > 1 })
+    {
+        <MudSelect T="int" Value="_activeListId" ValueChanged="HandleSwitchList" Dense="true" Class="time-report-list-select" Style="max-width: 200px;">
+            @foreach (var list in _lists)
+            {
+                <MudSelectItem T="int" Value="@list.Id">@list.Name</MudSelectItem>
+            }
+        </MudSelect>
+    }
+    else
+    {
+        <div style="width: 120px;"></div>
+    }
+</div>
+
+@if (_report is null)
+{
+    <MudText>Loading…</MudText>
+}
+else if (!_report.HasData)
+{
+    <MudText Color="Color.Secondary" Class="time-report-empty-state" Align="Align.Center">
+        Track time on a todo to see a breakdown here.
+    </MudText>
+}
+else
+{
+    <MudText Color="Color.Secondary" Class="time-report-total-callout mb-3" Align="Align.Center">
+        Total time tracked: <strong>@TimeTrackingCalculator.FormatDuration(_report.TotalSeconds)</strong>
+    </MudText>
+    <div class="time-report-list">
+        @{
+            var topEntries = _topEntries!;
+            var maxSeconds = topEntries.Max(e => e.Seconds);
+        }
+        @foreach (var entry in topEntries)
+        {
+            var widthPct = Math.Max(entry.Seconds * 100 / maxSeconds, 4);
+            <div class="time-report-row">
+                <div class="time-report-row-title">
+                    @entry.Title
+                    @if (entry.IsRunning)
+                    {
+                        <span class="time-report-running-dot" title="Timer running">●</span>
+                    }
+                </div>
+                <div class="time-report-row-track">
+                    <div class="time-report-row-bar" style="width: @(widthPct)%;"></div>
+                </div>
+                <div class="time-report-row-duration">@TimeTrackingCalculator.FormatDuration(entry.Seconds)</div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "listId")]
+    public int? ListId { get; set; }
+
+    private IReadOnlyList<TodoList>? _lists;
+    private int _activeListId = 1;
+    private TimeReportResult? _report;
+    private List<TimeReportEntry>? _topEntries;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _activeListId = ListId is > 0 ? ListId.Value : 1;
+        _lists = await GetListsHandler.HandleAsync();
+        await LoadReportAsync();
+    }
+
+    private async Task LoadReportAsync()
+    {
+        var todos = await GetTodosHandler.HandleAsync();
+        _report = TimeReportHandler.Handle(todos, _activeListId, DateTime.UtcNow);
+        _topEntries = _report.Entries.Take(10).ToList();
+    }
+
+    private async Task HandleSwitchList(int listId)
+    {
+        _activeListId = listId;
+        await LoadReportAsync();
+    }
+}

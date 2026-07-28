@@ -48,6 +48,7 @@ using TodoApp.Features.Todos.CalendarView;
 using TodoApp.Features.Todos.DayOfWeekStats;
 using TodoApp.Features.Todos.Reminders;
 using TodoApp.Features.Todos.TimeTracking;
+using TodoApp.Features.Todos.TimeReport;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -147,6 +148,7 @@ builder.Services.AddScoped<DayOfWeekStatsHandler>();
 builder.Services.AddScoped<ReminderMessageHandler>();
 builder.Services.AddScoped<StartTimerHandler>();
 builder.Services.AddScoped<StopTimerHandler>();
+builder.Services.AddScoped<TimeReportHandler>();
 
 var app = builder.Build();
 

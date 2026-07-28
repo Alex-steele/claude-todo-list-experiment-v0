@@ -1180,6 +1180,15 @@ else
                             title="Analytics"
                             Class="analytics-view-btn" />
                     </MudTooltip>
+                    <MudTooltip Text="Time report">
+                        <MudIconButton
+                            Icon="@Icons.Material.Filled.Timelapse"
+                            Size="Size.Small"
+                            Color="Color.Default"
+                            OnClick="HandleOpenTimeReport"
+                            title="Time report"
+                            Class="time-report-view-btn" />
+                    </MudTooltip>
                     <MudTooltip Text="@(_remindersEnabled ? "Reminders enabled — click to disable" : "Enable due date reminders")">
                         <MudIconButton
                             Icon="@(_remindersEnabled ? Icons.Material.Filled.NotificationsActive : Icons.Material.Filled.NotificationsNone)"
@@ -1967,7 +1976,7 @@ else
                                             var isTimerRunning = todo.TimerStartedAt.HasValue;
                                             var elapsedSeconds = TimeTrackingCalculator.GetElapsedSeconds(todo, DateTime.UtcNow);
                                         }
-                                        @if (elapsedSeconds > 0)
+                                        @if (elapsedSeconds > 0 || isTimerRunning)
                                         {
                                             <MudChip T="string" Size="Size.Small"
                                                      Color="@(isTimerRunning ? Color.Success : Color.Default)"
@@ -3778,6 +3787,11 @@ else
     private void HandleOpenAnalytics()
     {
         Nav.NavigateTo($"/analytics?listId={_activeListId}");
+    }
+
+    private void HandleOpenTimeReport()
+    {
+        Nav.NavigateTo($"/time-report?listId={_activeListId}");
     }
 
     private async Task HandleToggleReminders()

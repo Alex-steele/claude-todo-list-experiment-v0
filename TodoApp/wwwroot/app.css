@@ -304,3 +304,60 @@ h1:focus {
 .dow-best-day-callout {
     font-size: 0.9rem;
 }
+
+.time-report-total-callout {
+    font-size: 0.9rem;
+}
+
+.time-report-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.time-report-row {
+    display: grid;
+    grid-template-columns: minmax(120px, 1fr) 2fr auto;
+    align-items: center;
+    gap: 10px;
+}
+
+.time-report-row-title {
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.time-report-running-dot {
+    color: var(--mud-palette-success, #2e7d32);
+    font-size: 0.6rem;
+    margin-left: 4px;
+}
+
+.time-report-row-track {
+    display: flex;
+    align-items: center;
+    height: 14px;
+    width: 100%;
+    background-color: rgba(128, 128, 128, 0.15);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.time-report-row-bar {
+    height: 100%;
+    min-width: 0;
+    background-color: var(--mud-palette-primary, #1b6ec2);
+    opacity: 0.75;
+    border-radius: 4px;
+    transition: width 0.15s ease-in-out;
+}
+
+.time-report-row-duration {
+    font-size: 0.75rem;
+    font-weight: 600;
+    opacity: 0.8;
+    min-width: 48px;
+    text-align: right;
+}

@@ -55,6 +55,7 @@ using TodoApp.Features.Todos.SetPriority;
 using TodoApp.Features.Todos.Trash;
 using TodoApp.Features.Todos.Reminders;
 using TodoApp.Features.Todos.TimeTracking;
+using TodoApp.Features.Todos.TimeReport;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -146,6 +147,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<SetListColorHandler>();
         ctx.Services.AddScoped<StartTimerHandler>();
         ctx.Services.AddScoped<StopTimerHandler>();
+        ctx.Services.AddScoped<TimeReportHandler>();
         return ctx;
     }
 
@@ -299,6 +301,37 @@ public class HomeTests : BunitContext
 
         var nav = ctx.Services.GetRequiredService<NavigationManager>();
         Assert.Contains("/calendar", nav.Uri);
+        Assert.Contains("listId=1", nav.Uri);
+    }
+
+    [Fact]
+    public async Task TimeReportButton_IsRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.NotEmpty(cut.FindAll(".time-report-view-btn"));
+    }
+
+    [Fact]
+    public async Task TimeReportButton_NavigatesToTimeReportWithActiveListId()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var timeReportButton = cut.Find(".time-report-view-btn");
+        timeReportButton.Click();
+
+        var nav = ctx.Services.GetRequiredService<NavigationManager>();
+        Assert.Contains("/time-report", nav.Uri);
         Assert.Contains("listId=1", nav.Uri);
     }
 
