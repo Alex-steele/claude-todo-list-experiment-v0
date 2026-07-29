@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 102 — [2026-07-29] — Feature: Estimate Accuracy Badge
+
+**Description:** Todos that have both a time estimate and logged time now show a second badge next to the time-spent chip: a green "✓ 5m under" when tracked time is at or below the estimate, or an amber "⚠ 10m over" once it exceeds it. The badge updates live while a timer is running, so a user can see they're going over budget before they even stop the clock.
+
+**Reason for change:** Day 100 added start/stop time tracking and the app already had a `TimeEstimate` field (with filtering and sorting) from earlier days, but nothing ever compared the two — a todo estimated at "15 min" and one that actually took an hour looked identical once time was logged. This closes that gap with a small pure-function slice (`Features/Todos/EstimateAccuracy/EstimateAccuracyCalculator`), following the same "pure function over already-fetched data" pattern as `DayOfWeekStatsHandler`/`TimeReportHandler` rather than adding branching logic inside `Home.razor` itself.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 173
+- Lines deleted: 0
+- Tests added: 8
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 101 — [2026-07-28] — Feature: Time Report
 
 **Description:** A new "Time report" toolbar icon (⏳, next to Analytics) opens a `/time-report` page showing the total time tracked across the active list and a bar-style breakdown of the top 10 todos by time spent, longest first, with a green pulse marking any todo whose timer is still running. A list switcher lets users view the breakdown for any list, and an empty state explains the feature before any time has been logged.

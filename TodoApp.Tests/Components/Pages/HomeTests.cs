@@ -8360,4 +8360,70 @@ public class HomeTests : BunitContext
         Assert.Empty(cut.FindAll(".todo-start-timer-btn"));
         Assert.Empty(cut.FindAll(".todo-stop-timer-btn"));
     }
+
+    // Estimate accuracy badge tests
+
+    [Fact]
+    public async Task TrackedTimeExceedsEstimate_ShowsOverEstimateBadge()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var todoId = await addHandler.HandleAsync("Write report", timeEstimate: TimeEstimate.FifteenMinutes);
+        using (var conn = db.CreateConnection())
+        {
+            await conn.ExecuteAsync(
+                "UPDATE Todos SET TimeSpentSeconds = @seconds WHERE Id = @id",
+                new { seconds = 20 * 60, id = todoId });
+        }
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            var badgeText = cut.Find(".estimate-accuracy-badge").TextContent;
+            Assert.Contains("⚠", badgeText);
+            Assert.Contains("5m", badgeText);
+            Assert.Contains("over", badgeText);
+        });
+    }
+
+    [Fact]
+    public async Task TrackedTimeUnderEstimate_ShowsUnderEstimateBadge()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var todoId = await addHandler.HandleAsync("Write report", timeEstimate: TimeEstimate.OneHour);
+        using (var conn = db.CreateConnection())
+        {
+            await conn.ExecuteAsync(
+                "UPDATE Todos SET TimeSpentSeconds = @seconds WHERE Id = @id",
+                new { seconds = 40 * 60, id = todoId });
+        }
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            var badgeText = cut.Find(".estimate-accuracy-badge").TextContent;
+            Assert.Contains("✓", badgeText);
+            Assert.Contains("20m", badgeText);
+            Assert.Contains("under", badgeText);
+        });
+    }
+
+    [Fact]
+    public async Task NoTimeTrackedYet_DoesNotShowEstimateAccuracyBadge()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Write report", timeEstimate: TimeEstimate.OneHour);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Write report", cut.Markup));
+        Assert.Empty(cut.FindAll(".estimate-accuracy-badge"));
+    }
 }

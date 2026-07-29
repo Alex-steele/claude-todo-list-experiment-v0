@@ -51,6 +51,7 @@
 @using TodoApp.Features.Todos.Trash
 @using TodoApp.Features.Todos.Reminders
 @using TodoApp.Features.Todos.TimeTracking
+@using TodoApp.Features.Todos.EstimateAccuracy
 @inject BlockTodoHandler BlockTodoHandler
 @inject TodayViewHandler TodayViewHandler
 @inject TagStatsHandler TagStatsHandler
@@ -1984,6 +1985,19 @@ else
                                                      Class="time-spent-badge"
                                                      title="Time logged on this todo">
                                                 @(isTimerRunning ? "⏱ " : "")@TimeTrackingCalculator.FormatDuration(elapsedSeconds)
+                                            </MudChip>
+                                        }
+                                        @{
+                                            var estimateAccuracy = EstimateAccuracyCalculator.Calculate(todo.TimeEstimate, elapsedSeconds);
+                                        }
+                                        @if (estimateAccuracy.ShouldDisplay)
+                                        {
+                                            <MudChip T="string" Size="Size.Small"
+                                                     Color="@(estimateAccuracy.Status == EstimateAccuracyStatus.OverEstimate ? Color.Warning : Color.Success)"
+                                                     Variant="Variant.Outlined"
+                                                     Class="estimate-accuracy-badge"
+                                                     title="@(estimateAccuracy.Status == EstimateAccuracyStatus.OverEstimate ? "Over your time estimate" : "Under your time estimate")">
+                                                @(estimateAccuracy.Status == EstimateAccuracyStatus.OverEstimate ? "⚠ " : "✓ ")@TimeTrackingCalculator.FormatDuration(estimateAccuracy.DeltaSeconds) @(estimateAccuracy.Status == EstimateAccuracyStatus.OverEstimate ? "over" : "under")
                                             </MudChip>
                                         }
                                         @if (isTimerRunning)
