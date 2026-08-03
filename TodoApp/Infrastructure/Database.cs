@@ -305,5 +305,12 @@ public class Database(string connectionString)
         {
             // Column already exists — ignore
         }
+
+        await conn.ExecuteAsync("""
+            CREATE TABLE IF NOT EXISTS PomodoroSessions (
+                Id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                CompletedAt TEXT    NOT NULL
+            )
+            """);
     }
 }

@@ -1190,6 +1190,15 @@ else
                             title="Time report"
                             Class="time-report-view-btn" />
                     </MudTooltip>
+                    <MudTooltip Text="Focus timer">
+                        <MudIconButton
+                            Icon="@Icons.Material.Filled.Timer"
+                            Size="Size.Small"
+                            Color="Color.Default"
+                            OnClick="HandleOpenPomodoro"
+                            title="Focus timer"
+                            Class="pomodoro-view-btn" />
+                    </MudTooltip>
                     <MudTooltip Text="@(_remindersEnabled ? "Reminders enabled — click to disable" : "Enable due date reminders")">
                         <MudIconButton
                             Icon="@(_remindersEnabled ? Icons.Material.Filled.NotificationsActive : Icons.Material.Filled.NotificationsNone)"
@@ -3806,6 +3815,11 @@ else
     private void HandleOpenTimeReport()
     {
         Nav.NavigateTo($"/time-report?listId={_activeListId}");
+    }
+
+    private void HandleOpenPomodoro()
+    {
+        Nav.NavigateTo("/pomodoro");
     }
 
     private async Task HandleToggleReminders()

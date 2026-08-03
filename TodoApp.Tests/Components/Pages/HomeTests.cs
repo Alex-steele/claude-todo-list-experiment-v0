@@ -336,6 +336,36 @@ public class HomeTests : BunitContext
     }
 
     [Fact]
+    public async Task PomodoroButton_IsRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.NotEmpty(cut.FindAll(".pomodoro-view-btn"));
+    }
+
+    [Fact]
+    public async Task PomodoroButton_NavigatesToPomodoroPage()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var pomodoroButton = cut.Find(".pomodoro-view-btn");
+        pomodoroButton.Click();
+
+        var nav = ctx.Services.GetRequiredService<NavigationManager>();
+        Assert.Contains("/pomodoro", nav.Uri);
+    }
+
+    [Fact]
     public async Task FilterByCompleted_ShowsOnlyCompletedTodos()
     {
         var db = await TestDatabase.CreateAsync();
