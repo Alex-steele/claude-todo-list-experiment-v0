@@ -49,6 +49,7 @@ using TodoApp.Features.Todos.DayOfWeekStats;
 using TodoApp.Features.Todos.Reminders;
 using TodoApp.Features.Todos.TimeTracking;
 using TodoApp.Features.Todos.TimeReport;
+using TodoApp.Features.Todos.PomodoroTimer;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -149,6 +150,8 @@ builder.Services.AddScoped<ReminderMessageHandler>();
 builder.Services.AddScoped<StartTimerHandler>();
 builder.Services.AddScoped<StopTimerHandler>();
 builder.Services.AddScoped<TimeReportHandler>();
+builder.Services.AddScoped<LogPomodoroSessionHandler>();
+builder.Services.AddScoped<GetTodaysPomodoroCountHandler>();
 
 var app = builder.Build();
 

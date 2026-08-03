@@ -1,0 +1,192 @@
+@page "/pomodoro"
+@using TodoApp.Features.Todos.PomodoroTimer
+@implements IDisposable
+@inject LogPomodoroSessionHandler LogPomodoroSessionHandler
+@inject GetTodaysPomodoroCountHandler GetTodaysPomodoroCountHandler
+
+<PageTitle>Focus Timer</PageTitle>
+
+<div class="d-flex align-center justify-space-between mb-4">
+    <MudButton
+        StartIcon="@Icons.Material.Filled.ArrowBack"
+        Variant="Variant.Text"
+        Href="/"
+        Class="pomodoro-back-btn">
+        Back to list
+    </MudButton>
+    <MudText Typo="Typo.h5" Class="pomodoro-header">Focus Timer</MudText>
+    <div style="width: 120px;"></div>
+</div>
+
+<div class="pomodoro-panel">
+    <MudChip T="string"
+        Class="pomodoro-phase-chip"
+        Color="@(_phase == PomodoroPhase.Work ? Color.Error : Color.Success)"
+        Variant="Variant.Filled">
+        @(_phase == PomodoroPhase.Work ? "Work" : "Break")
+    </MudChip>
+
+    <div class="pomodoro-countdown" title="Time remaining in this phase">
+        @PomodoroCalculator.FormatCountdown(RemainingSeconds)
+    </div>
+
+    <MudProgressLinear
+        Class="pomodoro-progress"
+        Color="@(_phase == PomodoroPhase.Work ? Color.Error : Color.Success)"
+        Value="@ProgressPercent" />
+
+    <div class="d-flex justify-center gap-2 pomodoro-controls">
+        @if (_isRunning)
+        {
+            <MudButton
+                Variant="Variant.Filled"
+                Color="Color.Primary"
+                StartIcon="@Icons.Material.Filled.Pause"
+                OnClick="HandlePause"
+                Class="pomodoro-pause-btn">
+                Pause
+            </MudButton>
+        }
+        else
+        {
+            <MudButton
+                Variant="Variant.Filled"
+                Color="Color.Primary"
+                StartIcon="@Icons.Material.Filled.PlayArrow"
+                OnClick="HandleStart"
+                Class="pomodoro-start-btn">
+                Start
+            </MudButton>
+        }
+        <MudButton
+            Variant="Variant.Outlined"
+            Color="Color.Default"
+            StartIcon="@Icons.Material.Filled.Replay"
+            OnClick="HandleReset"
+            Class="pomodoro-reset-btn">
+            Reset
+        </MudButton>
+        <MudButton
+            Variant="Variant.Outlined"
+            Color="Color.Default"
+            StartIcon="@Icons.Material.Filled.SkipNext"
+            OnClick="HandleSkip"
+            Class="pomodoro-skip-btn">
+            Skip
+        </MudButton>
+    </div>
+
+    <MudText Color="Color.Secondary" Class="pomodoro-session-count mt-4" Align="Align.Center">
+        Focus sessions completed today: <strong>@_sessionsCompletedToday</strong>
+    </MudText>
+</div>
+
+@code {
+    private PomodoroPhase _phase = PomodoroPhase.Work;
+    private bool _isRunning;
+    private DateTime _phaseStartedAt;
+    private DateTime? _pausedAt;
+    private int _sessionsCompletedToday;
+    private System.Threading.Timer? _tick;
+
+    private int RemainingSeconds =>
+        _isRunning
+            ? PomodoroCalculator.GetRemainingSeconds(_phase, _phaseStartedAt, DateTime.UtcNow)
+            : _pausedAt.HasValue
+                ? PomodoroCalculator.GetRemainingSeconds(_phase, _phaseStartedAt, _pausedAt.Value)
+                : PomodoroCalculator.GetPhaseDurationSeconds(_phase);
+
+    private double ProgressPercent =>
+        100.0 * (PomodoroCalculator.GetPhaseDurationSeconds(_phase) - RemainingSeconds)
+        / PomodoroCalculator.GetPhaseDurationSeconds(_phase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _sessionsCompletedToday = await GetTodaysPomodoroCountHandler.HandleAsync();
+        _phaseStartedAt = DateTime.UtcNow;
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _tick = new System.Threading.Timer(_ =>
+            {
+                InvokeAsync(async () =>
+                {
+                    if (_isRunning && PomodoroCalculator.IsPhaseComplete(_phase, _phaseStartedAt, DateTime.UtcNow))
+                    {
+                        await AdvancePhaseAsync();
+                    }
+                    else
+                    {
+                        StateHasChanged();
+                    }
+                });
+            }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        }
+    }
+
+    private void HandleStart()
+    {
+        if (_isRunning)
+        {
+            return;
+        }
+
+        if (_pausedAt.HasValue)
+        {
+            _phaseStartedAt += DateTime.UtcNow - _pausedAt.Value;
+            _pausedAt = null;
+        }
+        else
+        {
+            _phaseStartedAt = DateTime.UtcNow;
+        }
+
+        _isRunning = true;
+    }
+
+    private void HandlePause()
+    {
+        if (!_isRunning)
+        {
+            return;
+        }
+
+        _isRunning = false;
+        _pausedAt = DateTime.UtcNow;
+    }
+
+    private void HandleReset()
+    {
+        _isRunning = false;
+        _pausedAt = null;
+        _phaseStartedAt = DateTime.UtcNow;
+    }
+
+    private async Task HandleSkip()
+    {
+        await AdvancePhaseAsync();
+    }
+
+    private async Task AdvancePhaseAsync()
+    {
+        if (_phase == PomodoroPhase.Work)
+        {
+            await LogPomodoroSessionHandler.HandleAsync();
+            _sessionsCompletedToday++;
+        }
+
+        _phase = _phase == PomodoroPhase.Work ? PomodoroPhase.Break : PomodoroPhase.Work;
+        _phaseStartedAt = DateTime.UtcNow;
+        _pausedAt = null;
+        _isRunning = false;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        _tick?.Dispose();
+    }
+}

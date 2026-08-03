@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 103 — [2026-08-03] — Feature: Pomodoro Focus Timer
+
+**Description:** A new "Focus timer" toolbar icon opens a `/pomodoro` page with a 25-minute work / 5-minute break countdown timer, complete with Start, Pause, Reset, and Skip controls and a progress bar. Completing a work phase (by letting it run out or skipping past it) logs a focus session, and the page shows how many focus sessions have been completed today.
+
+**Reason for change:** The app already tracks time spent per-todo (Day 100) and reports on it (Day 101), but had no way to help a user actually focus while working — a classic Pomodoro-style timer is a natural companion to time tracking rather than a competitor to it, and stands alone as its own page/slice (`Features/Todos/PomodoroTimer`) with a pure-function `PomodoroCalculator` for all countdown/formatting math, following the same "pure function over already-fetched data" pattern used by `TimeReportHandler`/`EstimateAccuracyCalculator`.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 603
+- Lines deleted: 0
+- Tests added: 24
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 102 — [2026-07-29] — Feature: Estimate Accuracy Badge
 
 **Description:** Todos that have both a time estimate and logged time now show a second badge next to the time-spent chip: a green "✓ 5m under" when tracked time is at or below the estimate, or an amber "⚠ 10m over" once it exceeds it. The badge updates live while a timer is running, so a user can see they're going over budget before they even stop the clock.
