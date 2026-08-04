@@ -436,7 +436,7 @@
             Class="mb-3 new-todo-input"
             OnKeyUp="HandleEnterKey"
             Disabled="_isSubmitting" />
-        @if (!string.IsNullOrWhiteSpace(_newTitle) && (NewTitleHints.Priority.HasValue || NewTitleHints.DueDate.HasValue))
+        @if (!string.IsNullOrWhiteSpace(_newTitle) && (NewTitleHints.Priority.HasValue || NewTitleHints.DueDate.HasValue || NewTitleHints.Tags.Count > 0))
         {
             <div class="d-flex align-center gap-1 mb-2 quick-add-hint-strip">
                 <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" Color="Color.Tertiary" />
@@ -453,6 +453,10 @@
                     @if (NewTitleHints.Priority.HasValue)
                     {
                         <span> · @NewTitleHints.Priority.Value priority</span>
+                    }
+                    @if (NewTitleHints.Tags.Count > 0)
+                    {
+                        <span> · @string.Join(" ", NewTitleHints.Tags.Select(t => $"#{t}"))</span>
                     }
                 </MudText>
             </div>
@@ -2978,7 +2982,9 @@ else
             var effectivePriority = _newPriority != TodoPriority.None ? _newPriority : (parsed.Priority ?? TodoPriority.None);
             var effectiveDueDate  = _newDueDate ?? parsed.DueDate;
 
-            await AddTodoHandler.HandleAsync(effectiveTitle, effectivePriority, effectiveDueDate, _newRecurrence, _activeListId, _newTimeEstimate);
+            var newTodoId = await AddTodoHandler.HandleAsync(effectiveTitle, effectivePriority, effectiveDueDate, _newRecurrence, _activeListId, _newTimeEstimate);
+            foreach (var tag in parsed.Tags)
+                await AddTagHandler.HandleAsync(newTodoId, tag);
             _newTitle = string.Empty;
             _newPriority = TodoPriority.None;
             _newDueDate = null;

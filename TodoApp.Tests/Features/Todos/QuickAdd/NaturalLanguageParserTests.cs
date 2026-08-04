@@ -16,6 +16,7 @@ public class NaturalLanguageParserTests
         Assert.Equal("Buy groceries", result.CleanTitle);
         Assert.Null(result.Priority);
         Assert.Null(result.DueDate);
+        Assert.Empty(result.Tags);
     }
 
     [Fact]
@@ -26,6 +27,7 @@ public class NaturalLanguageParserTests
         Assert.Equal("", result.CleanTitle);
         Assert.Null(result.Priority);
         Assert.Null(result.DueDate);
+        Assert.Empty(result.Tags);
     }
 
     // --- Priority parsing ---
@@ -144,6 +146,7 @@ public class NaturalLanguageParserTests
         Assert.Equal("Write unit tests", result.CleanTitle);
         Assert.Null(result.Priority);
         Assert.Null(result.DueDate);
+        Assert.Empty(result.Tags);
     }
 
     [Fact]
@@ -154,5 +157,77 @@ public class NaturalLanguageParserTests
         Assert.Equal("", result.CleanTitle);
         Assert.Equal(TodoPriority.High, result.Priority);
         Assert.Equal(Today.AddDays(1), result.DueDate!.Value.Date);
+    }
+
+    // --- Tag parsing ---
+
+    [Fact]
+    public void Parse_SingleTag_ExtractsTagAndStripsToken()
+    {
+        var result = NaturalLanguageParser.Parse("Buy milk #groceries", Today);
+
+        Assert.Equal("Buy milk", result.CleanTitle);
+        Assert.Equal(["groceries"], result.Tags);
+    }
+
+    [Fact]
+    public void Parse_MultipleTags_ExtractsAllInOrder()
+    {
+        var result = NaturalLanguageParser.Parse("Plan trip #travel #urgent #home", Today);
+
+        Assert.Equal("Plan trip", result.CleanTitle);
+        Assert.Equal(["travel", "urgent", "home"], result.Tags);
+    }
+
+    [Fact]
+    public void Parse_Tag_LowercasesTagName()
+    {
+        var result = NaturalLanguageParser.Parse("Ship release #Work", Today);
+
+        Assert.Equal(["work"], result.Tags);
+    }
+
+    [Fact]
+    public void Parse_DuplicateTags_Deduplicated()
+    {
+        var result = NaturalLanguageParser.Parse("Task #work #work", Today);
+
+        Assert.Equal(["work"], result.Tags);
+    }
+
+    [Fact]
+    public void Parse_TagWithHyphenAndUnderscore_ExtractsFullName()
+    {
+        var result = NaturalLanguageParser.Parse("Task #deep-work #side_project", Today);
+
+        Assert.Equal(["deep-work", "side_project"], result.Tags);
+    }
+
+    [Fact]
+    public void Parse_NoTag_ReturnsEmptyTagsList()
+    {
+        var result = NaturalLanguageParser.Parse("Just a title", Today);
+
+        Assert.Empty(result.Tags);
+    }
+
+    [Fact]
+    public void Parse_TagPriorityAndDate_ExtractsAllThree()
+    {
+        var result = NaturalLanguageParser.Parse("Buy milk #groceries tomorrow !high", Today);
+
+        Assert.Equal("Buy milk", result.CleanTitle);
+        Assert.Equal(TodoPriority.High, result.Priority);
+        Assert.Equal(Today.AddDays(1), result.DueDate!.Value.Date);
+        Assert.Equal(["groceries"], result.Tags);
+    }
+
+    [Fact]
+    public void Parse_OnlyTag_ReturnsEmptyCleanTitle()
+    {
+        var result = NaturalLanguageParser.Parse("#urgent", Today);
+
+        Assert.Equal("", result.CleanTitle);
+        Assert.Equal(["urgent"], result.Tags);
     }
 }
