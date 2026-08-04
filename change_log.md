@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 105 — [2026-08-04] — Feature: Quick-Add Tag Parsing
+
+**Description:** The natural-language quick-add box now recognizes `#tagname` tokens (e.g. "Buy milk #groceries tomorrow !high") — the quick-add hint strip previews the tags that will be created, and adding the todo strips the `#tag` tokens from the title and attaches each as a real tag, same as tags added manually afterward. Multiple tags in one line are all applied; duplicates are deduplicated.
+
+**Reason for change:** Quick-add already parsed `!priority` and date keywords/`in N days` out of the typed title (`NaturalLanguageParser`), but tags — a first-class, filterable concept in this app since the `Tags` slice — could only be added after the fact via the per-todo tag picker. Extending the same parser to recognize `#tag` tokens closes that gap with no new UI surface, just a new branch in the existing pure-function parser plus a loop over the existing `AddTagHandler` in `Home.razor`'s `HandleAddTodo`.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 160
+- Lines deleted: 5
+- Tests added: 11
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 104 — [2026-08-04] — Feature: Goal Streak
 
 **Description:** The daily-goal chip now grows a companion "🎯🔥 N day goal streak" badge once you've hit your daily completion target — it counts consecutive days (including today, if you've already met it) where completions reached the goal, and disappears again if you miss a day, change your mind on the goal, or clear it.

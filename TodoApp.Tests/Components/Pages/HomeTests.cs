@@ -1873,6 +1873,68 @@ public class HomeTests : BunitContext
         });
     }
 
+    [Fact]
+    public async Task QuickAdd_WithTagHint_ShowsHintStrip()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".new-todo-input input").Change("Buy milk #groceries");
+
+        Assert.Contains("quick-add-hint-strip", cut.Markup);
+        Assert.Contains("#groceries", cut.Markup);
+    }
+
+    [Fact]
+    public async Task QuickAdd_AddWithTagHint_StripsTagFromTitleAndCreatesTag()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var getHandler = new GetTodosHandler(db);
+        var getTagsHandler = new GetTodoTagsHandler(db);
+
+        var cut = RenderHome(ctx);
+
+        cut.Find(".new-todo-input input").Change("Buy milk #groceries");
+        cut.Find("button.add-todo-btn").Click();
+
+        await cut.WaitForAssertionAsync(async () =>
+        {
+            var todos = await getHandler.HandleAsync();
+            Assert.Single(todos);
+            Assert.Equal("Buy milk", todos[0].Title);
+
+            var tags = await getTagsHandler.HandleAsync([todos[0].Id]);
+            Assert.Equal(["groceries"], tags[todos[0].Id].Select(t => t.Name));
+        });
+
+        Assert.Contains("todo-tag-chip", cut.Markup);
+    }
+
+    [Fact]
+    public async Task QuickAdd_AddWithMultipleTagHints_CreatesAllTags()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+        var getHandler = new GetTodosHandler(db);
+        var getTagsHandler = new GetTodoTagsHandler(db);
+
+        var cut = RenderHome(ctx);
+
+        cut.Find(".new-todo-input input").Change("Plan trip #travel #urgent");
+        cut.Find("button.add-todo-btn").Click();
+
+        await cut.WaitForAssertionAsync(async () =>
+        {
+            var todos = await getHandler.HandleAsync();
+            Assert.Single(todos);
+
+            var tags = await getTagsHandler.HandleAsync([todos[0].Id]);
+            Assert.Equal(["travel", "urgent"], tags[todos[0].Id].Select(t => t.Name).OrderBy(n => n));
+        });
+    }
+
     // Multiple lists tests
 
     [Fact]

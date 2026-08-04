@@ -3,7 +3,7 @@ using TodoApp.Features.Todos;
 
 namespace TodoApp.Features.Todos.QuickAdd;
 
-public record ParseResult(string CleanTitle, TodoPriority? Priority, DateTime? DueDate);
+public record ParseResult(string CleanTitle, TodoPriority? Priority, DateTime? DueDate, IReadOnlyList<string> Tags);
 
 public static class NaturalLanguageParser
 {
@@ -19,10 +19,14 @@ public static class NaturalLanguageParser
     private static readonly Regex DateKeywordPattern =
         new(@"\s*\b(today|tomorrow|next\s+week)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // Matches: #tagname (letters, digits, hyphens, underscores)
+    private static readonly Regex TagPattern =
+        new(@"\s*#([a-zA-Z0-9_-]+)\b", RegexOptions.Compiled);
+
     public static ParseResult Parse(string input, DateTime? today = null)
     {
         if (string.IsNullOrWhiteSpace(input))
-            return new ParseResult(input, null, null);
+            return new ParseResult(input, null, null, []);
 
         var baseDate = today?.Date ?? DateTime.Today;
         var working = input;
@@ -55,8 +59,16 @@ public static class NaturalLanguageParser
             }
         }
 
+        // Extract tags — one or more #tagname tokens, deduplicated case-insensitively
+        var tags = TagPattern.Matches(working)
+            .Select(m => m.Groups[1].Value.ToLowerInvariant())
+            .Distinct()
+            .ToList();
+        if (tags.Count > 0)
+            working = TagPattern.Replace(working, string.Empty);
+
         var cleanTitle = working.Trim();
-        return new ParseResult(cleanTitle, priority, dueDate);
+        return new ParseResult(cleanTitle, priority, dueDate, tags);
     }
 
     private static TodoPriority ParsePriority(string token) => token.ToLowerInvariant() switch
