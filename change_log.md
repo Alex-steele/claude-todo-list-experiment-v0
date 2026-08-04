@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 104 — [2026-08-04] — Feature: Goal Streak
+
+**Description:** The daily-goal chip now grows a companion "🎯🔥 N day goal streak" badge once you've hit your daily completion target — it counts consecutive days (including today, if you've already met it) where completions reached the goal, and disappears again if you miss a day, change your mind on the goal, or clear it.
+
+**Reason for change:** Day 62's daily goal only ever showed today's progress in isolation, and the existing `🔥 streak` chip tracks *any* day with a completion, not whether the user actually hit their target — there was no way to see whether you're consistently meeting your own goal over time. This closes that gap with a small `Features/Goals/GoalStreak/GoalStreakCalculator` pure function operating on the `ActivityStats.DailyActivity` data Home.razor already fetches for the 14-day heatmap, so no new DB query was needed — same "pure function over already-fetched data" pattern used by `TimeReportHandler`/`EstimateAccuracyCalculator`.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 251
+- Lines deleted: 0
+- Tests added: 14
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 103 — [2026-08-03] — Feature: Pomodoro Focus Timer
 
 **Description:** A new "Focus timer" toolbar icon opens a `/pomodoro` page with a 25-minute work / 5-minute break countdown timer, complete with Start, Pause, Reset, and Skip controls and a progress bar. Completing a work phase (by letting it run out or skipping past it) logs a focus session, and the page shows how many focus sessions have been completed today.
