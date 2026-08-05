@@ -90,6 +90,7 @@
 @inject RenameTagHandler RenameTagHandler
 @inject CreateListHandler CreateListHandler
 @inject CreateRecurringInstanceHandler CreateRecurringInstanceHandler
+@inject SkipRecurrenceHandler SkipRecurrenceHandler
 @inject DeleteListHandler DeleteListHandler
 @inject GetListsHandler GetListsHandler
 @inject RenameListHandler RenameListHandler
@@ -1988,6 +1989,16 @@ else
                                             <MudChip T="string" Size="Size.Small" Color="Color.Tertiary" Variant="Variant.Outlined" Class="recurrence-badge">
                                                 @GetRecurrenceLabel(todo.Recurrence)
                                             </MudChip>
+                                            @if (!todo.IsCompleted)
+                                            {
+                                                <MudIconButton Icon="@Icons.Material.Outlined.SkipNext"
+                                                               Size="Size.Small"
+                                                               Color="Color.Default"
+                                                               Style="opacity:0.5; padding:2px;"
+                                                               title="Skip to next occurrence"
+                                                               OnClick="@(async () => await HandleSkipRecurrence(todo.Id))"
+                                                               Class="skip-recurrence-btn" />
+                                            }
                                         }
                                         @if (todo.TimeEstimate != TimeEstimate.None)
                                         {
@@ -3741,6 +3752,16 @@ else
     private async Task HandleToggleBlocked(int id)
     {
         await BlockTodoHandler.HandleAsync(id);
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleSkipRecurrence(int id)
+    {
+        var todo = _todos?.FirstOrDefault(t => t.Id == id);
+        if (todo is null || todo.Recurrence == RecurrenceRule.None) return;
+
+        var nextDueDate = await SkipRecurrenceHandler.HandleAsync(id, todo.DueDate, todo.Recurrence);
+        Snackbar.Add($"Skipped to next occurrence ({nextDueDate:MMM d})", Severity.Info);
         await LoadTodosAsync();
     }
 

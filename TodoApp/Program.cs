@@ -97,6 +97,7 @@ builder.Services.AddScoped<DeleteSubtaskHandler>();
 builder.Services.AddScoped<GetSubtasksHandler>();
 builder.Services.AddScoped<ReorderSubtasksHandler>();
 builder.Services.AddScoped<CreateRecurringInstanceHandler>();
+builder.Services.AddScoped<SkipRecurrenceHandler>();
 builder.Services.AddScoped<GetListsHandler>();
 builder.Services.AddScoped<CreateListHandler>();
 builder.Services.AddScoped<DeleteListHandler>();

@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 106 — [2026-08-05] — Feature: Skip Recurrence
+
+**Description:** Recurring todos now have a small "skip" button next to their recurrence badge. Clicking it advances the due date to the next scheduled occurrence (respecting the same Daily/Weekly/Monthly/Weekday interval rules used when completing a recurring todo) without marking the todo complete or creating a duplicate — useful for "not today, push me to next time" without polluting completion stats.
+
+**Reason for change:** Completing a recurring todo was previously the only way to move it forward, but that inflates completion counts/streaks for work that wasn't actually done. `SkipRecurrenceHandler` reuses `CreateRecurringInstanceHandler.ComputeNextDueDate` (the same pure interval math from Day 97) so the two code paths can't drift apart, and it's a single in-place `UPDATE` rather than the complete-and-spawn flow, keeping the change small and scoped to the existing `Features/Todos/RecurringTodos` slice.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 213
+- Lines deleted: 0
+- Tests added: 9
+- Tests removed: 0
+- Test failures before green: 473
+
 ## Day 105 — [2026-08-04] — Feature: Quick-Add Tag Parsing
 
 **Description:** The natural-language quick-add box now recognizes `#tagname` tokens (e.g. "Buy milk #groceries tomorrow !high") — the quick-add hint strip previews the tags that will be created, and adding the todo strips the `#tag` tokens from the title and attaches each as a real tag, same as tags added manually afterward. Multiple tags in one line are all applied; duplicates are deduplicated.
