@@ -97,6 +97,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<GetSubtasksHandler>();
         ctx.Services.AddScoped<ReorderSubtasksHandler>();
         ctx.Services.AddScoped<CreateRecurringInstanceHandler>();
+        ctx.Services.AddScoped<SkipRecurrenceHandler>();
         ctx.Services.AddScoped<GetListsHandler>();
         ctx.Services.AddScoped<CreateListHandler>();
         ctx.Services.AddScoped<DeleteListHandler>();
@@ -1810,6 +1811,56 @@ public class HomeTests : BunitContext
             var todos = cut.FindAll(".mud-list-item");
             Assert.Equal(2, todos.Count);
         });
+    }
+
+    [Fact]
+    public async Task RecurringTodo_ShowsSkipRecurrenceButton()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Daily standup", recurrence: RecurrenceRule.Daily);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("skip-recurrence-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task NonRecurringTodo_NoSkipRecurrenceButton()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("One-time task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("skip-recurrence-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SkipRecurrence_AdvancesDueDateWithoutCompletingOrDuplicating()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Daily standup", dueDate: DateTime.Today.AddDays(1), recurrence: RecurrenceRule.Daily);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("Due tomorrow", cut.Markup);
+
+        cut.Find(".skip-recurrence-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            Assert.Contains("Due in 2 days", cut.Markup);
+        });
+
+        // Skipping must not create a duplicate or mark the todo complete
+        Assert.Single(cut.FindAll(".mud-list-item"));
+        Assert.DoesNotContain("completed-at-text", cut.Markup);
     }
 
     // Natural language quick-add tests
