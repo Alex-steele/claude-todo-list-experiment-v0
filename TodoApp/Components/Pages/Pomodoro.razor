@@ -1,8 +1,11 @@
 @page "/pomodoro"
 @using TodoApp.Features.Todos.PomodoroTimer
+@using TodoApp.Features.Todos.GetTodos
 @implements IDisposable
 @inject LogPomodoroSessionHandler LogPomodoroSessionHandler
 @inject GetTodaysPomodoroCountHandler GetTodaysPomodoroCountHandler
+@inject GetTodosHandler GetTodosHandler
+@inject GetPomodoroSessionCountsHandler GetPomodoroSessionCountsHandler
 
 <PageTitle>Focus Timer</PageTitle>
 
@@ -19,6 +22,24 @@
 </div>
 
 <div class="pomodoro-panel">
+    @if (_focusableTodos.Count > 0)
+    {
+        <MudSelect T="int" Value="_selectedTodoId" ValueChanged="HandleSelectTodo" Dense="true"
+            Placeholder="No specific todo" Class="pomodoro-todo-select mb-3">
+            <MudSelectItem T="int" Value="0">No specific todo</MudSelectItem>
+            @foreach (var todo in _focusableTodos)
+            {
+                <MudSelectItem T="int" Value="@todo.Id">@todo.Title</MudSelectItem>
+            }
+        </MudSelect>
+        @if (_selectedTodoId != 0)
+        {
+            <MudText Color="Color.Secondary" Class="pomodoro-todo-session-count mb-2" Align="Align.Center">
+                Focus sessions on this todo: <strong>@_selectedTodoSessionCount</strong>
+            </MudText>
+        }
+    }
+
     <MudChip T="string"
         Class="pomodoro-phase-chip"
         Color="@(_phase == PomodoroPhase.Work ? Color.Error : Color.Success)"
@@ -82,12 +103,20 @@
 </div>
 
 @code {
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "listId")]
+    public int? ListId { get; set; }
+
     private PomodoroPhase _phase = PomodoroPhase.Work;
     private bool _isRunning;
     private DateTime _phaseStartedAt;
     private DateTime? _pausedAt;
     private int _sessionsCompletedToday;
     private System.Threading.Timer? _tick;
+    private int _activeListId = 1;
+    private List<TodoSummary> _focusableTodos = [];
+    private int _selectedTodoId;
+    private int _selectedTodoSessionCount;
 
     private int RemainingSeconds =>
         _isRunning
@@ -102,8 +131,29 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _activeListId = ListId is > 0 ? ListId.Value : 1;
         _sessionsCompletedToday = await GetTodaysPomodoroCountHandler.HandleAsync();
+        var todos = await GetTodosHandler.HandleAsync();
+        _focusableTodos = todos.Where(t => t.ListId == _activeListId && !t.IsCompleted).ToList();
         _phaseStartedAt = DateTime.UtcNow;
+    }
+
+    private async Task HandleSelectTodo(int todoId)
+    {
+        _selectedTodoId = todoId;
+        await RefreshSelectedTodoSessionCountAsync();
+    }
+
+    private async Task RefreshSelectedTodoSessionCountAsync()
+    {
+        if (_selectedTodoId == 0)
+        {
+            _selectedTodoSessionCount = 0;
+            return;
+        }
+
+        var counts = await GetPomodoroSessionCountsHandler.HandleAsync([_selectedTodoId]);
+        _selectedTodoSessionCount = counts.GetValueOrDefault(_selectedTodoId, 0);
     }
 
     protected override void OnAfterRender(bool firstRender)
@@ -174,8 +224,9 @@
     {
         if (_phase == PomodoroPhase.Work)
         {
-            await LogPomodoroSessionHandler.HandleAsync();
+            await LogPomodoroSessionHandler.HandleAsync(_selectedTodoId == 0 ? null : _selectedTodoId);
             _sessionsCompletedToday++;
+            await RefreshSelectedTodoSessionCountAsync();
         }
 
         _phase = _phase == PomodoroPhase.Work ? PomodoroPhase.Break : PomodoroPhase.Work;

@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MudBlazor.Services;
 using TodoApp.Components.Pages;
+using TodoApp.Features.Todos.AddTodo;
+using TodoApp.Features.Todos.GetTodos;
 using TodoApp.Features.Todos.PomodoroTimer;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
@@ -19,6 +21,8 @@ public class PomodoroTests : BunitContext
         ctx.Services.AddScoped(_ => db);
         ctx.Services.AddScoped<LogPomodoroSessionHandler>();
         ctx.Services.AddScoped<GetTodaysPomodoroCountHandler>();
+        ctx.Services.AddScoped<GetTodosHandler>();
+        ctx.Services.AddScoped<GetPomodoroSessionCountsHandler>();
         return ctx;
     }
 
@@ -121,5 +125,93 @@ public class PomodoroTests : BunitContext
 
         Assert.Equal("25:00", cut.Find(".pomodoro-countdown").TextContent);
         Assert.NotEmpty(cut.FindAll(".pomodoro-start-btn"));
+    }
+
+    [Fact]
+    public async Task Pomodoro_NoTodosInList_DoesNotRenderTodoSelect()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var ctx = CreateBunitContext(db);
+
+        var cut = RenderPomodoro(ctx);
+
+        Assert.Empty(cut.FindAll(".pomodoro-todo-select"));
+    }
+
+    [Fact]
+    public async Task Pomodoro_WithTodosInList_RendersTodoSelectDefaultingToNoSpecificTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Write report");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderPomodoro(ctx);
+
+        Assert.NotEmpty(cut.FindAll(".pomodoro-todo-select"));
+        Assert.Empty(cut.FindAll(".pomodoro-todo-session-count"));
+    }
+
+    [Fact]
+    public async Task Pomodoro_SelectingTodo_ShowsItsFocusSessionCount()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var todoId = await addHandler.HandleAsync("Write report");
+        var logHandler = new LogPomodoroSessionHandler(db);
+        await logHandler.HandleAsync(todoId);
+        await logHandler.HandleAsync(todoId);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderPomodoro(ctx);
+
+        var select = cut.FindComponent<MudSelect<int>>();
+        await cut.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync(todoId));
+
+        cut.WaitForAssertion(() =>
+            Assert.Contains("2", cut.Find(".pomodoro-todo-session-count").TextContent));
+    }
+
+    [Fact]
+    public async Task Pomodoro_SkipWithTodoSelected_LogsSessionAgainstThatTodoAndUpdatesCount()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var todoId = await addHandler.HandleAsync("Write report");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderPomodoro(ctx);
+
+        var select = cut.FindComponent<MudSelect<int>>();
+        await cut.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync(todoId));
+        cut.WaitForAssertion(() =>
+            Assert.Contains("0", cut.Find(".pomodoro-todo-session-count").TextContent));
+
+        cut.Find(".pomodoro-skip-btn").Click();
+
+        cut.WaitForAssertion(() =>
+            Assert.Contains("1", cut.Find(".pomodoro-todo-session-count").TextContent));
+
+        var counts = await new GetPomodoroSessionCountsHandler(db).HandleAsync([todoId]);
+        Assert.Equal(1, counts[todoId]);
+    }
+
+    [Fact]
+    public async Task Pomodoro_SkipWithNoTodoSelected_LogsSessionWithoutATodoId()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var todoId = await addHandler.HandleAsync("Write report");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderPomodoro(ctx);
+
+        cut.Find(".pomodoro-skip-btn").Click();
+
+        cut.WaitForAssertion(() =>
+            Assert.Contains("Break", cut.Find(".pomodoro-phase-chip").TextContent));
+
+        var counts = await new GetPomodoroSessionCountsHandler(db).HandleAsync([todoId]);
+        Assert.False(counts.ContainsKey(todoId));
     }
 }

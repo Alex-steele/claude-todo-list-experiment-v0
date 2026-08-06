@@ -53,6 +53,7 @@
 @using TodoApp.Features.Todos.Reminders
 @using TodoApp.Features.Todos.TimeTracking
 @using TodoApp.Features.Todos.EstimateAccuracy
+@using TodoApp.Features.Todos.PomodoroTimer
 @inject BlockTodoHandler BlockTodoHandler
 @inject TodayViewHandler TodayViewHandler
 @inject TagStatsHandler TagStatsHandler
@@ -132,6 +133,7 @@
 @inject ReminderMessageHandler ReminderMessageHandler
 @inject StartTimerHandler StartTimerHandler
 @inject StopTimerHandler StopTimerHandler
+@inject GetPomodoroSessionCountsHandler GetPomodoroSessionCountsHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject NavigationManager Nav
@@ -2033,6 +2035,19 @@ else
                                                 @(estimateAccuracy.Status == EstimateAccuracyStatus.OverEstimate ? "⚠ " : "✓ ")@TimeTrackingCalculator.FormatDuration(estimateAccuracy.DeltaSeconds) @(estimateAccuracy.Status == EstimateAccuracyStatus.OverEstimate ? "over" : "under")
                                             </MudChip>
                                         }
+                                        @{
+                                            var pomodoroCount = _pomodoroCounts.GetValueOrDefault(todo.Id, 0);
+                                        }
+                                        @if (pomodoroCount > 0)
+                                        {
+                                            <MudChip T="string" Size="Size.Small"
+                                                     Color="Color.Default"
+                                                     Variant="Variant.Outlined"
+                                                     Class="pomodoro-count-badge"
+                                                     title="Focus sessions logged on this todo">
+                                                🍅 @pomodoroCount
+                                            </MudChip>
+                                        }
                                         @if (isTimerRunning)
                                         {
                                             <MudIconButton
@@ -2749,6 +2764,7 @@ else
     private TodoApp.Features.Todos.QuickAdd.ParseResult NewTitleHints => NaturalLanguageParser.Parse(_newTitle);
 
     private Dictionary<int, List<Subtask>> _subtasks = new();
+    private Dictionary<int, int> _pomodoroCounts = new();
     private int? _expandedSubtasksForTodoId;
     private int? _addingSubtaskForTodoId;
     private string _newSubtaskTitle = string.Empty;
@@ -2948,11 +2964,13 @@ else
             var ids = _todos.Select(t => t.Id).ToList();
             _todoTags = await GetTodoTagsHandler.HandleAsync(ids);
             _subtasks = await GetSubtasksHandler.HandleAsync(ids);
+            _pomodoroCounts = await GetPomodoroSessionCountsHandler.HandleAsync(ids);
         }
         else
         {
             _todoTags = [];
             _subtasks = [];
+            _pomodoroCounts = [];
         }
 
         UpdateTimerTick();
@@ -3867,7 +3885,7 @@ else
 
     private void HandleOpenPomodoro()
     {
-        Nav.NavigateTo("/pomodoro");
+        Nav.NavigateTo($"/pomodoro?listId={_activeListId}");
     }
 
     private async Task HandleToggleReminders()

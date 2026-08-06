@@ -312,5 +312,15 @@ public class Database(string connectionString)
                 CompletedAt TEXT    NOT NULL
             )
             """);
+
+        // Migration: add TodoId column to link a focus session to a specific todo
+        try
+        {
+            await conn.ExecuteAsync("ALTER TABLE PomodoroSessions ADD COLUMN TodoId INTEGER NULL");
+        }
+        catch (SqliteException)
+        {
+            // Column already exists — ignore
+        }
     }
 }

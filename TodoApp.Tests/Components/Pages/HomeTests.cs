@@ -56,6 +56,7 @@ using TodoApp.Features.Todos.Trash;
 using TodoApp.Features.Todos.Reminders;
 using TodoApp.Features.Todos.TimeTracking;
 using TodoApp.Features.Todos.TimeReport;
+using TodoApp.Features.Todos.PomodoroTimer;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -149,6 +150,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<StartTimerHandler>();
         ctx.Services.AddScoped<StopTimerHandler>();
         ctx.Services.AddScoped<TimeReportHandler>();
+        ctx.Services.AddScoped<GetPomodoroSessionCountsHandler>();
         return ctx;
     }
 
@@ -8639,5 +8641,43 @@ public class HomeTests : BunitContext
 
         await cut.WaitForAssertionAsync(() => Assert.Contains("Write report", cut.Markup));
         Assert.Empty(cut.FindAll(".estimate-accuracy-badge"));
+    }
+
+    // Pomodoro session count badge tests
+
+    [Fact]
+    public async Task TodoWithLoggedFocusSessions_ShowsPomodoroCountBadge()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var todoId = await addHandler.HandleAsync("Write report");
+        var logHandler = new LogPomodoroSessionHandler(db);
+        await logHandler.HandleAsync(todoId);
+        await logHandler.HandleAsync(todoId);
+        await logHandler.HandleAsync(todoId);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            var badgeText = cut.Find(".pomodoro-count-badge").TextContent;
+            Assert.Contains("🍅", badgeText);
+            Assert.Contains("3", badgeText);
+        });
+    }
+
+    [Fact]
+    public async Task TodoWithNoFocusSessions_DoesNotShowPomodoroCountBadge()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Write report");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Write report", cut.Markup));
+        Assert.Empty(cut.FindAll(".pomodoro-count-badge"));
     }
 }

@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 107 — [2026-08-06] — Feature: Link Focus Timer Sessions to a Todo
+
+**Description:** The Focus Timer page now has a "which todo are you working on?" dropdown (scoped to the list you opened it from) so a completed Pomodoro work session can be tied to a specific todo instead of just counting toward the day's total. Once a todo has logged focus sessions, it shows a small "🍅 N" badge in the main list next to its time-spent/estimate badges, and the Focus Timer page itself shows a running session count for whichever todo is currently selected.
+
+**Reason for change:** Day 103 added the Pomodoro timer and Day 100/101 added per-todo time tracking, but the two never connected — a focus session only ever incremented a single global "sessions completed today" counter with no way to see which task actually got the focus. Following the app's established pattern of pure per-todo badges (time-spent, estimate-accuracy) and the "querystring-scoped list picker" pattern from `TimeReport.razor`, this closes that gap with a minimal `TodoId` column on `PomodoroSessions` and a new `GetPomodoroSessionCountsHandler`, without touching the existing global daily-count behavior.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 326
+- Lines deleted: 5
+- Tests added: 13
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 106 — [2026-08-05] — Feature: Skip Recurrence
 
 **Description:** Recurring todos now have a small "skip" button next to their recurrence badge. Clicking it advances the due date to the next scheduled occurrence (respecting the same Daily/Weekly/Monthly/Weekday interval rules used when completing a recurring todo) without marking the todo complete or creating a duplicate — useful for "not today, push me to next time" without polluting completion stats.
