@@ -1,0 +1,120 @@
+@page "/priority-matrix"
+@using TodoApp.Features.Todos.GetTodos
+@using TodoApp.Features.Todos.PriorityMatrix
+@using TodoApp.Features.Lists
+@inject GetTodosHandler GetTodosHandler
+@inject GetListsHandler GetListsHandler
+@inject PriorityMatrixHandler PriorityMatrixHandler
+@inject NavigationManager Nav
+
+<PageTitle>Priority Matrix</PageTitle>
+
+<div class="d-flex align-center justify-space-between mb-4">
+    <MudButton
+        StartIcon="@Icons.Material.Filled.ArrowBack"
+        Variant="Variant.Text"
+        Href="/"
+        Class="priority-matrix-back-btn">
+        Back to list
+    </MudButton>
+    <MudText Typo="Typo.h5" Class="priority-matrix-header">Priority Matrix</MudText>
+    @if (_lists is { Count: > 1 })
+    {
+        <MudSelect T="int" Value="_activeListId" ValueChanged="HandleSwitchList" Dense="true" Class="priority-matrix-list-select" Style="max-width: 200px;">
+            @foreach (var list in _lists)
+            {
+                <MudSelectItem T="int" Value="@list.Id">@list.Name</MudSelectItem>
+            }
+        </MudSelect>
+    }
+    else
+    {
+        <div style="width: 120px;"></div>
+    }
+</div>
+
+@if (_result is null)
+{
+    <MudText>Loading…</MudText>
+}
+else if (!_result.HasData)
+{
+    <MudText Color="Color.Secondary" Class="priority-matrix-empty-state" Align="Align.Center">
+        No active todos to prioritize — add some, or mark a todo High priority and give it a due date to see it here.
+    </MudText>
+}
+else
+{
+    <div class="priority-matrix-grid">
+        @foreach (var quadrant in Quadrants)
+        {
+            <div class="priority-matrix-quadrant @quadrant.CssClass">
+                <div class="priority-matrix-quadrant-header">
+                    <span class="priority-matrix-quadrant-title">@quadrant.Title</span>
+                    <span class="priority-matrix-quadrant-count">@quadrant.Todos.Count</span>
+                </div>
+                <div class="priority-matrix-quadrant-hint">@quadrant.Hint</div>
+                @if (quadrant.Todos.Count == 0)
+                {
+                    <div class="priority-matrix-quadrant-empty">Nothing here.</div>
+                }
+                else
+                {
+                    <ul class="priority-matrix-item-list">
+                        @foreach (var todo in quadrant.Todos)
+                        {
+                            <li class="priority-matrix-item">
+                                @todo.Title
+                                @if (todo.DueDate is { } due)
+                                {
+                                    <span class="priority-matrix-item-due">&nbsp;· @due.ToString("MMM d")</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "listId")]
+    public int? ListId { get; set; }
+
+    private record QuadrantView(string Title, string CssClass, string Hint, IReadOnlyList<TodoSummary> Todos);
+
+    private IReadOnlyList<TodoList>? _lists;
+    private int _activeListId = 1;
+    private PriorityMatrixResult? _result;
+
+    private List<QuadrantView> Quadrants => _result is null
+        ? []
+        :
+        [
+            new("Do First", "priority-matrix-quadrant-do-first", "Important and due now or overdue.", _result.UrgentImportant),
+            new("Plan", "priority-matrix-quadrant-plan", "Important, but not due yet.", _result.ImportantNotUrgent),
+            new("Do Quickly", "priority-matrix-quadrant-do-quickly", "Due now or overdue, but not high priority.", _result.UrgentNotImportant),
+            new("Someday", "priority-matrix-quadrant-someday", "Not urgent, not high priority.", _result.NeitherUrgentNorImportant)
+        ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _activeListId = ListId is > 0 ? ListId.Value : 1;
+        _lists = await GetListsHandler.HandleAsync();
+        await LoadMatrixAsync();
+    }
+
+    private async Task LoadMatrixAsync()
+    {
+        var todos = await GetTodosHandler.HandleAsync();
+        _result = PriorityMatrixHandler.Handle(todos, _activeListId);
+    }
+
+    private async Task HandleSwitchList(int listId)
+    {
+        _activeListId = listId;
+        await LoadMatrixAsync();
+    }
+}
