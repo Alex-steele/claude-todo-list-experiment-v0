@@ -1215,6 +1215,15 @@ else
                             title="Focus timer"
                             Class="pomodoro-view-btn" />
                     </MudTooltip>
+                    <MudTooltip Text="Priority matrix">
+                        <MudIconButton
+                            Icon="@Icons.Material.Filled.GridView"
+                            Size="Size.Small"
+                            Color="Color.Default"
+                            OnClick="HandleOpenPriorityMatrix"
+                            title="Priority matrix"
+                            Class="priority-matrix-view-btn" />
+                    </MudTooltip>
                     <MudTooltip Text="@(_remindersEnabled ? "Reminders enabled — click to disable" : "Enable due date reminders")">
                         <MudIconButton
                             Icon="@(_remindersEnabled ? Icons.Material.Filled.NotificationsActive : Icons.Material.Filled.NotificationsNone)"
@@ -3886,6 +3895,11 @@ else
     private void HandleOpenPomodoro()
     {
         Nav.NavigateTo($"/pomodoro?listId={_activeListId}");
+    }
+
+    private void HandleOpenPriorityMatrix()
+    {
+        Nav.NavigateTo($"/priority-matrix?listId={_activeListId}");
     }
 
     private async Task HandleToggleReminders()

@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 108 — [2026-08-06] — Feature: Priority Matrix
+
+**Description:** A new "Priority Matrix" page (reached via a toolbar icon next to Analytics/Calendar) sorts every active todo in the current list into one of four quadrants based on the classic Eisenhower method: "Do First" (high priority, due now or overdue), "Plan" (high priority, not due yet), "Do Quickly" (due now or overdue, but not high priority), and "Someday" (neither). Each quadrant shows a count and the todo titles with their due dates, and the page has the same list-switcher dropdown as Analytics/Time Report.
+
+**Reason for change:** The app already tracks both priority (`SetPriority`) and due dates independently, and separately surfaces them via sorting/filtering, but never combines them into a single "what should I actually work on next" view. A quadrant view is a natural next step that reuses existing data with no schema changes, and follows the established pattern of a pure, DB-free handler (`PriorityMatrixHandler`, modeled on `DayOfWeekStatsHandler`) plus a standalone routed page (like `Analytics.razor`/`TimeReport.razor`) rather than bolting more onto the `Home.razor` toolbar.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 641
+- Lines deleted: 0
+- Tests added: 23
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 107 — [2026-08-06] — Feature: Link Focus Timer Sessions to a Todo
 
 **Description:** The Focus Timer page now has a "which todo are you working on?" dropdown (scoped to the list you opened it from) so a completed Pomodoro work session can be tied to a specific todo instead of just counting toward the day's total. Once a todo has logged focus sessions, it shows a small "🍅 N" badge in the main list next to its time-spent/estimate badges, and the Focus Timer page itself shows a running session count for whichever todo is currently selected.

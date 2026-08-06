@@ -369,6 +369,37 @@ public class HomeTests : BunitContext
     }
 
     [Fact]
+    public async Task PriorityMatrixButton_IsRendered_WhenTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.NotEmpty(cut.FindAll(".priority-matrix-view-btn"));
+    }
+
+    [Fact]
+    public async Task PriorityMatrixButton_NavigatesToPriorityMatrixWithActiveListId()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Some todo");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var priorityMatrixButton = cut.Find(".priority-matrix-view-btn");
+        priorityMatrixButton.Click();
+
+        var nav = ctx.Services.GetRequiredService<NavigationManager>();
+        Assert.Contains("/priority-matrix", nav.Uri);
+        Assert.Contains("listId=1", nav.Uri);
+    }
+
+    [Fact]
     public async Task FilterByCompleted_ShowsOnlyCompletedTodos()
     {
         var db = await TestDatabase.CreateAsync();
