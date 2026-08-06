@@ -153,6 +153,7 @@ builder.Services.AddScoped<StopTimerHandler>();
 builder.Services.AddScoped<TimeReportHandler>();
 builder.Services.AddScoped<LogPomodoroSessionHandler>();
 builder.Services.AddScoped<GetTodaysPomodoroCountHandler>();
+builder.Services.AddScoped<GetPomodoroSessionCountsHandler>();
 
 var app = builder.Build();
 

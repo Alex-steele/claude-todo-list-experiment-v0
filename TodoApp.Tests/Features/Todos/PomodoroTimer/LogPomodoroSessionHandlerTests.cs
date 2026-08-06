@@ -36,4 +36,30 @@ public class LogPomodoroSessionHandlerTests
         var count = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM PomodoroSessions");
         Assert.Equal(3, count);
     }
+
+    [Fact]
+    public async Task HandleAsync_WithTodoId_StoresItOnTheSessionRow()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var handler = new LogPomodoroSessionHandler(db);
+
+        await handler.HandleAsync(42);
+
+        using var conn = db.CreateConnection();
+        var todoId = await conn.QuerySingleAsync<int?>("SELECT TodoId FROM PomodoroSessions");
+        Assert.Equal(42, todoId);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithoutTodoId_StoresNullTodoId()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var handler = new LogPomodoroSessionHandler(db);
+
+        await handler.HandleAsync();
+
+        using var conn = db.CreateConnection();
+        var todoId = await conn.QuerySingleAsync<int?>("SELECT TodoId FROM PomodoroSessions");
+        Assert.Null(todoId);
+    }
 }
