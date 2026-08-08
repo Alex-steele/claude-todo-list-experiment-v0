@@ -54,6 +54,7 @@
 @using TodoApp.Features.Todos.TimeTracking
 @using TodoApp.Features.Todos.EstimateAccuracy
 @using TodoApp.Features.Todos.PomodoroTimer
+@using TodoApp.Features.Todos.Dependencies
 @inject BlockTodoHandler BlockTodoHandler
 @inject TodayViewHandler TodayViewHandler
 @inject TagStatsHandler TagStatsHandler
@@ -134,6 +135,7 @@
 @inject StartTimerHandler StartTimerHandler
 @inject StopTimerHandler StopTimerHandler
 @inject GetPomodoroSessionCountsHandler GetPomodoroSessionCountsHandler
+@inject SetDependencyHandler SetDependencyHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject NavigationManager Nav
@@ -1901,6 +1903,9 @@ else
                             <MudCheckBox
                                 Value="@todo.IsCompleted"
                                 ValueChanged="@(async (bool _) => await HandleToggleComplete(todo.Id))"
+                                Disabled="@IsBlockedByDependency(todo)"
+                                title="@(IsBlockedByDependency(todo) ? $"Blocked by \"{GetDependencyTodo(todo)?.Title}\"" : null)"
+                                Class="todo-complete-checkbox"
                                 Color="Color.Primary" />
                             <div class="flex-grow-1">
                                 @if (_editingTodoId == todo.Id)
@@ -2101,6 +2106,37 @@ else
                                                 ⏸ Waiting for
                                             </MudChip>
                                         }
+                                        @{
+                                            var dependencyTodo = GetDependencyTodo(todo);
+                                        }
+                                        @if (dependencyTodo is not null && !dependencyTodo.IsCompleted)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Outlined"
+                                                     Class="dependency-blocked-badge"
+                                                     title="@($"Blocked until \"{dependencyTodo.Title}\" is completed")"
+                                                     OnClick="@(() => HandleStartSetDependency(todo.Id, todo.DependsOnTodoId))">
+                                                🔗 Blocked by "@dependencyTodo.Title"
+                                            </MudChip>
+                                        }
+                                        else if (todo.DependsOnTodoId.HasValue)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined"
+                                                     Class="dependency-satisfied-badge"
+                                                     title="Dependency completed — this todo is no longer blocked"
+                                                     OnClick="@(() => HandleStartSetDependency(todo.Id, todo.DependsOnTodoId))">
+                                                🔗 Unblocked
+                                            </MudChip>
+                                        }
+                                        @if (!todo.IsCompleted)
+                                        {
+                                            <MudIconButton
+                                                Icon="@Icons.Material.Filled.Link"
+                                                Color="Color.Default"
+                                                Size="Size.Small"
+                                                OnClick="@(() => HandleStartSetDependency(todo.Id, todo.DependsOnTodoId))"
+                                                title="Set dependency"
+                                                Class="todo-set-dependency-btn" />
+                                        }
                                         @if (IsGlobalSearch && todo.ListId != _activeListId)
                                         {
                                             var listName = _lists?.FirstOrDefault(l => l.Id == todo.ListId)?.Name;
@@ -2213,6 +2249,40 @@ else
                                         StartIcon="@Icons.Material.Outlined.CalendarToday"
                                         OnClick="@(() => HandleStartQuickDueDate(todo.Id, null))"
                                         Class="quick-date-set-btn">Set date</MudButton>
+                                }
+                                @if (_settingDependencyForTodoId == todo.Id)
+                                {
+                                    var dependencyEditTodoId = todo.Id;
+                                    <div class="mt-1 quick-dependency-editor">
+                                        <MudSelect
+                                            T="int?"
+                                            @bind-Value="_dependencySelection"
+                                            Label="Depends on"
+                                            Variant="Variant.Outlined"
+                                            Dense="true"
+                                            Style="max-width: 260px;"
+                                            Class="quick-dependency-select">
+                                            <MudSelectItem T="int?" Value="@((int?)null)">None</MudSelectItem>
+                                            @foreach (var candidate in GetDependencyCandidates(todo))
+                                            {
+                                                <MudSelectItem T="int?" Value="@((int?)candidate.Id)">@candidate.Title</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                        <div class="d-flex gap-1 mt-1 align-center">
+                                            <MudButton
+                                                Size="Size.Small"
+                                                Variant="Variant.Filled"
+                                                Color="Color.Primary"
+                                                OnClick="@(async () => await HandleSaveDependency(dependencyEditTodoId))"
+                                                Class="quick-dependency-save-btn">Save</MudButton>
+                                            <MudButton
+                                                Size="Size.Small"
+                                                Variant="Variant.Text"
+                                                Color="Color.Default"
+                                                OnClick="@(() => _settingDependencyForTodoId = null)"
+                                                Class="quick-dependency-cancel-btn">Cancel</MudButton>
+                                        </div>
+                                    </div>
                                 }
                                 @if (_editingNotesForTodoId == todo.Id)
                                 {
@@ -2675,6 +2745,8 @@ else
     private int? _snoozingTodoId;
     private int? _settingDueDateForTodoId;
     private DateTime? _quickDueDateValue;
+    private int? _settingDependencyForTodoId;
+    private int? _dependencySelection;
 
     private TodoStatusFilter _statusFilter = TodoStatusFilter.All;
     private TodoSortOrder _sortOrder = TodoSortOrder.Newest;
@@ -3170,7 +3242,16 @@ else
     private async Task HandleToggleComplete(int id)
     {
         var todo = _todos?.FirstOrDefault(t => t.Id == id);
-        await CompleteTodoHandler.HandleAsync(id);
+
+        try
+        {
+            await CompleteTodoHandler.HandleAsync(id);
+        }
+        catch (ArgumentException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+            return;
+        }
 
         // If completing a recurring todo, spawn the next instance
         if (todo is { Recurrence: not RecurrenceRule.None, IsCompleted: false })
@@ -3179,6 +3260,42 @@ else
             Snackbar.Add($"Next \"{todo.Title}\" scheduled ({todo.Recurrence.ToString().ToLower()})", Severity.Info);
         }
 
+        await LoadTodosAsync();
+    }
+
+    private bool IsBlockedByDependency(TodoSummary todo)
+    {
+        var dependency = GetDependencyTodo(todo);
+        return dependency is not null && !dependency.IsCompleted;
+    }
+
+    private TodoSummary? GetDependencyTodo(TodoSummary todo)
+        => todo.DependsOnTodoId.HasValue ? _todos?.FirstOrDefault(t => t.Id == todo.DependsOnTodoId.Value) : null;
+
+    private IEnumerable<TodoSummary> GetDependencyCandidates(TodoSummary todo)
+        => _todos?.Where(t => t.ListId == todo.ListId && t.Id != todo.Id) ?? [];
+
+    private void HandleStartSetDependency(int todoId, int? currentDependsOnTodoId)
+    {
+        _settingDependencyForTodoId = todoId;
+        _dependencySelection = currentDependsOnTodoId;
+        _settingDueDateForTodoId = null;
+        _snoozingTodoId = null;
+    }
+
+    private async Task HandleSaveDependency(int todoId)
+    {
+        try
+        {
+            await SetDependencyHandler.HandleAsync(todoId, _dependencySelection);
+        }
+        catch (ArgumentException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            return;
+        }
+
+        _settingDependencyForTodoId = null;
         await LoadTodosAsync();
     }
 

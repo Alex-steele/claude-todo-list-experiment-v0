@@ -19,6 +19,7 @@ public class DeleteTodoHandler(Database db)
         if (snapshotted == 0)
             throw new ArgumentException($"Todo with id {id} not found.");
 
+        await conn.ExecuteAsync("UPDATE Todos SET DependsOnTodoId = NULL WHERE DependsOnTodoId = @Id", new { Id = id });
         await conn.ExecuteAsync("DELETE FROM Todos WHERE Id = @Id", new { Id = id });
     }
 }

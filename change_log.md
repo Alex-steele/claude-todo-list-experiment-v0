@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 109 — [2026-08-08] — Feature: Todo Dependencies
+
+**Description:** A todo can now be marked as depending on another todo in the same list via a new link icon on each row. While the dependency is incomplete, the dependent todo shows a "🔗 Blocked by ..." badge and its complete checkbox is disabled; once the dependency is completed the badge flips to "🔗 Unblocked" and the checkbox re-enables. Deleting, bulk-deleting, or clearing-completed a todo that others depend on automatically clears the dangling reference.
+
+**Reason for change:** The app already has a manual, semantics-free "blocked / waiting for" flag (Day 73), but nothing that ties completion order to another real todo. `SetDependencyHandler` (new `Features/Todos/Dependencies` slice) enforces no self-reference and no circular chains, and `CompleteTodoHandler`/`BulkOperationsHandler.CompleteAsync` now refuse to complete a todo whose dependency isn't done yet — turning an informal "waiting for" note into an enforced prerequisite, a natural next step now that priority, due dates, and subtasks already exist as building blocks.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 628
+- Lines deleted: 6
+- Tests added: 21
+- Tests removed: 0
+- Test failures before green: 3
+
 ## Day 108 — [2026-08-06] — Feature: Priority Matrix
 
 **Description:** A new "Priority Matrix" page (reached via a toolbar icon next to Analytics/Calendar) sorts every active todo in the current list into one of four quadrants based on the classic Eisenhower method: "Do First" (high priority, due now or overdue), "Plan" (high priority, not due yet), "Do Quickly" (due now or overdue, but not high priority), and "Someday" (neither). Each quadrant shows a count and the todo titles with their due dates, and the page has the same list-switcher dropdown as Analytics/Time Report.

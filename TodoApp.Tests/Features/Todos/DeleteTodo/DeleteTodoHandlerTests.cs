@@ -1,5 +1,6 @@
 using TodoApp.Features.Todos.AddTodo;
 using TodoApp.Features.Todos.DeleteTodo;
+using TodoApp.Features.Todos.Dependencies;
 using TodoApp.Features.Todos.GetTodos;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
@@ -62,5 +63,24 @@ public class DeleteTodoHandlerTests
 
         var todos = await getHandler.HandleAsync();
         Assert.Empty(todos);
+    }
+
+    [Fact]
+    public async Task HandleAsync_DeletingDependency_ClearsDependentsReference()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var deleteHandler = new DeleteTodoHandler(db);
+        var setDependencyHandler = new SetDependencyHandler(db);
+        var getHandler = new GetTodosHandler(db);
+
+        var dependentId = await addHandler.HandleAsync("Dependent todo");
+        var dependencyId = await addHandler.HandleAsync("Dependency todo");
+        await setDependencyHandler.HandleAsync(dependentId, dependencyId);
+
+        await deleteHandler.HandleAsync(dependencyId);
+
+        var todo = (await getHandler.HandleAsync()).Single(t => t.Id == dependentId);
+        Assert.Null(todo.DependsOnTodoId);
     }
 }

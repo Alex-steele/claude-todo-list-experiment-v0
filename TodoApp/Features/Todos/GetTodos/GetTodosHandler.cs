@@ -7,15 +7,15 @@ using TodoApp.Infrastructure;
 
 namespace TodoApp.Features.Todos.GetTodos;
 
-public record TodoSummary(int Id, string Title, bool IsCompleted, DateTime CreatedAt, TodoPriority Priority, DateTime? DueDate, bool IsPinned = false, string? Notes = null, RecurrenceRule Recurrence = RecurrenceRule.None, int ListId = 1, DateTime? CompletedAt = null, TimeEstimate TimeEstimate = TimeEstimate.None, TodoColorLabel ColorLabel = TodoColorLabel.None, bool IsBlocked = false, string? Url = null, int TimeSpentSeconds = 0, DateTime? TimerStartedAt = null);
+public record TodoSummary(int Id, string Title, bool IsCompleted, DateTime CreatedAt, TodoPriority Priority, DateTime? DueDate, bool IsPinned = false, string? Notes = null, RecurrenceRule Recurrence = RecurrenceRule.None, int ListId = 1, DateTime? CompletedAt = null, TimeEstimate TimeEstimate = TimeEstimate.None, TodoColorLabel ColorLabel = TodoColorLabel.None, bool IsBlocked = false, string? Url = null, int TimeSpentSeconds = 0, DateTime? TimerStartedAt = null, int? DependsOnTodoId = null);
 
 public class GetTodosHandler(Database db)
 {
     public async Task<IReadOnlyList<TodoSummary>> HandleAsync()
     {
         using var conn = db.CreateConnection();
-        var rows = await conn.QueryAsync<(int Id, string Title, int IsCompleted, string CreatedAt, int Priority, string? DueDate, int IsPinned, string? Notes, int Recurrence, int ListId, string? CompletedAt, int TimeEstimate, int ColorLabel, int IsBlocked, string? Url, int TimeSpentSeconds, string? TimerStartedAt)>(
-            "SELECT Id, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate, ColorLabel, IsBlocked, Url, TimeSpentSeconds, TimerStartedAt FROM Todos ORDER BY SortOrder ASC, Id DESC");
+        var rows = await conn.QueryAsync<(int Id, string Title, int IsCompleted, string CreatedAt, int Priority, string? DueDate, int IsPinned, string? Notes, int Recurrence, int ListId, string? CompletedAt, int TimeEstimate, int ColorLabel, int IsBlocked, string? Url, int TimeSpentSeconds, string? TimerStartedAt, int? DependsOnTodoId)>(
+            "SELECT Id, Title, IsCompleted, CreatedAt, Priority, DueDate, IsPinned, Notes, Recurrence, ListId, CompletedAt, TimeEstimate, ColorLabel, IsBlocked, Url, TimeSpentSeconds, TimerStartedAt, DependsOnTodoId FROM Todos ORDER BY SortOrder ASC, Id DESC");
 
         return rows
             .Select(r => new TodoSummary(
@@ -37,7 +37,8 @@ public class GetTodosHandler(Database db)
                 r.TimeSpentSeconds,
                 // RoundtripKind keeps this Kind=Utc so subtracting from DateTime.UtcNow in
                 // TimeTrackingCalculator.GetElapsedSeconds doesn't silently go negative outside UTC.
-                r.TimerStartedAt is not null ? DateTime.Parse(r.TimerStartedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind) : (DateTime?)null))
+                r.TimerStartedAt is not null ? DateTime.Parse(r.TimerStartedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind) : (DateTime?)null,
+                r.DependsOnTodoId))
             .ToList();
     }
 }

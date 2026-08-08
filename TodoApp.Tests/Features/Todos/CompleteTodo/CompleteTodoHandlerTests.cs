@@ -1,6 +1,7 @@
 using TodoApp.Features.Todos.AddTodo;
 using Xunit;
 using TodoApp.Features.Todos.CompleteTodo;
+using TodoApp.Features.Todos.Dependencies;
 using TodoApp.Features.Todos.GetTodos;
 using TodoApp.Tests.Infrastructure;
 
@@ -114,5 +115,65 @@ public class CompleteTodoHandlerTests
 
         var todo = (await getHandler.HandleAsync()).Single(t => t.Id == id);
         Assert.Null(todo.CompletedAt);
+    }
+
+    [Fact]
+    public async Task HandleAsync_DependencyIncomplete_ThrowsAndDoesNotComplete()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var setDependencyHandler = new SetDependencyHandler(db);
+        var getHandler = new GetTodosHandler(db);
+
+        var blockedId = await addHandler.HandleAsync("Blocked todo");
+        var blockingId = await addHandler.HandleAsync("Blocking todo");
+        await setDependencyHandler.HandleAsync(blockedId, blockingId);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => completeHandler.HandleAsync(blockedId));
+
+        var todo = (await getHandler.HandleAsync()).Single(t => t.Id == blockedId);
+        Assert.False(todo.IsCompleted);
+    }
+
+    [Fact]
+    public async Task HandleAsync_DependencyCompleted_AllowsCompletion()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var setDependencyHandler = new SetDependencyHandler(db);
+        var getHandler = new GetTodosHandler(db);
+
+        var blockedId = await addHandler.HandleAsync("Blocked todo");
+        var blockingId = await addHandler.HandleAsync("Blocking todo");
+        await setDependencyHandler.HandleAsync(blockedId, blockingId);
+
+        await completeHandler.HandleAsync(blockingId);
+        await completeHandler.HandleAsync(blockedId);
+
+        var todo = (await getHandler.HandleAsync()).Single(t => t.Id == blockedId);
+        Assert.True(todo.IsCompleted);
+    }
+
+    [Fact]
+    public async Task HandleAsync_UncompletingBlockedTodo_DoesNotThrow()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var setDependencyHandler = new SetDependencyHandler(db);
+        var getHandler = new GetTodosHandler(db);
+
+        var blockedId = await addHandler.HandleAsync("Blocked todo");
+        var blockingId = await addHandler.HandleAsync("Blocking todo");
+        await completeHandler.HandleAsync(blockingId);
+        await completeHandler.HandleAsync(blockedId); // completes while unblocked
+        await setDependencyHandler.HandleAsync(blockedId, blockingId);
+
+        await completeHandler.HandleAsync(blockedId); // un-complete should still work even though a dependency now exists
+
+        var todo = (await getHandler.HandleAsync()).Single(t => t.Id == blockedId);
+        Assert.False(todo.IsCompleted);
     }
 }

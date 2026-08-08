@@ -4,6 +4,7 @@ using TodoApp.Features.Todos.AddTodo;
 using TodoApp.Features.Todos.BulkOperations;
 using TodoApp.Features.Todos.ColorLabel;
 using TodoApp.Features.Todos.CompleteTodo;
+using TodoApp.Features.Todos.Dependencies;
 using TodoApp.Features.Todos.GetTodos;
 using TodoApp.Features.Todos.Tags;
 using TodoApp.Features.Todos.TimeEstimates;
@@ -32,6 +33,24 @@ public class BulkOperationsHandlerTests
         Assert.True(todos.First(t => t.Id == id1).IsCompleted);
         Assert.True(todos.First(t => t.Id == id2).IsCompleted);
         Assert.False(todos.First(t => t.Id == id3).IsCompleted);
+    }
+
+    [Fact]
+    public async Task CompleteAsync_SkipsTodoWithIncompleteDependency()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var blockedId = await addHandler.HandleAsync("Blocked");
+        var blockingId = await addHandler.HandleAsync("Blocking");
+        await new SetDependencyHandler(db).HandleAsync(blockedId, blockingId);
+
+        var bulkHandler = new BulkOperationsHandler(db);
+        await bulkHandler.CompleteAsync([blockedId, blockingId]);
+
+        var getHandler = new GetTodosHandler(db);
+        var todos = await getHandler.HandleAsync();
+        Assert.False(todos.First(t => t.Id == blockedId).IsCompleted);
+        Assert.True(todos.First(t => t.Id == blockingId).IsCompleted);
     }
 
     [Fact]

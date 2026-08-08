@@ -1,6 +1,7 @@
 using TodoApp.Features.Todos.AddTodo;
 using TodoApp.Features.Todos.ClearCompleted;
 using TodoApp.Features.Todos.CompleteTodo;
+using TodoApp.Features.Todos.Dependencies;
 using TodoApp.Features.Todos.GetTodos;
 using TodoApp.Features.Todos.Trash;
 using TodoApp.Tests.Infrastructure;
@@ -134,5 +135,27 @@ public class ClearCompletedHandlerTests
         var trashed = await getTrashed.HandleAsync();
         Assert.Equal(2, trashed.Count);
         Assert.All(trashed, t => Assert.True(t.IsCompleted));
+    }
+
+    [Fact]
+    public async Task ClearCompleted_DependentTodoOnDeletedDependency_HasReferenceCleared()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var complete = new CompleteTodoHandler(db);
+        var handler = new ClearCompletedHandler(db);
+        var get = new GetTodosHandler(db);
+
+        var dependencyId = await add.HandleAsync("Finish first");
+        var dependentId = await add.HandleAsync("Then this");
+        await new SetDependencyHandler(db).HandleAsync(dependentId, dependencyId);
+        await complete.HandleAsync(dependencyId);
+
+        await handler.HandleAsync();
+
+        var remaining = await get.HandleAsync();
+        var dependent = Assert.Single(remaining);
+        Assert.Equal(dependentId, dependent.Id);
+        Assert.Null(dependent.DependsOnTodoId);
     }
 }
