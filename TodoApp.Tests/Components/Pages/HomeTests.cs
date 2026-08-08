@@ -57,6 +57,7 @@ using TodoApp.Features.Todos.Reminders;
 using TodoApp.Features.Todos.TimeTracking;
 using TodoApp.Features.Todos.TimeReport;
 using TodoApp.Features.Todos.PomodoroTimer;
+using TodoApp.Features.Todos.Dependencies;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -151,6 +152,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<StopTimerHandler>();
         ctx.Services.AddScoped<TimeReportHandler>();
         ctx.Services.AddScoped<GetPomodoroSessionCountsHandler>();
+        ctx.Services.AddScoped<SetDependencyHandler>();
         return ctx;
     }
 
@@ -8710,5 +8712,175 @@ public class HomeTests : BunitContext
 
         await cut.WaitForAssertionAsync(() => Assert.Contains("Write report", cut.Markup));
         Assert.Empty(cut.FindAll(".pomodoro-count-badge"));
+    }
+
+    // ---- Todo Dependencies (Day 109) ----
+
+    [Fact]
+    public async Task DependencyLinkButton_RenderedForIncompleteTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Write report");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Write report", cut.Markup));
+        Assert.NotEmpty(cut.FindAll(".todo-set-dependency-btn"));
+    }
+
+    [Fact]
+    public async Task DependencyLinkButton_NotRendered_ForCompletedTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Done task");
+        await completeHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Done task", cut.Markup));
+        Assert.Empty(cut.FindAll(".todo-set-dependency-btn"));
+    }
+
+    [Fact]
+    public async Task DependencyPicker_OpensWhenLinkButtonClicked()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task A");
+        await addHandler.HandleAsync("Task B");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+        await cut.WaitForAssertionAsync(() => Assert.NotEmpty(cut.FindAll(".todo-set-dependency-btn")));
+
+        cut.FindAll(".todo-set-dependency-btn")[0].Click();
+
+        Assert.Contains("quick-dependency-editor", cut.Markup);
+    }
+
+    [Fact]
+    public async Task DependencyPicker_ExcludesTodoItself_FromCandidates()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Only task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+        await cut.WaitForAssertionAsync(() => Assert.NotEmpty(cut.FindAll(".todo-set-dependency-btn")));
+
+        cut.FindAll(".todo-set-dependency-btn")[0].Click();
+
+        var select = cut.FindComponent<MudSelect<int?>>();
+        var items = select.FindComponents<MudSelectItem<int?>>();
+        // Only the "None" item should be present — a todo cannot depend on itself.
+        Assert.Single(items);
+    }
+
+    [Fact]
+    public async Task SettingDependency_ShowsBlockedBadgeAndDisablesCheckbox()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var blockedId = await addHandler.HandleAsync("Write report");
+        await addHandler.HandleAsync("Gather data");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Gather data", cut.Markup));
+
+        var blockedRowBtn = cut.FindAll(".todo-set-dependency-btn")
+            .First(b => b.Closest(".mud-list-item")?.TextContent.Contains("Write report") == true);
+        blockedRowBtn.Click();
+
+        var dependencyId = (await new GetTodosHandler(db).HandleAsync()).Single(t => t.Title == "Gather data").Id;
+        var select = cut.FindComponent<MudSelect<int?>>();
+        await select.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync(dependencyId));
+        cut.Find(".quick-dependency-save-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            Assert.Contains("dependency-blocked-badge", cut.Markup);
+            Assert.Contains("Blocked by", cut.Markup);
+        });
+
+        var blockedCheckbox = cut.FindAll(".todo-complete-checkbox input[type=checkbox]")
+            .First(i => i.Closest(".mud-list-item")?.TextContent.Contains("Write report") == true);
+        Assert.True(blockedCheckbox.HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task DependencySatisfied_ShowsUnblockedBadgeAndEnablesCheckbox()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var dependentId = await addHandler.HandleAsync("Write report");
+        var dependencyId = await addHandler.HandleAsync("Gather data");
+        await new SetDependencyHandler(db).HandleAsync(dependentId, dependencyId);
+        await completeHandler.HandleAsync(dependencyId);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() => Assert.Contains("dependency-satisfied-badge", cut.Markup));
+
+        var dependentCheckbox = cut.FindAll(".todo-complete-checkbox input[type=checkbox]")
+            .First(i => i.Closest(".mud-list-item")?.TextContent.Contains("Write report") == true);
+        Assert.False(dependentCheckbox.HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task ClearingDependency_RemovesBlockedBadge()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var dependentId = await addHandler.HandleAsync("Write report");
+        var dependencyId = await addHandler.HandleAsync("Gather data");
+        await new SetDependencyHandler(db).HandleAsync(dependentId, dependencyId);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+        await cut.WaitForAssertionAsync(() => Assert.Contains("dependency-blocked-badge", cut.Markup));
+
+        var linkBtn = cut.FindAll(".todo-set-dependency-btn")
+            .First(b => b.Closest(".mud-list-item")?.TextContent.Contains("Write report") == true);
+        linkBtn.Click();
+
+        var select = cut.FindComponent<MudSelect<int?>>();
+        await select.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync((int?)null));
+        cut.Find(".quick-dependency-save-btn").Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            Assert.DoesNotContain("dependency-blocked-badge", cut.Markup);
+            Assert.DoesNotContain("dependency-satisfied-badge", cut.Markup);
+        });
+    }
+
+    [Fact]
+    public async Task DependencyPicker_CancelButton_ClosesEditorWithoutSaving()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task A");
+        await addHandler.HandleAsync("Task B");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+        await cut.WaitForAssertionAsync(() => Assert.NotEmpty(cut.FindAll(".todo-set-dependency-btn")));
+
+        cut.FindAll(".todo-set-dependency-btn")[0].Click();
+        Assert.Contains("quick-dependency-editor", cut.Markup);
+
+        cut.Find(".quick-dependency-cancel-btn").Click();
+
+        Assert.DoesNotContain("quick-dependency-editor", cut.Markup);
+        Assert.DoesNotContain("dependency-blocked-badge", cut.Markup);
     }
 }

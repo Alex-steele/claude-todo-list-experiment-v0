@@ -13,7 +13,12 @@ public class BulkOperationsHandler(Database db)
         if (ids.Count == 0) return;
         using var conn = db.CreateConnection();
         await conn.ExecuteAsync(
-            "UPDATE Todos SET IsCompleted = 1 WHERE Id IN @Ids",
+            """
+            UPDATE Todos SET IsCompleted = 1
+            WHERE Id IN @Ids
+              AND (DependsOnTodoId IS NULL
+                   OR (SELECT IsCompleted FROM Todos AS dep WHERE dep.Id = Todos.DependsOnTodoId) = 1)
+            """,
             new { Ids = ids });
     }
 
@@ -29,6 +34,9 @@ public class BulkOperationsHandler(Database db)
             FROM Todos WHERE Id IN @Ids
             """, new { Ids = ids, DeletedAt = deletedAt });
 
+        await conn.ExecuteAsync(
+            "UPDATE Todos SET DependsOnTodoId = NULL WHERE DependsOnTodoId IN @Ids",
+            new { Ids = ids });
         await conn.ExecuteAsync(
             "DELETE FROM Todos WHERE Id IN @Ids",
             new { Ids = ids });

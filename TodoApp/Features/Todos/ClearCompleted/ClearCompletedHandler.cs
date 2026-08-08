@@ -37,6 +37,8 @@ public class ClearCompletedHandler(Database db)
             FROM Todos WHERE IsCompleted = 1
             """, new { DeletedAt = deletedAt });
 
+        await conn.ExecuteAsync(
+            "UPDATE Todos SET DependsOnTodoId = NULL WHERE DependsOnTodoId IN (SELECT Id FROM Todos WHERE IsCompleted = 1)");
         await conn.ExecuteAsync("DELETE FROM Todos WHERE IsCompleted = 1");
         return completed;
     }
