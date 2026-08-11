@@ -58,6 +58,7 @@ using TodoApp.Features.Todos.TimeTracking;
 using TodoApp.Features.Todos.TimeReport;
 using TodoApp.Features.Todos.PomodoroTimer;
 using TodoApp.Features.Todos.Dependencies;
+using TodoApp.Features.Todos.SuggestNext;
 using TodoApp.Tests.Infrastructure;
 using Xunit;
 
@@ -153,6 +154,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<TimeReportHandler>();
         ctx.Services.AddScoped<GetPomodoroSessionCountsHandler>();
         ctx.Services.AddScoped<SetDependencyHandler>();
+        ctx.Services.AddScoped<SuggestNextTodoHandler>();
         return ctx;
     }
 
@@ -6314,6 +6316,161 @@ public class HomeTests : BunitContext
 
         var bannerMarkup = cut.Find(".pick-for-me-banner").InnerHtml;
         Assert.Contains("Unique task title", bannerMarkup);
+    }
+
+    // --- Suggest next ---
+
+    [Fact]
+    public async Task SuggestNext_Button_IsRendered_WhenActiveTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Active task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("suggest-next-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SuggestNext_Button_IsNotRendered_WhenNoActiveTodosExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var completeHandler = new CompleteTodoHandler(db);
+        var id = await addHandler.HandleAsync("Only task");
+        await completeHandler.HandleAsync(id);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("suggest-next-btn", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SuggestNext_Click_ShowsBannerWithSuggestedTodoAndReason()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Unique suggested title");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".suggest-next-btn").Click();
+
+        Assert.Contains("suggest-next-banner", cut.Markup);
+        Assert.Contains("Do this next:", cut.Markup);
+        Assert.Contains("Unique suggested title", cut.Markup);
+        Assert.Contains("oldest", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SuggestNext_DismissButton_HidesBanner()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("My task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".suggest-next-btn").Click();
+        Assert.Contains("suggest-next-banner", cut.Markup);
+
+        cut.Find(".suggest-next-dismiss-btn").Click();
+        Assert.DoesNotContain("suggest-next-banner", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SuggestNext_SuggestedTodo_HasHighlightClass()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Task to suggest");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".suggest-next-btn").Click();
+
+        Assert.Contains("suggested-todo", cut.Markup);
+    }
+
+    [Fact]
+    public async Task SuggestNext_PrefersOverdueHighPriorityTodo_OverOrdinaryTodo()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var setPriority = new SetPriorityHandler(db);
+        var setDueDate = new SetDueDateHandler(db);
+
+        await addHandler.HandleAsync("Ordinary task");
+        var urgentId = await addHandler.HandleAsync("Urgent task");
+        await setPriority.HandleAsync(urgentId, TodoPriority.High);
+        await setDueDate.HandleAsync(urgentId, DateTime.Today.AddDays(-1));
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Urgent task", cut.Markup));
+
+        cut.Find(".suggest-next-btn").Click();
+
+        var bannerMarkup = cut.Find(".suggest-next-banner").InnerHtml;
+        Assert.Contains("Urgent task", bannerMarkup);
+        Assert.Contains("Overdue", bannerMarkup);
+        Assert.Contains("high priority", bannerMarkup);
+    }
+
+    [Fact]
+    public async Task SuggestNext_SkipsTodoBlockedByIncompleteDependency()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var setDependency = new SetDependencyHandler(db);
+        var setPriority = new SetPriorityHandler(db);
+
+        var blockedId = await addHandler.HandleAsync("Blocked but high priority");
+        var prerequisiteId = await addHandler.HandleAsync("Prerequisite task");
+        await setPriority.HandleAsync(blockedId, TodoPriority.High);
+        await setDependency.HandleAsync(blockedId, prerequisiteId);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Prerequisite task", cut.Markup));
+
+        cut.Find(".suggest-next-btn").Click();
+
+        var bannerMarkup = cut.Find(".suggest-next-banner").InnerHtml;
+        Assert.DoesNotContain("Blocked but high priority", bannerMarkup);
+        Assert.Contains("Prerequisite task", bannerMarkup);
+    }
+
+    [Fact]
+    public async Task SuggestNext_NoUnblockedCandidates_ShowsNoBanner()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        var setDependency = new SetDependencyHandler(db);
+        var blockTodo = new BlockTodoHandler(db);
+
+        // Todo A is only blocked via its dependency (so it stays visible in the
+        // default list view, which hides manually-blocked todos entirely), while
+        // its prerequisite, Todo B, is itself manually blocked — leaving no
+        // suggestible candidate anywhere in the list.
+        var visibleId = await addHandler.HandleAsync("Todo A (dependency-blocked)");
+        var prerequisiteId = await addHandler.HandleAsync("Todo B (manually blocked)");
+        await setDependency.HandleAsync(visibleId, prerequisiteId);
+        await blockTodo.HandleAsync(prerequisiteId);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Todo A (dependency-blocked)", cut.Markup));
+
+        cut.Find(".suggest-next-btn").Click();
+
+        Assert.DoesNotContain("suggest-next-banner", cut.Markup);
     }
 
     // --- Urgency banner ---
