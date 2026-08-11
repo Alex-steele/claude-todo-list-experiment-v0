@@ -55,6 +55,7 @@
 @using TodoApp.Features.Todos.EstimateAccuracy
 @using TodoApp.Features.Todos.PomodoroTimer
 @using TodoApp.Features.Todos.Dependencies
+@using TodoApp.Features.Todos.SuggestNext
 @inject BlockTodoHandler BlockTodoHandler
 @inject TodayViewHandler TodayViewHandler
 @inject TagStatsHandler TagStatsHandler
@@ -136,6 +137,7 @@
 @inject StopTimerHandler StopTimerHandler
 @inject GetPomodoroSessionCountsHandler GetPomodoroSessionCountsHandler
 @inject SetDependencyHandler SetDependencyHandler
+@inject SuggestNextTodoHandler SuggestNextTodoHandler
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject NavigationManager Nav
@@ -1160,6 +1162,16 @@ else
                             Class="pick-for-me-btn">
                             Pick for me
                         </MudButton>
+                        <MudButton
+                            Variant="Variant.Outlined"
+                            Color="Color.Primary"
+                            Size="Size.Small"
+                            StartIcon="@Icons.Material.Filled.Lightbulb"
+                            OnClick="HandleSuggestNext"
+                            title="Suggest the most urgent, unblocked todo to work on next"
+                            Class="suggest-next-btn">
+                            Suggest next
+                        </MudButton>
                     }
                 </div>
                 <div class="d-flex align-center gap-1">
@@ -1841,6 +1853,27 @@ else
                                OnClick="@(() => _pickedTodoId = null)"
                                title="Dismiss"
                                Class="pick-for-me-dismiss-btn" />
+            </MudPaper>
+        }
+    }
+
+    @if (_suggestedTodoId.HasValue)
+    {
+        var suggested = _todos?.FirstOrDefault(t => t.Id == _suggestedTodoId.Value && !t.IsCompleted);
+        @if (suggested is not null)
+        {
+            <MudPaper Elevation="0" Class="pa-3 mb-3 d-flex align-center gap-2 suggest-next-banner"
+                      Style="background: var(--mud-palette-primary-lighten); border: 1px solid var(--mud-palette-primary); border-radius: 8px;">
+                <MudIcon Icon="@Icons.Material.Filled.Lightbulb" Color="Color.Primary" Size="Size.Small" />
+                <MudText Typo="Typo.body2" Color="Color.Primary" Class="suggest-next-title">
+                    <strong>Do this next:</strong> @suggested.Title
+                    <span class="suggest-next-reason">(@_suggestedReason)</span>
+                </MudText>
+                <MudSpacer />
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Primary" Size="Size.Small"
+                               OnClick="@(() => _suggestedTodoId = null)"
+                               title="Dismiss"
+                               Class="suggest-next-dismiss-btn" />
             </MudPaper>
         }
     }
@@ -2817,6 +2850,8 @@ else
     private int _goalStreak;
 
     private int? _pickedTodoId;
+    private int? _suggestedTodoId;
+    private string? _suggestedReason;
 
     private bool _dismissedUrgencyBanner;
     private bool _dismissedStreakNudge;
@@ -3311,6 +3346,7 @@ else
         var parts = new List<string>();
         if (_dragOverId == todo.Id && _sortOrder == TodoSortOrder.Manual) parts.Add("drag-over");
         if (_pickedTodoId == todo.Id) parts.Add("picked-todo");
+        if (_suggestedTodoId == todo.Id) parts.Add("suggested-todo");
         if (_focusedTodoId == todo.Id) parts.Add("keyboard-focused-todo");
         return string.Join(" ", parts);
     }
@@ -3322,6 +3358,8 @@ else
             : string.Empty;
         if (_pickedTodoId == todo.Id)
             style += " outline: 2px solid var(--mud-palette-secondary); outline-offset: -2px; border-radius: 4px;";
+        if (_suggestedTodoId == todo.Id)
+            style += " outline: 2px solid var(--mud-palette-primary); outline-offset: -2px; border-radius: 4px;";
         if (_focusedTodoId == todo.Id)
             style += " outline: 2px solid var(--mud-palette-primary); outline-offset: -2px; border-radius: 4px; background: var(--mud-palette-action-hover);";
         return style;
@@ -3793,6 +3831,17 @@ else
         var activeTodos = DisplayedTodos.Where(t => !t.IsCompleted).ToList();
         var picked = PickRandomTodoHandler.Handle(activeTodos, _pickedTodoId);
         _pickedTodoId = picked?.Id;
+    }
+
+    private void HandleSuggestNext()
+    {
+        var suggestion = SuggestNextTodoHandler.Handle(_todos ?? [], _activeListId);
+        _suggestedTodoId = suggestion?.Todo.Id;
+        _suggestedReason = suggestion?.Reason;
+        if (suggestion is null)
+        {
+            Snackbar.Add("Nothing to suggest — no unblocked todos left in this list.", Severity.Info);
+        }
     }
 
     private async Task HandleCopyWeeklySummary()
@@ -4396,6 +4445,7 @@ else
         _stalenessFilter = TodoStalenessFilter.Any;
         _isFocusMode = false;
         _pickedTodoId = null;
+        _suggestedTodoId = null;
         _dismissedUrgencyBanner = false;
         _dismissedStreakNudge = false;
         _blockedFilter = false;
@@ -4409,6 +4459,7 @@ else
         _isTrashView = false;
         _isFocusMode = false;
         _pickedTodoId = null;
+        _suggestedTodoId = null;
     }
 
     private void HandleSwitchToTrashView()
@@ -4417,6 +4468,7 @@ else
         _isTodayView = false;
         _isFocusMode = false;
         _pickedTodoId = null;
+        _suggestedTodoId = null;
     }
 
     private async Task HandleRestoreFromTrash(int trashId)

@@ -51,6 +51,8 @@ using TodoApp.Features.Todos.TimeTracking;
 using TodoApp.Features.Todos.TimeReport;
 using TodoApp.Features.Todos.PomodoroTimer;
 using TodoApp.Features.Todos.PriorityMatrix;
+using TodoApp.Features.Todos.Dependencies;
+using TodoApp.Features.Todos.SuggestNext;
 using TodoApp.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -156,6 +158,8 @@ builder.Services.AddScoped<LogPomodoroSessionHandler>();
 builder.Services.AddScoped<GetTodaysPomodoroCountHandler>();
 builder.Services.AddScoped<GetPomodoroSessionCountsHandler>();
 builder.Services.AddScoped<PriorityMatrixHandler>();
+builder.Services.AddScoped<SetDependencyHandler>();
+builder.Services.AddScoped<SuggestNextTodoHandler>();
 
 var app = builder.Build();
 

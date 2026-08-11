@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 110 — [2026-08-11] — Feature: Suggest Next Todo
+
+**Description:** A new "Suggest next" toolbar button (next to "Pick for me") picks a single todo to work on next, using real urgency signals instead of a random pick: it prefers overdue todos, then todos due today, then high priority, then the oldest unstarted todo, and it skips anything manually blocked or blocked by an incomplete dependency. The suggestion appears as a dismissible banner ("Do this next: ... (overdue and high priority)") and the todo itself gets a highlighted outline in the list.
+
+**Reason for change:** Day 87's "Pick for me" already offers a random suggestion, but a real user wants their most urgent unblocked task, not a coin flip — and the app already has all the signals needed (priority from Day 108, due dates, and the Day 109 dependency graph) sitting unused for this purpose. `SuggestNextTodoHandler` is a new pure, DB-free handler (`Features/Todos/SuggestNext`, modeled on the existing `PriorityMatrixHandler`/`DayOfWeekStatsHandler` pattern) that layers dependency-aware filtering and a priority/due-date ranking on top of the same `TodoSummary` data "Pick for me" already reads.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 454
+- Lines deleted: 0
+- Tests added: 21
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 109 — [2026-08-08] — Feature: Todo Dependencies
 
 **Description:** A todo can now be marked as depending on another todo in the same list via a new link icon on each row. While the dependency is incomplete, the dependent todo shows a "🔗 Blocked by ..." badge and its complete checkbox is disabled; once the dependency is completed the badge flips to "🔗 Unblocked" and the checkbox re-enables. Deleting, bulk-deleting, or clearing-completed a todo that others depend on automatically clears the dangling reference.
