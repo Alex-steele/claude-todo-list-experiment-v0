@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 111 — [2026-09-17] — Feature: Assign Todo to Collaborator
+
+**Description:** Each todo now has an "Assign to" person icon that opens a small inline editor for typing a free-text assignee name. Once set, the todo shows a person chip with the assignee's name beneath its title, and the assignee icon fills in to indicate the todo is assigned; an "Unassign" button clears it. The search box now also matches todos by assignee name, not just title and notes.
+
+**Reason for change:** The app has grown many single-user productivity features (priority, due dates, dependencies, suggestions) but nothing that acknowledges a todo list is sometimes shared work — a lightweight, schema-simple "who owns this" field is a natural first step toward collaboration features without requiring real multi-user accounts or auth. It follows the existing pattern used by the URL/notes editors (inline per-row editor toggled by an icon button) and reuses the same `TodoSummary`/search plumbing added for notes.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 487
+- Lines deleted: 7
+- Tests added: 21
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 110 — [2026-08-11] — Feature: Suggest Next Todo
 
 **Description:** A new "Suggest next" toolbar button (next to "Pick for me") picks a single todo to work on next, using real urgency signals instead of a random pick: it prefers overdue todos, then todos due today, then high priority, then the oldest unstarted todo, and it skips anything manually blocked or blocked by an incomplete dependency. The suggestion appears as a dismissible banner ("Do this next: ... (overdue and high priority)") and the todo itself gets a highlighted outline in the list.

@@ -50,6 +50,7 @@ using TodoApp.Features.Todos.BlockTodo;
 using TodoApp.Features.Todos.TodayView;
 using TodoApp.Features.Todos.TagStats;
 using TodoApp.Features.Todos.Links;
+using TodoApp.Features.Todos.Assignee;
 using TodoApp.Features.Todos.RescheduleTodos;
 using TodoApp.Features.Todos.SetPriority;
 using TodoApp.Features.Todos.Trash;
@@ -140,6 +141,7 @@ public class HomeTests : BunitContext
         ctx.Services.AddScoped<UnarchiveListHandler>();
         ctx.Services.AddScoped<GetArchivedListsHandler>();
         ctx.Services.AddScoped<SetTodoUrlHandler>();
+        ctx.Services.AddScoped<SetAssigneeHandler>();
         ctx.Services.AddScoped<RescheduleOverdueTodosHandler>();
         ctx.Services.AddScoped<SetPriorityHandler>();
         ctx.Services.AddScoped<GetTrashedTodosHandler>();
@@ -8422,6 +8424,206 @@ public class HomeTests : BunitContext
 
         cut.WaitForAssertion(() =>
             Assert.Empty(cut.FindAll(".todo-url-link")));
+    }
+
+    // ── Assignee tests ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AssigneeButton_IsRendered()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Task without assignee");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var btn = cut.Find(".todo-assignee-btn");
+        Assert.NotNull(btn);
+    }
+
+    [Fact]
+    public async Task AssigneeButton_HasAssignTitle_WhenNoAssigneeSet()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Task without assignee");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var btn = cut.Find(".todo-assignee-btn");
+        Assert.Equal("Assign to someone", btn.GetAttribute("title"));
+    }
+
+    [Fact]
+    public async Task AssigneeButton_HasReassignTitle_WhenAssigneeIsSet()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var assigneeHandler = new SetAssigneeHandler(db);
+        var id = await add.HandleAsync("Task with assignee");
+        await assigneeHandler.HandleAsync(id, "Alice");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var btn = cut.Find(".todo-assignee-btn");
+        Assert.Equal("Reassign", btn.GetAttribute("title"));
+    }
+
+    [Fact]
+    public async Task ClickingAssigneeButton_ShowsAssigneeEditor()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Task without assignee");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-assignee-btn").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            var editor = cut.Find(".todo-assignee-editor");
+            Assert.NotNull(editor);
+        });
+    }
+
+    [Fact]
+    public async Task AssigneeEditor_CancelButton_HidesEditor()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-assignee-btn").Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".todo-assignee-editor")));
+
+        cut.Find(".todo-assignee-cancel-btn").Click();
+
+        cut.WaitForAssertion(() =>
+            Assert.Empty(cut.FindAll(".todo-assignee-editor")));
+    }
+
+    [Fact]
+    public async Task TodoWithAssignee_ShowsAssigneeChip()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var assigneeHandler = new SetAssigneeHandler(db);
+        var id = await add.HandleAsync("Design review");
+        await assigneeHandler.HandleAsync(id, "Bob");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var chip = cut.Find(".todo-assignee-chip");
+        Assert.Contains("Bob", chip.TextContent);
+    }
+
+    [Fact]
+    public async Task TodoWithoutAssignee_NoChipDisplayed()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Task without assignee");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Empty(cut.FindAll(".todo-assignee-chip"));
+    }
+
+    [Fact]
+    public async Task SaveAssignee_PersistsAndShowsChip()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        await add.HandleAsync("Task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-assignee-btn").Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".todo-assignee-input")));
+
+        var input = cut.Find(".todo-assignee-input input");
+        input.Change("Carol");
+
+        cut.Find(".todo-assignee-save-btn").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            var chip = cut.Find(".todo-assignee-chip");
+            Assert.Contains("Carol", chip.TextContent);
+        });
+    }
+
+    [Fact]
+    public async Task AssigneeEditor_ShowsUnassignButton_WhenAssigneeAlreadySet()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var assigneeHandler = new SetAssigneeHandler(db);
+        var id = await add.HandleAsync("Task");
+        await assigneeHandler.HandleAsync(id, "Dave");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-assignee-btn").Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".todo-assignee-editor")));
+
+        Assert.NotEmpty(cut.FindAll(".todo-assignee-clear-btn"));
+    }
+
+    [Fact]
+    public async Task UnassignButton_ClearsAssignee()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var assigneeHandler = new SetAssigneeHandler(db);
+        var id = await add.HandleAsync("Task");
+        await assigneeHandler.HandleAsync(id, "Eve");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        cut.Find(".todo-assignee-btn").Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".todo-assignee-clear-btn")));
+
+        cut.Find(".todo-assignee-clear-btn").Click();
+
+        cut.WaitForAssertion(() =>
+            Assert.Empty(cut.FindAll(".todo-assignee-chip")));
+    }
+
+    [Fact]
+    public async Task SearchBox_MatchesTodoByAssignee()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var assigneeHandler = new SetAssigneeHandler(db);
+        var id1 = await add.HandleAsync("Ship the release");
+        await add.HandleAsync("Unrelated task");
+        await assigneeHandler.HandleAsync(id1, "Frank");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var searchInput = cut.Find(".todo-search-field input");
+        searchInput.Input("Frank");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Ship the release", cut.Markup);
+            Assert.DoesNotContain("Unrelated task", cut.Markup);
+        });
     }
 
     // ── Reschedule overdue tests ───────────────────────────────────────────

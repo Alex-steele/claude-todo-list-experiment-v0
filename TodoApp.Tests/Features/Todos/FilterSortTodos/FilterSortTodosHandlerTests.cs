@@ -16,8 +16,9 @@ public class FilterSortTodosHandlerTests
         DateTime? dueDate = null,
         bool isPinned = false,
         TimeEstimate timeEstimate = TimeEstimate.None,
-        string? notes = null)
-        => new(id, title, isCompleted, Base.AddSeconds(id), priority, dueDate, isPinned, notes, TimeEstimate: timeEstimate);
+        string? notes = null,
+        string? assignee = null)
+        => new(id, title, isCompleted, Base.AddSeconds(id), priority, dueDate, isPinned, notes, TimeEstimate: timeEstimate, Assignee: assignee);
 
     private readonly FilterSortTodosHandler _handler = new();
 
@@ -543,6 +544,51 @@ public class FilterSortTodosHandlerTests
 
         Assert.Single(result);
         Assert.Equal("High task", result[0].Title);
+    }
+
+    // ── Assignee search ────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Search_MatchesAssignee_WhenTitleAndNotesDoNotMatch()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Buy groceries", assignee: "Alice"),
+            Make(2, "Walk the dog"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest, searchQuery: "alice");
+
+        Assert.Single(result);
+        Assert.Equal("Buy groceries", result[0].Title);
+    }
+
+    [Fact]
+    public void Search_AssigneeMatch_IsCaseInsensitive()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Prepare meeting", assignee: "Bob"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest, searchQuery: "BOB");
+
+        Assert.Single(result);
+    }
+
+    [Fact]
+    public void Search_NullAssignee_DoesNotIncludeAssigneeMismatch()
+    {
+        var todos = new List<TodoSummary>
+        {
+            Make(1, "Walk the dog", assignee: null),
+            Make(2, "Buy groceries", assignee: "Carol"),
+        }.AsReadOnly();
+
+        var result = _handler.Handle(todos, TodoStatusFilter.All, TodoSortOrder.Newest, searchQuery: "carol");
+
+        Assert.Single(result);
+        Assert.Equal("Buy groceries", result[0].Title);
     }
 
     [Fact]

@@ -46,6 +46,7 @@
 @using TodoApp.Features.Todos.TodayView
 @using TodoApp.Features.Todos.TagStats
 @using TodoApp.Features.Todos.Links
+@using TodoApp.Features.Todos.Assignee
 @using TodoApp.Features.Todos.RescheduleTodos
 @using TodoApp.Features.Todos.SetPriority
 @using TodoApp.Features.Todos.Search
@@ -60,6 +61,7 @@
 @inject TodayViewHandler TodayViewHandler
 @inject TagStatsHandler TagStatsHandler
 @inject SetTodoUrlHandler SetTodoUrlHandler
+@inject SetAssigneeHandler SetAssigneeHandler
 @inject RescheduleOverdueTodosHandler RescheduleOverdueTodosHandler
 @inject SetPriorityHandler SetPriorityHandler
 @inject AddSubtaskHandler AddSubtaskHandler
@@ -2584,6 +2586,54 @@ else
                                         </a>
                                     </div>
                                 }
+                                @{
+                                    var assigneeTodoId = todo.Id;
+                                }
+                                @if (_settingAssigneeForTodoId == todo.Id)
+                                {
+                                    <div class="mt-2 todo-assignee-editor">
+                                        <MudTextField
+                                            @bind-Value="_assigneeInputValue"
+                                            Label="Assign to"
+                                            Variant="Variant.Outlined"
+                                            FullWidth="true"
+                                            Placeholder="Name..."
+                                            Class="todo-assignee-input" />
+                                        <div class="d-flex align-center gap-2 mt-1">
+                                            <MudButton
+                                                Variant="Variant.Filled"
+                                                Color="Color.Primary"
+                                                Size="Size.Small"
+                                                OnClick="@(async () => await HandleSaveAssignee(assigneeTodoId))"
+                                                Class="todo-assignee-save-btn">Save</MudButton>
+                                            @if (!string.IsNullOrEmpty(todo.Assignee))
+                                            {
+                                                <MudButton
+                                                    Variant="Variant.Outlined"
+                                                    Color="Color.Error"
+                                                    Size="Size.Small"
+                                                    OnClick="@(async () => await HandleClearAssignee(assigneeTodoId))"
+                                                    Class="todo-assignee-clear-btn">Unassign</MudButton>
+                                            }
+                                            <MudButton
+                                                Variant="Variant.Text"
+                                                Color="Color.Default"
+                                                Size="Size.Small"
+                                                OnClick="@(() => _settingAssigneeForTodoId = null)"
+                                                Class="todo-assignee-cancel-btn">Cancel</MudButton>
+                                        </div>
+                                    </div>
+                                }
+                                else if (!string.IsNullOrEmpty(todo.Assignee))
+                                {
+                                    <div class="mt-1 todo-assignee-display">
+                                        <span class="todo-assignee-chip"
+                                              style="font-size:0.75rem;color:var(--mud-palette-info);display:inline-flex;align-items:center;gap:4px;">
+                                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                                            @todo.Assignee
+                                        </span>
+                                    </div>
+                                }
                             </div>
                             <MudIconButton
                                 Icon="@(string.IsNullOrEmpty(todo.Url) ? Icons.Material.Outlined.Link : Icons.Material.Filled.Link)"
@@ -2592,6 +2642,13 @@ else
                                 OnClick="@(() => HandleStartEditUrl(todo.Id, todo.Url ?? string.Empty))"
                                 title="@(string.IsNullOrEmpty(todo.Url) ? "Add link" : "Edit link")"
                                 Class="todo-url-btn" />
+                            <MudIconButton
+                                Icon="@(string.IsNullOrEmpty(todo.Assignee) ? Icons.Material.Outlined.Person : Icons.Material.Filled.Person)"
+                                Color="@(string.IsNullOrEmpty(todo.Assignee) ? Color.Default : Color.Info)"
+                                Size="Size.Small"
+                                OnClick="@(() => HandleStartEditAssignee(todo.Id, todo.Assignee ?? string.Empty))"
+                                title="@(string.IsNullOrEmpty(todo.Assignee) ? "Assign to someone" : "Reassign")"
+                                Class="todo-assignee-btn" />
                             <MudIconButton
                                 Icon="@(string.IsNullOrEmpty(todo.Notes) ? Icons.Material.Outlined.StickyNote2 : Icons.Material.Filled.StickyNote2)"
                                 Color="@(string.IsNullOrEmpty(todo.Notes) ? Color.Default : Color.Info)"
@@ -2829,6 +2886,8 @@ else
 
     private int? _settingUrlForTodoId;
     private string _urlInputValue = string.Empty;
+    private int? _settingAssigneeForTodoId;
+    private string _assigneeInputValue = string.Empty;
 
     private string? _renamingTagName;
     private string _renameTagValue = string.Empty;
@@ -3911,6 +3970,26 @@ else
     {
         await SetTodoUrlHandler.HandleAsync(todoId, null);
         _settingUrlForTodoId = null;
+        await LoadTodosAsync();
+    }
+
+    private void HandleStartEditAssignee(int todoId, string currentAssignee)
+    {
+        _settingAssigneeForTodoId = todoId;
+        _assigneeInputValue = currentAssignee;
+    }
+
+    private async Task HandleSaveAssignee(int todoId)
+    {
+        await SetAssigneeHandler.HandleAsync(todoId, _assigneeInputValue);
+        _settingAssigneeForTodoId = null;
+        await LoadTodosAsync();
+    }
+
+    private async Task HandleClearAssignee(int todoId)
+    {
+        await SetAssigneeHandler.HandleAsync(todoId, null);
+        _settingAssigneeForTodoId = null;
         await LoadTodosAsync();
     }
 

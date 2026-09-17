@@ -19,7 +19,8 @@ public class FilterSortTodosHandler
         var searched = string.IsNullOrWhiteSpace(searchQuery)
             ? todos.AsEnumerable()
             : todos.Where(t => t.Title.Contains(searchTrimmed, StringComparison.OrdinalIgnoreCase)
-                            || (t.Notes != null && t.Notes.Contains(searchTrimmed, StringComparison.OrdinalIgnoreCase)));
+                            || (t.Notes != null && t.Notes.Contains(searchTrimmed, StringComparison.OrdinalIgnoreCase))
+                            || (t.Assignee != null && t.Assignee.Contains(searchTrimmed, StringComparison.OrdinalIgnoreCase)));
 
         var filtered = statusFilter switch
         {
