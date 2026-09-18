@@ -6,7 +6,11 @@ namespace TodoApp.Features.Todos.FilterCounts;
 public record FilterCountsResult(
     IReadOnlyDictionary<TodoPriority, int> ByPriority,
     IReadOnlyDictionary<string, int> ByTag,
-    int NoDueDate = 0);
+    int NoDueDate = 0,
+    IReadOnlyDictionary<string, int> ByAssignee = null!)
+{
+    public IReadOnlyDictionary<string, int> ByAssignee { get; init; } = ByAssignee ?? new Dictionary<string, int>();
+}
 
 public class FilterCountsHandler
 {
@@ -31,8 +35,16 @@ public class FilterCountsHandler
             }
         }
 
+        var byAssignee = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var todo in active)
+        {
+            if (string.IsNullOrEmpty(todo.Assignee)) continue;
+            byAssignee.TryGetValue(todo.Assignee, out var existing);
+            byAssignee[todo.Assignee] = existing + 1;
+        }
+
         var noDueDate = active.Count(t => !t.DueDate.HasValue);
 
-        return new FilterCountsResult(byPriority, byTag, noDueDate);
+        return new FilterCountsResult(byPriority, byTag, noDueDate, byAssignee);
     }
 }

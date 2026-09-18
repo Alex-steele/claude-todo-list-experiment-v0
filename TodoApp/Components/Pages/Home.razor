@@ -1405,6 +1405,28 @@ else
                     }
                 </div>
             }
+            @if (AllAssigneeNames.Count > 0)
+            {
+                <div class="d-flex align-center gap-1 flex-wrap mt-2 assignee-filter-row">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1">Assignee:</MudText>
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Variant="@(_assigneeFilter is null ? Variant.Filled : Variant.Outlined)"
+                             Color="Color.Secondary"
+                             OnClick="@(() => _assigneeFilter = null)"
+                             Class="assignee-filter-all">All</MudChip>
+                    @foreach (var name in AllAssigneeNames)
+                    {
+                        var assigneeName = name;
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Variant="@(_assigneeFilter == assigneeName ? Variant.Filled : Variant.Outlined)"
+                                 Color="Color.Secondary"
+                                 OnClick="@(() => _assigneeFilter = assigneeName)"
+                                 Class="assignee-filter-chip">@assigneeName@(GetFilterCounts().ByAssignee.GetValueOrDefault(assigneeName) is var ac && ac > 0 ? $" ({ac})" : "")</MudChip>
+                    }
+                </div>
+            }
             <div class="d-flex align-center gap-1 flex-wrap mt-2 color-filter-row">
                 <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1">Color:</MudText>
                 <span class="color-filter-dot color-filter-all @(_colorFilter is null ? "color-dot-selected" : "")"
@@ -2628,7 +2650,9 @@ else
                                 {
                                     <div class="mt-1 todo-assignee-display">
                                         <span class="todo-assignee-chip"
-                                              style="font-size:0.75rem;color:var(--mud-palette-info);display:inline-flex;align-items:center;gap:4px;">
+                                              style="font-size:0.75rem;color:var(--mud-palette-info);display:inline-flex;align-items:center;gap:4px;cursor:pointer;"
+                                              title="@($"Filter by \"{todo.Assignee}\"")"
+                                              @onclick="@(() => HandleFilterByAssignee(todo.Assignee!))">
                                             <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
                                             @todo.Assignee
                                         </span>
@@ -2879,6 +2903,7 @@ else
     private int? _addingTagForTodoId;
     private string _newTagInput = string.Empty;
     private string? _tagFilter;
+    private string? _assigneeFilter;
     private TodoPriority? _priorityFilter;
 
     private int? _editingNotesForTodoId;
@@ -2952,6 +2977,11 @@ else
         _todoTags.Values.SelectMany(tags => tags.Select(t => t.Name))
             .Distinct().OrderBy(n => n).ToList();
 
+    private IReadOnlyList<string> AllAssigneeNames =>
+        (_todos?.Where(t => t.ListId == _activeListId && !string.IsNullOrEmpty(t.Assignee))
+            .Select(t => t.Assignee!) ?? [])
+            .Distinct().OrderBy(n => n).ToList();
+
     private bool AreAllDisplayedSelected =>
         DisplayedTodos.Count > 0 && DisplayedTodos.All(t => _selectedIds.Contains(t.Id));
 
@@ -2960,6 +2990,7 @@ else
         _priorityFilter is not null ||
         _dateFilter != TodoDateFilter.None ||
         _tagFilter is not null ||
+        _assigneeFilter is not null ||
         _colorFilter is not null ||
         _timeEstimateFilter != TodoTimeEstimateFilter.Any ||
         _stalenessFilter != TodoStalenessFilter.Any ||
@@ -2995,8 +3026,11 @@ else
             var colorFiltered = _colorFilter is null
                 ? tagFiltered
                 : tagFiltered.Where(t => t.ColorLabel == _colorFilter.Value).ToList();
-            if (!_blockedFilter) return colorFiltered;
-            return colorFiltered.Where(t => t.IsBlocked).ToList();
+            var assigneeFiltered = _assigneeFilter is null
+                ? colorFiltered
+                : colorFiltered.Where(t => t.Assignee == _assigneeFilter).ToList();
+            if (!_blockedFilter) return assigneeFiltered;
+            return assigneeFiltered.Where(t => t.IsBlocked).ToList();
         }
     }
 
@@ -3804,6 +3838,7 @@ else
         _priorityFilter = null;
         _dateFilter = TodoDateFilter.None;
         _tagFilter = null;
+        _assigneeFilter = null;
         _colorFilter = null;
         _timeEstimateFilter = TodoTimeEstimateFilter.Any;
         _stalenessFilter = TodoStalenessFilter.Any;
@@ -4404,6 +4439,11 @@ else
     private void HandleFilterByTag(string tagName)
     {
         _tagFilter = _tagFilter == tagName ? null : tagName;
+    }
+
+    private void HandleFilterByAssignee(string assignee)
+    {
+        _assigneeFilter = _assigneeFilter == assignee ? null : assignee;
     }
 
     private void HandleStartRenameTag(string tagName)

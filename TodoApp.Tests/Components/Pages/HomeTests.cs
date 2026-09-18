@@ -8626,6 +8626,189 @@ public class HomeTests : BunitContext
         });
     }
 
+    // ── Assignee filter tests ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task AssigneeFilterRow_IsNotRendered_WhenNoAssigneesExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var addHandler = new AddTodoHandler(db);
+        await addHandler.HandleAsync("Walk the dog");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.DoesNotContain("assignee-filter-row", cut.Markup);
+    }
+
+    [Fact]
+    public async Task AssigneeFilterRow_IsRendered_WhenAssigneesExist()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var assigneeHandler = new SetAssigneeHandler(db);
+        var id = await add.HandleAsync("Design review");
+        await assigneeHandler.HandleAsync(id, "Bob");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("assignee-filter-row", cut.Markup);
+        Assert.Contains("assignee-filter-chip", cut.Markup);
+        Assert.Contains("Bob", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingAssigneeFilterChip_ShowsOnlyTodosAssignedToThatPerson()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var assigneeHandler = new SetAssigneeHandler(db);
+        var id1 = await add.HandleAsync("Walk the dog");
+        var id2 = await add.HandleAsync("Buy groceries");
+        await assigneeHandler.HandleAsync(id1, "Alice");
+        await assigneeHandler.HandleAsync(id2, "Bob");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        Assert.Contains("Walk the dog", cut.Markup);
+        Assert.Contains("Buy groceries", cut.Markup);
+
+        var aliceChip = cut.FindAll(".assignee-filter-chip").First(c => c.TextContent.Contains("Alice"));
+        aliceChip.Click();
+
+        Assert.Contains("Walk the dog", cut.Markup);
+        Assert.DoesNotContain("Buy groceries", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingAllAssigneeFilter_ShowsAllTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var assigneeHandler = new SetAssigneeHandler(db);
+        var id1 = await add.HandleAsync("Walk the dog");
+        var id2 = await add.HandleAsync("Buy groceries");
+        await assigneeHandler.HandleAsync(id1, "Alice");
+        await assigneeHandler.HandleAsync(id2, "Bob");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var aliceChip = cut.FindAll(".assignee-filter-chip").First(c => c.TextContent.Contains("Alice"));
+        aliceChip.Click();
+        Assert.DoesNotContain("Buy groceries", cut.Markup);
+
+        cut.Find(".assignee-filter-all").Click();
+
+        Assert.Contains("Walk the dog", cut.Markup);
+        Assert.Contains("Buy groceries", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ClickingTodoAssigneeChip_ActivatesAssigneeFilter()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var assigneeHandler = new SetAssigneeHandler(db);
+        var id1 = await add.HandleAsync("Task for Alice");
+        var id2 = await add.HandleAsync("Task for Bob");
+        await assigneeHandler.HandleAsync(id1, "Alice");
+        await assigneeHandler.HandleAsync(id2, "Bob");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("todo-assignee-chip", cut.Markup));
+
+        var aliceChip = cut.FindAll(".todo-assignee-chip").First(c => c.TextContent.Contains("Alice"));
+        aliceChip.Click();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            Assert.Contains("Task for Alice", cut.Markup);
+            Assert.DoesNotContain("Task for Bob", cut.Markup);
+        });
+    }
+
+    [Fact]
+    public async Task ClickingActiveTodoAssigneeChip_ClearsAssigneeFilter()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var assigneeHandler = new SetAssigneeHandler(db);
+        var id1 = await add.HandleAsync("Task for Alice");
+        await assigneeHandler.HandleAsync(id1, "Alice");
+        await add.HandleAsync("Unassigned task");
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("todo-assignee-chip", cut.Markup));
+
+        cut.Find(".todo-assignee-chip").Click();
+        await cut.WaitForAssertionAsync(() =>
+            Assert.DoesNotContain("Unassigned task", cut.Markup));
+
+        cut.Find(".todo-assignee-chip").Click();
+        await cut.WaitForAssertionAsync(() =>
+            Assert.Contains("Unassigned task", cut.Markup));
+    }
+
+    [Fact]
+    public async Task AssigneeFilterChips_ShowCount_ForActiveTodos()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var assigneeHandler = new SetAssigneeHandler(db);
+        var complete = new CompleteTodoHandler(db);
+        var id1 = await add.HandleAsync("Task 1");
+        var id2 = await add.HandleAsync("Task 2");
+        var id3 = await add.HandleAsync("Task 3");
+        await assigneeHandler.HandleAsync(id1, "Alice");
+        await assigneeHandler.HandleAsync(id2, "Alice");
+        await assigneeHandler.HandleAsync(id3, "Alice");
+        await complete.HandleAsync(id3);
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var aliceChip = cut.FindAll(".assignee-filter-chip").First(c => c.TextContent.Contains("Alice"));
+        Assert.Contains("(2)", aliceChip.TextContent);
+    }
+
+    [Fact]
+    public async Task AssigneeFilter_CombinesWithStatusFilter()
+    {
+        var db = await TestDatabase.CreateAsync();
+        var add = new AddTodoHandler(db);
+        var assigneeHandler = new SetAssigneeHandler(db);
+        var complete = new CompleteTodoHandler(db);
+        var id1 = await add.HandleAsync("Walk the dog");
+        var id2 = await add.HandleAsync("Go for a run");
+        await assigneeHandler.HandleAsync(id1, "Alice");
+        await assigneeHandler.HandleAsync(id2, "Alice");
+        await complete.HandleAsync(id2);   // "Go for a run" is completed
+
+        var ctx = CreateBunitContext(db);
+        var cut = RenderHome(ctx);
+
+        var aliceChip = cut.FindAll(".assignee-filter-chip").First(c => c.TextContent.Contains("Alice"));
+        aliceChip.Click();
+
+        Assert.Contains("Walk the dog", cut.Markup);
+        Assert.Contains("Go for a run", cut.Markup);
+
+        var activeButton = cut.FindAll("button").First(b => b.TextContent.Trim() == "Active");
+        activeButton.Click();
+
+        Assert.Contains("Walk the dog", cut.Markup);
+        Assert.DoesNotContain("Go for a run", cut.Markup);
+    }
+
     // ── Reschedule overdue tests ───────────────────────────────────────────
 
     [Fact]
