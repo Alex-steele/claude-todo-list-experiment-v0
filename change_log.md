@@ -1,5 +1,20 @@
 # Change Log
 
+## Day 112 — [2026-09-18] — Feature: Filter by Assignee
+
+**Description:** Todos can now be filtered down to a single assignee. A new "Assignee:" chip row (shown whenever any todo in the list is assigned) lists every person with an active count next to their name, plus an "All" chip to clear the filter; clicking a todo's own assignee chip toggles that same filter on and off directly from the row.
+
+**Reason for change:** Day 111 added the ability to assign a todo to a collaborator and made search match by assignee, but there was no structured way to see "just Alice's work" the way tags and colors already support — a lightweight filter chip row is the natural next step and reuses the exact `_tagFilter`/`tag-filter-row` pattern already established for tags.
+
+**Removals:** None
+
+**Stats:**
+- Lines added: 286
+- Lines deleted: 7
+- Tests added: 12
+- Tests removed: 0
+- Test failures before green: 0
+
 ## Day 111 — [2026-09-17] — Feature: Assign Todo to Collaborator
 
 **Description:** Each todo now has an "Assign to" person icon that opens a small inline editor for typing a free-text assignee name. Once set, the todo shows a person chip with the assignee's name beneath its title, and the assignee icon fills in to indicate the todo is assigned; an "Unassign" button clears it. The search box now also matches todos by assignee name, not just title and notes.

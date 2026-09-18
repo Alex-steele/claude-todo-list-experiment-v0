@@ -10,8 +10,8 @@ public class FilterCountsHandlerTests
 {
     private readonly FilterCountsHandler _handler = new();
 
-    private static TodoSummary MakeTodo(int id, TodoPriority priority = TodoPriority.None, bool completed = false) =>
-        new(id, $"Todo {id}", completed, DateTime.UtcNow, priority, null);
+    private static TodoSummary MakeTodo(int id, TodoPriority priority = TodoPriority.None, bool completed = false, string? assignee = null) =>
+        new(id, $"Todo {id}", completed, DateTime.UtcNow, priority, null, Assignee: assignee);
 
     private static Dictionary<int, List<Tag>> MakeTags(params (int TodoId, string[] Names)[] entries)
     {
@@ -157,5 +157,49 @@ public class FilterCountsHandlerTests
     {
         var result = _handler.Handle([], new Dictionary<int, List<Tag>>());
         Assert.Equal(0, result.NoDueDate);
+    }
+
+    [Fact]
+    public void Handle_AssigneeCounts_CountedCorrectly()
+    {
+        var todos = new[]
+        {
+            MakeTodo(1, assignee: "Alice"),
+            MakeTodo(2, assignee: "Alice"),
+            MakeTodo(3, assignee: "Bob")
+        };
+        var result = _handler.Handle(todos, new Dictionary<int, List<Tag>>());
+        Assert.Equal(2, result.ByAssignee["Alice"]);
+        Assert.Equal(1, result.ByAssignee["Bob"]);
+    }
+
+    [Fact]
+    public void Handle_AssigneeCounts_ExcludesUnassignedAndCompleted()
+    {
+        var todos = new[]
+        {
+            MakeTodo(1, assignee: "Alice"),
+            MakeTodo(2, assignee: "Alice", completed: true),
+            MakeTodo(3)
+        };
+        var result = _handler.Handle(todos, new Dictionary<int, List<Tag>>());
+        Assert.Equal(1, result.ByAssignee["Alice"]);
+        Assert.Single(result.ByAssignee);
+    }
+
+    [Fact]
+    public void Handle_AssigneeCounts_CaseInsensitiveAggregation()
+    {
+        var todos = new[] { MakeTodo(1, assignee: "Alice"), MakeTodo(2, assignee: "alice") };
+        var result = _handler.Handle(todos, new Dictionary<int, List<Tag>>());
+        Assert.Single(result.ByAssignee);
+        Assert.Equal(2, result.ByAssignee.Values.First());
+    }
+
+    [Fact]
+    public void Handle_EmptyList_ReturnsEmptyAssigneeCounts()
+    {
+        var result = _handler.Handle([], new Dictionary<int, List<Tag>>());
+        Assert.Empty(result.ByAssignee);
     }
 }
